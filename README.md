@@ -1,42 +1,61 @@
-# glium
+# SafeGL
 
 [![Build Status](https://github.com/glium/glium/actions/workflows/ci.yml/badge.svg)](https://github.com/glium/glium/actions/workflows/ci.yml)
 [![Coverage Status](https://coveralls.io/repos/tomaka/glium/badge.svg?branch=master&service=github)](https://coveralls.io/github/tomaka/glium?branch=master)
-
 [![crates.io page](https://img.shields.io/crates/v/glium.svg)](https://crates.io/crates/glium)
 
-## Note to current and future Glium users:
+SafeGL - A safe OpenGL wrapper and API-compatible fork of Glium
 
-Glium is [no longer actively developed by its original
-author](https://users.rust-lang.org/t/glium-post-mortem/7063). That said, PRs
-are still welcome and maintenance is continued by the surrounding community.
+This project is a fork of [glium](https://github.com/glium/glium), maintained by
+[Oxidian Studios](https://github.com/oxidianindustries), a video game company, with the intent of using it to develop
+graphical tools for internal use. We are backporting a large number of [PRs](https://github.com/glium/glium/pulls)
+and [bug fixes](https://github.com/glium/glium/issues) that have been left unattended in the original GitHub repository,
+including a few PRs that we submitted ourselves, while preserving compatibility with existing projects made with glium
+for as long as possible.
 
-##
+One of the main reasons why this fork exists is that we don't believe that bugs, PRs, and other project issues are being
+addressed quickly enough by the original glium community. Even though the project is not officially discontinued,
+maintenance by the surrounding community has slowed down over time.
 
-Elegant and safe OpenGL wrapper.
+If you want to understand how we ended up here, check the links below:
+- [Glium post-mortem](https://users.rust-lang.org/t/glium-post-mortem/7063)
+- [Original glium repo](https://github.com/glium/glium)
 
-Glium is an intermediate layer between OpenGL and your application. You still need to manually handle
+### Note on OpenGL versions
+
+Although SafeGL supports a wide range of OpenGL versions thanks to its glium heritage, our focus will be on 
+**OpenGL 4.6** for modern desktops, **OpenGL** ES 3.0 as a baseline for embedded devices, and **OpenGL ES 3.1** 
+for optimizations and advanced features.
+
+Other targets will be secondary, with support developed around these priorities. Still, PRs targeting other platforms 
+are welcome and will be reviewed promptly.
+
+SafeGL is an intermediate layer between OpenGL and your application. You still need to manually handle
 the graphics pipeline, but without having to use OpenGL's old and error-prone API.
 
 ```toml
 [dependencies]
-glium = "*"
+safegl = "*"
 ```
 
 Its objectives:
- - Be safe to use. Many aspects of OpenGL that can trigger a crash if misused are automatically handled by glium.
+ - Be safe to use. Many aspects of OpenGL that can trigger a crash if misused are automatically handled by SafeGL.
  - Provide an API that enforces good practices such as RAII or stateless function calls.
- - Be compatible with all OpenGL versions that support shaders, providing a unified API when things diverge.
+ - Be compatible with OpenGL 4.6 for modern desktops and OpenGL ES 3.0 for embedded devices.
  - Avoid all OpenGL errors beforehand.
  - Produce optimized OpenGL function calls, and allow the user to easily use modern OpenGL techniques.
 
-## [Link to the documentation](https://docs.rs/glium)
+## [SafeGL Book - Building a renderer from scratch]()
 
-If you have some knowledge of OpenGL, the documentation and the examples should get you easily started.
+SafeGL book are design to teach you to implement a Forward+ renderer with MSAA anti-aliasing using Rust, OpenGL 4.6 and 
+slang shaders that compiles to GLSL.
 
-## [Link to a work-in-progress tutorial](https://glium.github.io/glium/book/)
+## [SafeGL Developer Handbook]()
 
-## Why should I use Glium instead of raw OpenGL calls?
+SafeGL developer handbook explain architectural, implementations and other decisions related with the development
+of the SafeGL and aim to help new developers to contribute to the project,
+
+## Why should I use SafeGL instead of raw OpenGL calls?
 
 Easy to use:
 
