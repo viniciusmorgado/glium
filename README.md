@@ -45,6 +45,24 @@ Its objectives:
  - Avoid all OpenGL errors beforehand.
  - Produce optimized OpenGL function calls, and allow the user to easily use modern OpenGL techniques.
 
+## Why SafeGL matters for Oxidian
+
+At Oxidian, we want to use SafeGL to build practical internal tools such as asset viewers,
+texture inspectors, material previews, and thumbnail generators. These tools address everyday
+production needs while giving programmers new to computer graphics manageable projects with
+useful results.
+
+SafeGL's safe abstractions let newcomers learn the graphics pipeline by working with geometry,
+textures, shaders, and draw calls, while handling much of the resource lifetime and state management
+that makes raw OpenGL error-prone. They can develop these foundations without first tackling
+Vulkan's explicit GPU memory management or many of the manual resource management pitfalls of
+raw OpenGL.
+
+For us, this also creates a practical path for onboarding and developing graphics programmers:
+new team members contribute useful tools as they learn, build confidence through hands-on work,
+and prepare to take on more demanding rendering tasks. Investing in SafeGL supports both our
+production workflow and the growth of our team.
+
 ## [SafeGL Book - Building a renderer from scratch]()
 
 SafeGL book are design to teach you to implement a Forward+ renderer with MSAA anti-aliasing using Rust, OpenGL 4.6 and 
