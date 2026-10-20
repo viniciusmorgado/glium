@@ -195,7 +195,6 @@ pub fn read<'a, S, D, T>(mut ctxt: &mut CommandContext<'_>, source: S, rect: &Re
             },
         }
     }
-
     // obtaining the client format and client type to be passed to `glReadPixels`
     let (format, gltype) = match read_src_type {
         ReadSourceType::Color => {
