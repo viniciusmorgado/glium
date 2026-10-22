@@ -2,17 +2,17 @@
 extern crate glium;
 mod support;
 
-use std::thread;
 use glium::index::PrimitiveType;
+use glium::winit::keyboard::{KeyCode, PhysicalKey};
 use glium::{Display, Surface};
 use glutin::surface::WindowSurface;
+use std::thread;
 use support::{ApplicationContext, State};
-use glium::winit::keyboard::{PhysicalKey, KeyCode};
 
 mod screenshot {
     use glium::Surface;
-    use std::collections::VecDeque;
     use std::borrow::Cow;
+    use std::collections::VecDeque;
 
     // Container that holds image data as vector of (u8, u8, u8, u8).
     // This is used to take data from PixelBuffer and move it to another thread
@@ -56,12 +56,14 @@ mod screenshot {
             };
 
             // Create temporary texture and blit the front buffer to it
-            let texture = glium::texture::Texture2d::empty(facade, dimensions.0, dimensions.1)
-                .unwrap();
+            let texture =
+                glium::texture::Texture2d::empty(facade, dimensions.0, dimensions.1).unwrap();
             let framebuffer = glium::framebuffer::SimpleFrameBuffer::new(facade, &texture).unwrap();
-            framebuffer.blit_from_frame(&rect,
-                                        &blit_target,
-                                        glium::uniforms::MagnifySamplerFilter::Nearest);
+            framebuffer.blit_from_frame(
+                &rect,
+                &blit_target,
+                glium::uniforms::MagnifySamplerFilter::Nearest,
+            );
 
             // Read the texture into new pixel buffer
             let pixel_buffer = texture.read_to_pixel_buffer();
@@ -83,7 +85,13 @@ mod screenshot {
         type Item = RGBAImageData;
 
         fn next(&mut self) -> Option<RGBAImageData> {
-            if self.0.screenshot_tasks.front().map(|task| task.target_frame) == Some(self.0.frame) {
+            if self
+                .0
+                .screenshot_tasks
+                .front()
+                .map(|task| task.target_frame)
+                == Some(self.0.frame)
+            {
                 let task = self.0.screenshot_tasks.pop_front().unwrap();
                 Some(task.read_image_data())
             } else {
@@ -120,8 +128,10 @@ mod screenshot {
         }
 
         pub fn take_screenshot(&mut self, facade: &dyn glium::backend::Facade) {
-            self.screenshot_tasks
-                .push_back(AsyncScreenshotTask::new(facade, self.frame + self.screenshot_delay));
+            self.screenshot_tasks.push_back(AsyncScreenshotTask::new(
+                facade,
+                self.frame + self.screenshot_delay,
+            ));
         }
     }
 }
@@ -142,7 +152,8 @@ struct Application {
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE:&'static str = "Glium screenshot-asynchronous example - press S to take a screenshot";
+    const WINDOW_TITLE: &'static str =
+        "Glium screenshot-asynchronous example - press S to take a screenshot";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         Self {
@@ -167,8 +178,12 @@ impl ApplicationContext for Application {
             .unwrap(),
 
             // building the index buffer
-            index_buffer:
-                glium::IndexBuffer::new(display, PrimitiveType::TrianglesList, &[0u16, 1, 2]).unwrap(),
+            index_buffer: glium::IndexBuffer::new(
+                display,
+                PrimitiveType::TrianglesList,
+                &[0u16, 1, 2],
+            )
+            .unwrap(),
 
             // compiling shaders and linking them together
             program: program!(display,
@@ -264,13 +279,19 @@ impl ApplicationContext for Application {
 
                 // Save the screenshot to file
                 let image = image::DynamicImage::ImageRgba8(image_buffer).flipv();
-                image.save(format!("glium-example-screenshot-{frame}.png")).unwrap();
+                image
+                    .save(format!("glium-example-screenshot-{frame}.png"))
+                    .unwrap();
             });
         }
     }
 
-    fn handle_window_event(&mut self, event: &glium::winit::event::WindowEvent, _window: &glium::winit::window::Window) {
-        if let glium::winit::event::WindowEvent::KeyboardInput { event, ..} = event {
+    fn handle_window_event(
+        &mut self,
+        event: &glium::winit::event::WindowEvent,
+        _window: &glium::winit::window::Window,
+    ) {
+        if let glium::winit::event::WindowEvent::KeyboardInput { event, .. } = event {
             if let glium::winit::event::ElementState::Pressed = event.state {
                 if let PhysicalKey::Code(KeyCode::KeyS) = event.physical_key {
                     self.take_screenshot = true;

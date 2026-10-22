@@ -19,15 +19,16 @@ fn main() {
 
     // Now we wait until the program is closed
     #[allow(deprecated)]
-    event_loop.run(move |event, window_target| {
-        match event {
-            glium::winit::event::Event::WindowEvent { event, .. } => match event {
-                // This event is sent by the OS when you close the Window, or request the program to quit via the taskbar.
-                glium::winit::event::WindowEvent::CloseRequested => window_target.exit(),
+    event_loop
+        .run(move |event, window_target| {
+            match event {
+                glium::winit::event::Event::WindowEvent { event, .. } => match event {
+                    // This event is sent by the OS when you close the Window, or request the program to quit via the taskbar.
+                    glium::winit::event::WindowEvent::CloseRequested => window_target.exit(),
+                    _ => (),
+                },
                 _ => (),
-            },
-            _ => (),
-        };
-    })
-    .unwrap();
+            };
+        })
+        .unwrap();
 }

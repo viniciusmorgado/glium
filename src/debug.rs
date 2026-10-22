@@ -5,10 +5,10 @@
 
 use crate::backend::Facade;
 use crate::context::Context;
-use crate::ContextExt;
+use crate::gl;
 use crate::version::Api;
 use crate::version::Version;
-use crate::gl;
+use crate::ContextExt;
 use std::rc::Rc;
 
 pub use crate::context::DebugCallbackBehavior;
@@ -124,10 +124,14 @@ pub struct TimestampQuery {
 
 impl TimestampQuery {
     /// Creates a new `TimestampQuery`. Returns `None` if the backend doesn't support it.
-    pub fn new<F: ?Sized>(facade: &F) -> Option<TimestampQuery> where F: Facade {
+    pub fn new<F: ?Sized>(facade: &F) -> Option<TimestampQuery>
+    where
+        F: Facade,
+    {
         let ctxt = facade.get_context().make_current();
 
-        let id = if ctxt.version >= &Version(Api::Gl, 3, 2) {    // TODO: extension
+        let id = if ctxt.version >= &Version(Api::Gl, 3, 2) {
+            // TODO: extension
             unsafe {
                 let mut id = 0;
                 ctxt.gl.GenQueries(1, &mut id);
@@ -136,7 +140,6 @@ impl TimestampQuery {
 
                 Some(id)
             }
-
         } else if ctxt.extensions.gl_ext_disjoint_timer_query {
             unsafe {
                 let mut id = 0;
@@ -146,14 +149,13 @@ impl TimestampQuery {
 
                 Some(id)
             }
-
         } else {
             None
         };
 
         id.map(|q| TimestampQuery {
             context: facade.get_context().clone(),
-            id: q
+            id: q,
         })
     }
 
@@ -164,20 +166,21 @@ impl TimestampQuery {
     pub fn is_ready(&self) -> bool {
         let ctxt = self.context.make_current();
 
-        if ctxt.version >= &Version(Api::Gl, 3, 2) {    // TODO: extension
+        if ctxt.version >= &Version(Api::Gl, 3, 2) {
+            // TODO: extension
             unsafe {
                 let mut value = 0;
-                ctxt.gl.GetQueryObjectiv(self.id, gl::QUERY_RESULT_AVAILABLE, &mut value);
+                ctxt.gl
+                    .GetQueryObjectiv(self.id, gl::QUERY_RESULT_AVAILABLE, &mut value);
                 value != 0
             }
-
         } else if ctxt.extensions.gl_ext_disjoint_timer_query {
             unsafe {
                 let mut value = 0;
-                ctxt.gl.GetQueryObjectivEXT(self.id, gl::QUERY_RESULT_AVAILABLE_EXT, &mut value);
+                ctxt.gl
+                    .GetQueryObjectivEXT(self.id, gl::QUERY_RESULT_AVAILABLE_EXT, &mut value);
                 value != 0
             }
-
         } else {
             unreachable!();
         }
@@ -189,22 +192,23 @@ impl TimestampQuery {
     pub fn get(self) -> u64 {
         let ctxt = self.context.make_current();
 
-        if ctxt.version >= &Version(Api::Gl, 3, 2) {    // TODO: extension
+        if ctxt.version >= &Version(Api::Gl, 3, 2) {
+            // TODO: extension
             unsafe {
                 let mut value = 0;
-                ctxt.gl.GetQueryObjectui64v(self.id, gl::QUERY_RESULT, &mut value);
+                ctxt.gl
+                    .GetQueryObjectui64v(self.id, gl::QUERY_RESULT, &mut value);
                 ctxt.gl.DeleteQueries(1, [self.id].as_ptr());
                 value
             }
-
         } else if ctxt.extensions.gl_ext_disjoint_timer_query {
             unsafe {
                 let mut value = 0;
-                ctxt.gl.GetQueryObjectui64vEXT(self.id, gl::QUERY_RESULT_EXT, &mut value);
+                ctxt.gl
+                    .GetQueryObjectui64vEXT(self.id, gl::QUERY_RESULT_EXT, &mut value);
                 ctxt.gl.DeleteQueriesEXT(1, [self.id].as_ptr());
                 value
             }
-
         } else {
             unreachable!();
         }

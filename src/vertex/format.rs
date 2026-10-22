@@ -146,88 +146,125 @@ pub enum AttributeType {
 
 impl AttributeType {
     /// Returns true if the backend supports this type of attribute.
-    pub fn is_supported<C: ?Sized>(&self, caps: &C) -> bool where C: CapabilitiesSource {
+    pub fn is_supported<C: ?Sized>(&self, caps: &C) -> bool
+    where
+        C: CapabilitiesSource,
+    {
         match self {
-            &AttributeType::I8 | &AttributeType::I8I8 | &AttributeType::I8I8I8 |
-            &AttributeType::I8I8I8I8 | &AttributeType::U8 | &AttributeType::U8U8 |
-            &AttributeType::U8U8U8 | &AttributeType::U8U8U8U8 | &AttributeType::I16 |
-            &AttributeType::I16I16 | &AttributeType::I16I16I16 | &AttributeType::I16I16I16I16 |
-            &AttributeType::U16 | &AttributeType::U16U16 | &AttributeType::U16U16U16 |
-            &AttributeType::U16U16U16U16 | &AttributeType::F32 |
-            &AttributeType::F32F32 | &AttributeType::F32F32F32 | &AttributeType::F32F32F32F32 |
-            &AttributeType::F32x2x2 | &AttributeType::F32x2x3 | &AttributeType::F32x2x4 |
-            &AttributeType::F32x3x2 | &AttributeType::F32x3x3 | &AttributeType::F32x3x4 |
-            &AttributeType::F32x4x2 | &AttributeType::F32x4x3 | &AttributeType::F32x4x4 =>
-            {
-                true
-            },
+            &AttributeType::I8
+            | &AttributeType::I8I8
+            | &AttributeType::I8I8I8
+            | &AttributeType::I8I8I8I8
+            | &AttributeType::U8
+            | &AttributeType::U8U8
+            | &AttributeType::U8U8U8
+            | &AttributeType::U8U8U8U8
+            | &AttributeType::I16
+            | &AttributeType::I16I16
+            | &AttributeType::I16I16I16
+            | &AttributeType::I16I16I16I16
+            | &AttributeType::U16
+            | &AttributeType::U16U16
+            | &AttributeType::U16U16U16
+            | &AttributeType::U16U16U16U16
+            | &AttributeType::F32
+            | &AttributeType::F32F32
+            | &AttributeType::F32F32F32
+            | &AttributeType::F32F32F32F32
+            | &AttributeType::F32x2x2
+            | &AttributeType::F32x2x3
+            | &AttributeType::F32x2x4
+            | &AttributeType::F32x3x2
+            | &AttributeType::F32x3x3
+            | &AttributeType::F32x3x4
+            | &AttributeType::F32x4x2
+            | &AttributeType::F32x4x3
+            | &AttributeType::F32x4x4 => true,
 
-            &AttributeType::I32 | &AttributeType::I32I32 | &AttributeType::I32I32I32 |
-            &AttributeType::I32I32I32I32 | &AttributeType::U32 | &AttributeType::U32U32 |
-            &AttributeType::U32U32U32 | &AttributeType::U32U32U32U32 =>
-            {
-                caps.get_version() >= &Version(Api::Gl, 1, 0) ||
-                caps.get_version() >= &Version(Api::GlEs, 3, 0)
-            },
-
-            &AttributeType::I64 | &AttributeType::I64I64 | &AttributeType::I64I64I64 |
-            &AttributeType::I64I64I64I64 =>
-            {
-                caps.get_extensions().gl_nv_vertex_attrib_integer_64bit
-            },
-
-            &AttributeType::U64 | &AttributeType::U64U64 |
-            &AttributeType::U64U64U64 | &AttributeType::U64U64U64U64 =>
-            {
-                caps.get_extensions().gl_arb_bindless_texture ||
-                caps.get_extensions().gl_nv_vertex_attrib_integer_64bit
-            },
-
-            &AttributeType::F64 | &AttributeType::F64F64 | &AttributeType::F64F64F64 |
-            &AttributeType::F64F64F64F64 | &AttributeType::F64x2x2 | &AttributeType::F64x2x3 |
-            &AttributeType::F64x2x4 | &AttributeType::F64x3x2 | &AttributeType::F64x3x3 |
-            &AttributeType::F64x3x4 | &AttributeType::F64x4x2 | &AttributeType::F64x4x3 |
-            &AttributeType::F64x4x4 =>
-            {
+            &AttributeType::I32
+            | &AttributeType::I32I32
+            | &AttributeType::I32I32I32
+            | &AttributeType::I32I32I32I32
+            | &AttributeType::U32
+            | &AttributeType::U32U32
+            | &AttributeType::U32U32U32
+            | &AttributeType::U32U32U32U32 => {
                 caps.get_version() >= &Version(Api::Gl, 1, 0)
-            },
+                    || caps.get_version() >= &Version(Api::GlEs, 3, 0)
+            }
 
-            &AttributeType::F16 | &AttributeType::F16F16 | &AttributeType::F16F16F16 |
-            &AttributeType::F16F16F16F16 |
-            &AttributeType::F16x2x2 | &AttributeType::F16x2x3 | &AttributeType::F16x2x4 |
-            &AttributeType::F16x3x2 | &AttributeType::F16x3x3 | &AttributeType::F16x3x4 |
-            &AttributeType::F16x4x2 | &AttributeType::F16x4x3 | &AttributeType::F16x4x4 =>
-            {
-                caps.get_version() >= &Version(Api::GlEs, 3, 0) ||
-                caps.get_version() >= &Version(Api::Gl, 4, 0) ||
-                caps.get_extensions().gl_arb_es3_compatibility ||
-                caps.get_extensions().gl_oes_vertex_half_float ||
-                caps.get_extensions().gl_arb_vertex_half_float ||
-                caps.get_extensions().gl_nv_half_float
-            },
+            &AttributeType::I64
+            | &AttributeType::I64I64
+            | &AttributeType::I64I64I64
+            | &AttributeType::I64I64I64I64 => {
+                caps.get_extensions().gl_nv_vertex_attrib_integer_64bit
+            }
+
+            &AttributeType::U64
+            | &AttributeType::U64U64
+            | &AttributeType::U64U64U64
+            | &AttributeType::U64U64U64U64 => {
+                caps.get_extensions().gl_arb_bindless_texture
+                    || caps.get_extensions().gl_nv_vertex_attrib_integer_64bit
+            }
+
+            &AttributeType::F64
+            | &AttributeType::F64F64
+            | &AttributeType::F64F64F64
+            | &AttributeType::F64F64F64F64
+            | &AttributeType::F64x2x2
+            | &AttributeType::F64x2x3
+            | &AttributeType::F64x2x4
+            | &AttributeType::F64x3x2
+            | &AttributeType::F64x3x3
+            | &AttributeType::F64x3x4
+            | &AttributeType::F64x4x2
+            | &AttributeType::F64x4x3
+            | &AttributeType::F64x4x4 => caps.get_version() >= &Version(Api::Gl, 1, 0),
+
+            &AttributeType::F16
+            | &AttributeType::F16F16
+            | &AttributeType::F16F16F16
+            | &AttributeType::F16F16F16F16
+            | &AttributeType::F16x2x2
+            | &AttributeType::F16x2x3
+            | &AttributeType::F16x2x4
+            | &AttributeType::F16x3x2
+            | &AttributeType::F16x3x3
+            | &AttributeType::F16x3x4
+            | &AttributeType::F16x4x2
+            | &AttributeType::F16x4x3
+            | &AttributeType::F16x4x4 => {
+                caps.get_version() >= &Version(Api::GlEs, 3, 0)
+                    || caps.get_version() >= &Version(Api::Gl, 4, 0)
+                    || caps.get_extensions().gl_arb_es3_compatibility
+                    || caps.get_extensions().gl_oes_vertex_half_float
+                    || caps.get_extensions().gl_arb_vertex_half_float
+                    || caps.get_extensions().gl_nv_half_float
+            }
 
             &AttributeType::FixedFloatI16U16 => {
-                caps.get_version() >= &Version(Api::GlEs, 2, 0) ||
-                caps.get_version() >= &Version(Api::Gl, 4, 0) ||
-                caps.get_extensions().gl_arb_es2_compatibility ||
-                caps.get_extensions().gl_oes_fixed_point
-            },
+                caps.get_version() >= &Version(Api::GlEs, 2, 0)
+                    || caps.get_version() >= &Version(Api::Gl, 4, 0)
+                    || caps.get_extensions().gl_arb_es2_compatibility
+                    || caps.get_extensions().gl_oes_fixed_point
+            }
 
             &AttributeType::I2I10I10I10Reversed | &AttributeType::U2U10U10U10Reversed => {
-                caps.get_version() >= &Version(Api::Gl, 3, 0) ||
-                caps.get_version() >= &Version(Api::GlEs, 3, 0) ||
-                caps.get_extensions().gl_arb_vertex_type_2_10_10_10_rev ||
-                caps.get_extensions().gl_arb_es3_compatibility
-            },
+                caps.get_version() >= &Version(Api::Gl, 3, 0)
+                    || caps.get_version() >= &Version(Api::GlEs, 3, 0)
+                    || caps.get_extensions().gl_arb_vertex_type_2_10_10_10_rev
+                    || caps.get_extensions().gl_arb_es3_compatibility
+            }
 
             &AttributeType::I10I10I10I2 | &AttributeType::U10U10U10U2 => {
                 caps.get_extensions().gl_oes_vertex_type_10_10_10_2
-            },
+            }
 
             &AttributeType::F10F11F11UnsignedIntReversed => {
-                caps.get_version() >= &Version(Api::Gl, 4, 0) ||
-                caps.get_extensions().gl_arb_vertex_type_10f_11f_11f_rev
-            },
+                caps.get_version() >= &Version(Api::Gl, 4, 0)
+                    || caps.get_extensions().gl_arb_vertex_type_10f_11f_11f_rev
+            }
         }
     }
 

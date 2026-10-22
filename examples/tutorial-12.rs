@@ -17,11 +17,15 @@ fn main() {
         .build(&event_loop);
 
     let positions = glium::VertexBuffer::new(&display, &teapot::VERTICES).unwrap();
-        let normals = glium::VertexBuffer::new(&display, &teapot::NORMALS).unwrap();
-        let indices = glium::IndexBuffer::new(&display, glium::index::PrimitiveType::TrianglesList,
-                                            &teapot::INDICES).unwrap();
+    let normals = glium::VertexBuffer::new(&display, &teapot::NORMALS).unwrap();
+    let indices = glium::IndexBuffer::new(
+        &display,
+        glium::index::PrimitiveType::TrianglesList,
+        &teapot::INDICES,
+    )
+    .unwrap();
 
-        let vertex_shader_src = r#"
+    let vertex_shader_src = r#"
             #version 150
 
             in vec3 position;
@@ -40,7 +44,7 @@ fn main() {
             }
         "#;
 
-        let fragment_shader_src = r#"
+    let fragment_shader_src = r#"
             #version 150
 
             in vec3 v_normal;
@@ -55,8 +59,9 @@ fn main() {
             }
         "#;
 
-        let program = glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src,
-                                                None).unwrap();
+    let program =
+        glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None)
+            .unwrap();
 
     #[allow(deprecated)]
     event_loop.run(move |ev, window_target| {

@@ -2,47 +2,125 @@
 extern crate glium;
 
 use cgmath::SquareMatrix;
-use glium::winit::keyboard::{PhysicalKey, KeyCode};
-use std::time::Instant;
-use glium::{Surface, Display, VertexBuffer, IndexBuffer, Program, texture::DepthTexture2d};
+use glium::winit::keyboard::{KeyCode, PhysicalKey};
+use glium::{texture::DepthTexture2d, Display, IndexBuffer, Program, Surface, VertexBuffer};
 use glutin::surface::WindowSurface;
+use std::time::Instant;
 use support::{ApplicationContext, State};
 
 mod support;
 
-fn create_box(display: &glium::Display<WindowSurface>) -> (glium::VertexBuffer<Vertex>, glium::IndexBuffer<u16>) {
-    let box_vertex_buffer = glium::VertexBuffer::new(display, &[
-        // Max X
-        Vertex { position: [ 0.5,-0.5,-0.5, 1.0], normal: [ 1.0, 0.0, 0.0, 0.0] },
-        Vertex { position: [ 0.5,-0.5, 0.5, 1.0], normal: [ 1.0, 0.0, 0.0, 0.0] },
-        Vertex { position: [ 0.5, 0.5, 0.5, 1.0], normal: [ 1.0, 0.0, 0.0, 0.0] },
-        Vertex { position: [ 0.5, 0.5,-0.5, 1.0], normal: [ 1.0, 0.0, 0.0, 0.0] },
-        // Min X
-        Vertex { position: [-0.5,-0.5,-0.5, 1.0], normal: [-1.0, 0.0, 0.0, 0.0] },
-        Vertex { position: [-0.5, 0.5,-0.5, 1.0], normal: [-1.0, 0.0, 0.0, 0.0] },
-        Vertex { position: [-0.5, 0.5, 0.5, 1.0], normal: [-1.0, 0.0, 0.0, 0.0] },
-        Vertex { position: [-0.5,-0.5, 0.5, 1.0], normal: [-1.0, 0.0, 0.0, 0.0] },
-        // Max Y
-        Vertex { position: [-0.5, 0.5,-0.5, 1.0], normal: [ 0.0, 1.0, 0.0, 0.0] },
-        Vertex { position: [ 0.5, 0.5,-0.5, 1.0], normal: [ 0.0, 1.0, 0.0, 0.0] },
-        Vertex { position: [ 0.5, 0.5, 0.5, 1.0], normal: [ 0.0, 1.0, 0.0, 0.0] },
-        Vertex { position: [-0.5, 0.5, 0.5, 1.0], normal: [ 0.0, 1.0, 0.0, 0.0] },
-        // Min Y
-        Vertex { position: [-0.5,-0.5,-0.5, 1.0], normal: [ 0.0,-1.0, 0.0, 0.0] },
-        Vertex { position: [-0.5,-0.5, 0.5, 1.0], normal: [ 0.0,-1.0, 0.0, 0.0] },
-        Vertex { position: [ 0.5,-0.5, 0.5, 1.0], normal: [ 0.0,-1.0, 0.0, 0.0] },
-        Vertex { position: [ 0.5,-0.5,-0.5, 1.0], normal: [ 0.0,-1.0, 0.0, 0.0] },
-        // Max Z
-        Vertex { position: [-0.5,-0.5, 0.5, 1.0], normal: [ 0.0, 0.0, 1.0, 0.0] },
-        Vertex { position: [-0.5, 0.5, 0.5, 1.0], normal: [ 0.0, 0.0, 1.0, 0.0] },
-        Vertex { position: [ 0.5, 0.5, 0.5, 1.0], normal: [ 0.0, 0.0, 1.0, 0.0] },
-        Vertex { position: [ 0.5,-0.5, 0.5, 1.0], normal: [ 0.0, 0.0, 1.0, 0.0] },
-        // Min Z
-        Vertex { position: [-0.5,-0.5,-0.5, 1.0], normal: [ 0.0, 0.0,-1.0, 0.0] },
-        Vertex { position: [ 0.5,-0.5,-0.5, 1.0], normal: [ 0.0, 0.0,-1.0, 0.0] },
-        Vertex { position: [ 0.5, 0.5,-0.5, 1.0], normal: [ 0.0, 0.0,-1.0, 0.0] },
-        Vertex { position: [-0.5, 0.5,-0.5, 1.0], normal: [ 0.0, 0.0,-1.0, 0.0] },
-        ]).unwrap();
+fn create_box(
+    display: &glium::Display<WindowSurface>,
+) -> (glium::VertexBuffer<Vertex>, glium::IndexBuffer<u16>) {
+    let box_vertex_buffer = glium::VertexBuffer::new(
+        display,
+        &[
+            // Max X
+            Vertex {
+                position: [0.5, -0.5, -0.5, 1.0],
+                normal: [1.0, 0.0, 0.0, 0.0],
+            },
+            Vertex {
+                position: [0.5, -0.5, 0.5, 1.0],
+                normal: [1.0, 0.0, 0.0, 0.0],
+            },
+            Vertex {
+                position: [0.5, 0.5, 0.5, 1.0],
+                normal: [1.0, 0.0, 0.0, 0.0],
+            },
+            Vertex {
+                position: [0.5, 0.5, -0.5, 1.0],
+                normal: [1.0, 0.0, 0.0, 0.0],
+            },
+            // Min X
+            Vertex {
+                position: [-0.5, -0.5, -0.5, 1.0],
+                normal: [-1.0, 0.0, 0.0, 0.0],
+            },
+            Vertex {
+                position: [-0.5, 0.5, -0.5, 1.0],
+                normal: [-1.0, 0.0, 0.0, 0.0],
+            },
+            Vertex {
+                position: [-0.5, 0.5, 0.5, 1.0],
+                normal: [-1.0, 0.0, 0.0, 0.0],
+            },
+            Vertex {
+                position: [-0.5, -0.5, 0.5, 1.0],
+                normal: [-1.0, 0.0, 0.0, 0.0],
+            },
+            // Max Y
+            Vertex {
+                position: [-0.5, 0.5, -0.5, 1.0],
+                normal: [0.0, 1.0, 0.0, 0.0],
+            },
+            Vertex {
+                position: [0.5, 0.5, -0.5, 1.0],
+                normal: [0.0, 1.0, 0.0, 0.0],
+            },
+            Vertex {
+                position: [0.5, 0.5, 0.5, 1.0],
+                normal: [0.0, 1.0, 0.0, 0.0],
+            },
+            Vertex {
+                position: [-0.5, 0.5, 0.5, 1.0],
+                normal: [0.0, 1.0, 0.0, 0.0],
+            },
+            // Min Y
+            Vertex {
+                position: [-0.5, -0.5, -0.5, 1.0],
+                normal: [0.0, -1.0, 0.0, 0.0],
+            },
+            Vertex {
+                position: [-0.5, -0.5, 0.5, 1.0],
+                normal: [0.0, -1.0, 0.0, 0.0],
+            },
+            Vertex {
+                position: [0.5, -0.5, 0.5, 1.0],
+                normal: [0.0, -1.0, 0.0, 0.0],
+            },
+            Vertex {
+                position: [0.5, -0.5, -0.5, 1.0],
+                normal: [0.0, -1.0, 0.0, 0.0],
+            },
+            // Max Z
+            Vertex {
+                position: [-0.5, -0.5, 0.5, 1.0],
+                normal: [0.0, 0.0, 1.0, 0.0],
+            },
+            Vertex {
+                position: [-0.5, 0.5, 0.5, 1.0],
+                normal: [0.0, 0.0, 1.0, 0.0],
+            },
+            Vertex {
+                position: [0.5, 0.5, 0.5, 1.0],
+                normal: [0.0, 0.0, 1.0, 0.0],
+            },
+            Vertex {
+                position: [0.5, -0.5, 0.5, 1.0],
+                normal: [0.0, 0.0, 1.0, 0.0],
+            },
+            // Min Z
+            Vertex {
+                position: [-0.5, -0.5, -0.5, 1.0],
+                normal: [0.0, 0.0, -1.0, 0.0],
+            },
+            Vertex {
+                position: [0.5, -0.5, -0.5, 1.0],
+                normal: [0.0, 0.0, -1.0, 0.0],
+            },
+            Vertex {
+                position: [0.5, 0.5, -0.5, 1.0],
+                normal: [0.0, 0.0, -1.0, 0.0],
+            },
+            Vertex {
+                position: [-0.5, 0.5, -0.5, 1.0],
+                normal: [0.0, 0.0, -1.0, 0.0],
+            },
+        ],
+    )
+    .unwrap();
 
     let mut indexes = Vec::new();
     for face in 0..6u16 {
@@ -53,7 +131,12 @@ fn create_box(display: &glium::Display<WindowSurface>) -> (glium::VertexBuffer<V
         indexes.push(4 * face + 2);
         indexes.push(4 * face + 3);
     }
-    let box_index_buffer = glium::IndexBuffer::new(display, glium::index::PrimitiveType::TrianglesList, &indexes).unwrap();
+    let box_index_buffer = glium::IndexBuffer::new(
+        display,
+        glium::index::PrimitiveType::TrianglesList,
+        &indexes,
+    )
+    .unwrap();
     (box_vertex_buffer, box_index_buffer)
 }
 
@@ -124,7 +207,7 @@ struct Application {
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE:&'static str = "Glium shadow_mapping example";
+    const WINDOW_TITLE: &'static str = "Glium shadow_mapping example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         let shadow_map_size = 1024;
@@ -132,10 +215,18 @@ impl ApplicationContext for Application {
         // Create the boxes to render in the scene
         let (model_vertex_buffer, model_index_buffer) = create_box(display);
         let model_data = [
-            ModelData::color([0.4, 0.4, 0.4]).translate([0.0, -2.5, 0.0]).scale(5.0),
-            ModelData::color([0.6, 0.1, 0.1]).translate([0.0, 0.252, 0.0]).scale(0.5),
-            ModelData::color([0.1, 0.6, 0.1]).translate([0.9, 0.5, 0.1]).scale(0.5),
-            ModelData::color([0.1, 0.1, 0.6]).translate([-0.8, 0.75, 0.1]).scale(0.5),
+            ModelData::color([0.4, 0.4, 0.4])
+                .translate([0.0, -2.5, 0.0])
+                .scale(5.0),
+            ModelData::color([0.6, 0.1, 0.1])
+                .translate([0.0, 0.252, 0.0])
+                .scale(0.5),
+            ModelData::color([0.1, 0.6, 0.1])
+                .translate([0.9, 0.5, 0.1])
+                .scale(0.5),
+            ModelData::color([0.1, 0.1, 0.6])
+                .translate([-0.8, 0.75, 0.1])
+                .scale(0.5),
         ];
 
         let shadow_map_shaders = glium::Program::from_source(
@@ -157,7 +248,9 @@ impl ApplicationContext for Application {
                     fragmentdepth = gl_FragCoord.z;
                 }
             ",
-            None).unwrap();
+            None,
+        )
+        .unwrap();
 
         let render_shaders = glium::Program::from_source(
             display,
@@ -217,12 +310,14 @@ impl ApplicationContext for Application {
                 DebugVertex::new([1.0, -0.25], [1.0, 1.0]),
                 DebugVertex::new([1.0, -1.0], [1.0, 0.0]),
             ],
-        ).unwrap();
+        )
+        .unwrap();
         let debug_index_buffer = glium::IndexBuffer::new(
             display,
             glium::index::PrimitiveType::TrianglesList,
             &[0u16, 1, 2, 0, 2, 3],
-        ).unwrap();
+        )
+        .unwrap();
         let debug_shadow_map_shaders = glium::Program::from_source(
             display,
             // Vertex Shader
@@ -246,9 +341,13 @@ impl ApplicationContext for Application {
                     f_color = vec4(texture(tex, v_tex_coords).rgb, 1.0);
                 }
             ",
-            None).unwrap();
+            None,
+        )
+        .unwrap();
 
-        let shadow_texture = glium::texture::DepthTexture2d::empty(display, shadow_map_size, shadow_map_size).unwrap();
+        let shadow_texture =
+            glium::texture::DepthTexture2d::empty(display, shadow_map_size, shadow_map_size)
+                .unwrap();
 
         let start = Instant::now();
 
@@ -275,17 +374,23 @@ impl ApplicationContext for Application {
         }
     }
 
-    fn handle_window_event(&mut self, event: &glium::winit::event::WindowEvent, _window: &glium::winit::window::Window) {
+    fn handle_window_event(
+        &mut self,
+        event: &glium::winit::event::WindowEvent,
+        _window: &glium::winit::window::Window,
+    ) {
         match event {
-            glium::winit::event::WindowEvent::KeyboardInput { event, .. } => if event.state == glium::winit::event::ElementState::Pressed {
-                if let PhysicalKey::Code(code) = event.physical_key {
-                    match code {
-                        KeyCode::KeyC => self.camera_rotating = !self.camera_rotating,
-                        KeyCode::KeyL => self.light_rotating = !self.light_rotating,
-                        _ => {}
+            glium::winit::event::WindowEvent::KeyboardInput { event, .. } => {
+                if event.state == glium::winit::event::ElementState::Pressed {
+                    if let PhysicalKey::Code(code) = event.physical_key {
+                        match code {
+                            KeyCode::KeyC => self.camera_rotating = !self.camera_rotating,
+                            KeyCode::KeyL => self.light_rotating = !self.light_rotating,
+                            _ => {}
+                        }
                     }
                 }
-            },
+            }
             _ => return,
         }
     }
@@ -303,10 +408,12 @@ impl ApplicationContext for Application {
         {
             // Orthographic projection used to demostrate a far-away light source
             let w = 4.0;
-            let depth_projection_matrix: cgmath::Matrix4<f32> = cgmath::ortho(-w, w, -w, w, -10.0, 20.0);
+            let depth_projection_matrix: cgmath::Matrix4<f32> =
+                cgmath::ortho(-w, w, -w, w, -10.0, 20.0);
             let view_center: cgmath::Point3<f32> = cgmath::Point3::new(0.0, 0.0, 0.0);
             let view_up: cgmath::Vector3<f32> = cgmath::Vector3::new(0.0, 1.0, 0.0);
-            let depth_view_matrix = cgmath::Matrix4::look_at_rh(light_loc.into(), view_center, view_up);
+            let depth_view_matrix =
+                cgmath::Matrix4::look_at_rh(light_loc.into(), view_center, view_up);
 
             let mut draw_params: glium::draw_parameters::DrawParameters<'_> = Default::default();
             draw_params.depth = glium::Depth {
@@ -317,7 +424,9 @@ impl ApplicationContext for Application {
             draw_params.backface_culling = glium::BackfaceCullingMode::CullClockwise;
 
             // Write depth to shadow map texture
-            let mut target = glium::framebuffer::SimpleFrameBuffer::depth_only(display, &self.shadow_texture).unwrap();
+            let mut target =
+                glium::framebuffer::SimpleFrameBuffer::depth_only(display, &self.shadow_texture)
+                    .unwrap();
             target.clear_color(1.0, 1.0, 1.0, 1.0);
             target.clear_depth(1.0);
 
@@ -330,13 +439,15 @@ impl ApplicationContext for Application {
                     depth_mvp: Into::<[[f32; 4]; 4]>::into(depth_mvp),
                 };
 
-                target.draw(
-                    &self.model_vertex_buffer,
-                    &self.model_index_buffer,
-                    &self.shadow_map_shaders,
-                    &uniforms,
-                    &draw_params,
-                ).unwrap();
+                target
+                    .draw(
+                        &self.model_vertex_buffer,
+                        &self.model_index_buffer,
+                        &self.shadow_map_shaders,
+                        &uniforms,
+                        &draw_params,
+                    )
+                    .unwrap();
             }
         }
 
@@ -344,20 +455,24 @@ impl ApplicationContext for Application {
         // ===============================================================================
         let (width, height) = display.get_framebuffer_dimensions();
         let screen_ratio = (width / height) as f32;
-        let perspective_matrix: cgmath::Matrix4<f32> = cgmath::perspective(cgmath::Deg(45.0), screen_ratio, 0.0001, 100.0);
+        let perspective_matrix: cgmath::Matrix4<f32> =
+            cgmath::perspective(cgmath::Deg(45.0), screen_ratio, 0.0001, 100.0);
         let camera_x = 3.0 * self.camera_t.cos();
         let camera_z = 3.0 * self.camera_t.sin();
-        let view_eye: cgmath::Point3<f32> = cgmath::Point3::new(camera_x as f32, 2.0, camera_z as f32);
+        let view_eye: cgmath::Point3<f32> =
+            cgmath::Point3::new(camera_x as f32, 2.0, camera_z as f32);
         let view_center: cgmath::Point3<f32> = cgmath::Point3::new(0.0, 0.0, 0.0);
         let view_up: cgmath::Vector3<f32> = cgmath::Vector3::new(0.0, 1.0, 0.0);
-        let view_matrix: cgmath::Matrix4<f32> = cgmath::Matrix4::look_at_rh(view_eye, view_center, view_up);
+        let view_matrix: cgmath::Matrix4<f32> =
+            cgmath::Matrix4::look_at_rh(view_eye, view_center, view_up);
 
         let bias_matrix: cgmath::Matrix4<f32> = [
             [0.5, 0.0, 0.0, 0.0],
             [0.0, 0.5, 0.0, 0.0],
             [0.0, 0.0, 0.5, 0.0],
             [0.5, 0.5, 0.5, 1.0],
-        ].into();
+        ]
+        .into();
 
         let mut draw_params: glium::draw_parameters::DrawParameters<'_> = Default::default();
         draw_params.depth = glium::Depth {
@@ -391,13 +506,15 @@ impl ApplicationContext for Application {
                     .depth_texture_comparison(Some(glium::uniforms::DepthTextureComparison::LessOrEqual)),
             };
 
-            target.draw(
-                &self.model_vertex_buffer,
-                &self.model_index_buffer,
-                &self.render_shaders,
-                &uniforms,
-                &draw_params,
-            ).unwrap();
+            target
+                .draw(
+                    &self.model_vertex_buffer,
+                    &self.model_index_buffer,
+                    &self.render_shaders,
+                    &uniforms,
+                    &draw_params,
+                )
+                .unwrap();
         }
 
         {
@@ -424,8 +541,12 @@ impl ApplicationContext for Application {
         let elapsed_dur = self.start.elapsed();
         let secs = (elapsed_dur.as_secs() as f64) + (elapsed_dur.subsec_nanos() as f64) * 1e-9;
         self.start = Instant::now();
-        if self.camera_rotating { self.camera_t += secs * 0.7; }
-        if self.light_rotating { self.light_t += secs * 0.7; }
+        if self.camera_rotating {
+            self.camera_t += secs * 0.7;
+        }
+        if self.light_rotating {
+            self.light_t += secs * 0.7;
+        }
     }
 }
 

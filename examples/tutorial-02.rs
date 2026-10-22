@@ -18,9 +18,15 @@ fn main() {
     }
     implement_vertex!(Vertex, position);
     let shape = vec![
-        Vertex { position: [-0.5, -0.5] },
-        Vertex { position: [ 0.0,  0.5] },
-        Vertex { position: [ 0.5, -0.25] }
+        Vertex {
+            position: [-0.5, -0.5],
+        },
+        Vertex {
+            position: [0.0, 0.5],
+        },
+        Vertex {
+            position: [0.5, -0.25],
+        },
     ];
     let vertex_buffer = glium::VertexBuffer::new(&display, &shape).unwrap();
     let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
@@ -45,25 +51,33 @@ fn main() {
         }
     "#;
 
-    let program = glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None).unwrap();
+    let program =
+        glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None)
+            .unwrap();
 
     let mut target = display.draw();
     target.clear_color(0.0, 0.0, 1.0, 1.0);
-    target.draw(&vertex_buffer, &indices, &program, &glium::uniforms::EmptyUniforms,
-        &Default::default()).unwrap();
+    target
+        .draw(
+            &vertex_buffer,
+            &indices,
+            &program,
+            &glium::uniforms::EmptyUniforms,
+            &Default::default(),
+        )
+        .unwrap();
     target.finish().unwrap();
 
     #[allow(deprecated)]
-    event_loop.run(move |ev, window_target| {
-        match ev {
+    event_loop
+        .run(move |ev, window_target| match ev {
             glium::winit::event::Event::WindowEvent { event, .. } => match event {
                 glium::winit::event::WindowEvent::CloseRequested => {
                     window_target.exit();
-                },
+                }
                 _ => (),
             },
             _ => (),
-        }
-    })
-    .unwrap();
+        })
+        .unwrap();
 }

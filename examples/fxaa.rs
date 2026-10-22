@@ -3,10 +3,10 @@ extern crate glium;
 
 use std::cell::RefCell;
 
-use glium::{Display, Surface, framebuffer::SimpleFrameBuffer};
+use glium::winit::keyboard::{KeyCode, PhysicalKey};
+use glium::{framebuffer::SimpleFrameBuffer, Display, Surface};
 use glutin::surface::WindowSurface;
 use support::{ApplicationContext, State};
-use glium::winit::keyboard::{PhysicalKey, KeyCode};
 
 mod support;
 
@@ -32,7 +32,7 @@ pub struct Application {
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE:&'static str = "Glium FXAA example";
+    const WINDOW_TITLE: &'static str = "Glium FXAA example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         Self {
@@ -275,7 +275,11 @@ impl ApplicationContext for Application {
         target.finish().unwrap();
     }
 
-    fn handle_window_event(&mut self, event: &glium::winit::event::WindowEvent, _window: &glium::winit::window::Window) {
+    fn handle_window_event(
+        &mut self,
+        event: &glium::winit::event::WindowEvent,
+        _window: &glium::winit::window::Window,
+    ) {
         self.camera.process_input(&event);
 
         match event {
@@ -283,8 +287,15 @@ impl ApplicationContext for Application {
                 glium::winit::event::ElementState::Pressed => match event.physical_key {
                     PhysicalKey::Code(KeyCode::Space) => {
                         self.fxaa_enabled = !self.fxaa_enabled;
-                        println!("FXAA is now {}", if self.fxaa_enabled { "enabled" } else { "disabled" });
-                    },
+                        println!(
+                            "FXAA is now {}",
+                            if self.fxaa_enabled {
+                                "enabled"
+                            } else {
+                                "disabled"
+                            }
+                        );
+                    }
                     _ => (),
                 },
                 _ => (),
@@ -305,46 +316,62 @@ impl Application {
             depth: glium::Depth {
                 test: glium::DepthTest::IfLess,
                 write: true,
-                .. Default::default()
+                ..Default::default()
             },
-            .. Default::default()
+            ..Default::default()
         };
 
         target.clear_color_and_depth((0.0, 0.0, 0.0, 0.0), 1.0);
-        target.draw(&self.vertex_buffer,
-                    &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
-                    &self.program, &uniforms, &params).unwrap();
+        target
+            .draw(
+                &self.vertex_buffer,
+                &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
+                &self.program,
+                &uniforms,
+                &params,
+            )
+            .unwrap();
     }
 
     fn draw_fxaa(&mut self, target: &mut glium::Frame, display: &Display<WindowSurface>) {
         let target_dimensions = target.get_dimensions();
         let color_dimensions = {
-            self.target_color.borrow().as_ref().map_or((0,0), |tex| (tex.get_width(), tex.get_height().unwrap()))
+            self.target_color
+                .borrow()
+                .as_ref()
+                .map_or((0, 0), |tex| (tex.get_width(), tex.get_height().unwrap()))
         };
         let depth_dimensions = {
-            self.target_depth.borrow().as_ref().map_or((0,0), |tex| tex.get_dimensions())
+            self.target_depth
+                .borrow()
+                .as_ref()
+                .map_or((0, 0), |tex| tex.get_dimensions())
         };
         let mut target_color = self.target_color.borrow_mut();
         let mut target_depth = self.target_depth.borrow_mut();
 
         if target_color.is_none() || color_dimensions != target_dimensions {
-            let texture = glium::texture::Texture2d::empty(display,
-                                                           target_dimensions.0,
-                                                           target_dimensions.1).unwrap();
+            let texture =
+                glium::texture::Texture2d::empty(display, target_dimensions.0, target_dimensions.1)
+                    .unwrap();
             *target_color = Some(texture);
         }
         let target_color = target_color.as_ref().unwrap();
 
-        if target_depth.is_none() || depth_dimensions != target_dimensions  {
-            let texture = glium::framebuffer::DepthRenderBuffer::new(display,
-                                                                      glium::texture::DepthFormat::I24,
-                                                                      target_dimensions.0,
-                                                                      target_dimensions.1).unwrap();
+        if target_depth.is_none() || depth_dimensions != target_dimensions {
+            let texture = glium::framebuffer::DepthRenderBuffer::new(
+                display,
+                glium::texture::DepthFormat::I24,
+                target_dimensions.0,
+                target_dimensions.1,
+            )
+            .unwrap();
             *target_depth = Some(texture);
         }
         let target_depth = target_depth.as_ref().unwrap();
 
-        let mut framebuffer = SimpleFrameBuffer::with_depth_buffer(display, target_color, target_depth).unwrap();
+        let mut framebuffer =
+            SimpleFrameBuffer::with_depth_buffer(display, target_color, target_depth).unwrap();
         self.draw_model(&mut framebuffer);
 
         let uniforms = uniform! {
@@ -352,16 +379,24 @@ impl Application {
             enabled: if self.fxaa_enabled { 1i32 } else { 0i32 },
             resolution: (target_dimensions.0 as f32, target_dimensions.1 as f32)
         };
-        target.draw(&self.fxaa_vertex_buffer, &self.fxaa_index_buffer, &self.fxaa_program, &uniforms,
-                    &Default::default()).unwrap();
+        target
+            .draw(
+                &self.fxaa_vertex_buffer,
+                &self.fxaa_index_buffer,
+                &self.fxaa_program,
+                &uniforms,
+                &Default::default(),
+            )
+            .unwrap();
     }
 }
 
-
 fn main() {
-    println!("This example demonstrates FXAA. Is is an anti-aliasing technique done at the \
+    println!(
+        "This example demonstrates FXAA. Is is an anti-aliasing technique done at the \
               post-processing stage. This example draws the teapot to a framebuffer and then \
               copies from the texture to the main framebuffer by applying a filter to it.\n\
-              You can use the space bar to switch fxaa on and off.");
+              You can use the space bar to switch fxaa on and off."
+    );
     State::<Application>::run_loop();
 }

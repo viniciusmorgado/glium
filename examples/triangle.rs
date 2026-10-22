@@ -21,7 +21,7 @@ struct Application {
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE:&'static str = "Glium triangle example";
+    const WINDOW_TITLE: &'static str = "Glium triangle example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         let vertex_buffer = {

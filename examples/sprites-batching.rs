@@ -25,7 +25,7 @@ struct Application {
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE:&'static str = "Glium sprites-batching example";
+    const WINDOW_TITLE: &'static str = "Glium sprites-batching example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         // generating a bunch of unicolor 2D images that will be used for a texture

@@ -5,10 +5,14 @@ Test supports module.
 
 #![allow(dead_code)]
 
-use glium::Display;
 use glium::backend::{Context, Facade};
 use glium::index::PrimitiveType;
+use glium::Display;
 
+use glium::winit::application::ApplicationHandler;
+use glium::winit::event::WindowEvent;
+use glium::winit::event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy};
+use glium::winit::window::{Window, WindowId};
 use glutin::config::ConfigTemplateBuilder;
 use glutin::context::{ContextAttributesBuilder, NotCurrentContext};
 use glutin::display::GetGlDisplay;
@@ -16,10 +20,6 @@ use glutin::prelude::*;
 use glutin::surface::{Surface, SurfaceAttributesBuilder, WindowSurface};
 use glutin_winit::DisplayBuilder;
 use raw_window_handle::HasWindowHandle;
-use glium::winit::application::ApplicationHandler;
-use glium::winit::event::WindowEvent;
-use glium::winit::event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy};
-use glium::winit::window::{Window, WindowId};
 
 use std::env;
 use std::num::NonZeroU32;
@@ -31,10 +31,10 @@ use std::thread;
 // The code below here down to `build_display` is a workaround due to a lack of a test initialization hook
 
 // There is a Wayland version of this extension trait but the X11 version also works on Wayland
-#[cfg(unix)]
-use glium::winit::platform::x11::EventLoopBuilderExtX11;
 #[cfg(windows)]
 use glium::winit::platform::windows::EventLoopBuilderExtWindows;
+#[cfg(unix)]
+use glium::winit::platform::x11::EventLoopBuilderExtX11;
 
 type DisplayRequest = Sender<(Window, NotCurrentContext, Surface<WindowSurface>)>;
 
@@ -43,7 +43,13 @@ struct Tests {}
 impl ApplicationHandler<DisplayRequest> for Tests {
     fn resumed(&mut self, _event_loop: &ActiveEventLoop) {}
 
-    fn window_event(&mut self, _event_loop: &ActiveEventLoop, _window_id: WindowId, _event: WindowEvent) {}
+    fn window_event(
+        &mut self,
+        _event_loop: &ActiveEventLoop,
+        _window_id: WindowId,
+        _event: WindowEvent,
+    ) {
+    }
 
     fn user_event(&mut self, event_loop: &ActiveEventLoop, request: DisplayRequest) {
         let window_attributes = Window::default_attributes().with_visible(false);
@@ -67,7 +73,10 @@ impl ApplicationHandler<DisplayRequest> for Tests {
             .build(Some(raw_window_handle));
 
         let not_current_gl_context = unsafe {
-            gl_config.display().create_context(&gl_config, &context_attributes).unwrap()
+            gl_config
+                .display()
+                .create_context(&gl_config, &context_attributes)
+                .unwrap()
         };
 
         let attrs = SurfaceAttributesBuilder::<WindowSurface>::new().build(
@@ -76,9 +85,16 @@ impl ApplicationHandler<DisplayRequest> for Tests {
             NonZeroU32::new(600).unwrap(),
         );
 
-        let surface = unsafe { gl_config.display().create_window_surface(&gl_config, &attrs).unwrap() };
+        let surface = unsafe {
+            gl_config
+                .display()
+                .create_window_surface(&gl_config, &attrs)
+                .unwrap()
+        };
 
-        request.send((window, not_current_gl_context, surface)).unwrap();
+        request
+            .send((window, not_current_gl_context, surface))
+            .unwrap();
     }
 }
 
@@ -134,9 +150,12 @@ pub fn build_display() -> WindowDisplay {
 
     // Request event loop create display building pieces and send them back
     EVENT_LOOP_PROXY
-        .read().unwrap()
-        .as_ref().unwrap()
-        .send_event(sender).unwrap();
+        .read()
+        .unwrap()
+        .as_ref()
+        .unwrap()
+        .send_event(sender)
+        .unwrap();
 
     // Block until required display building pieces are received
     let (window, not_current_gl_context, surface) = receiver.recv().unwrap();
@@ -146,10 +165,9 @@ pub fn build_display() -> WindowDisplay {
 
     WindowDisplay {
         display: Display::from_context_surface(current_context, surface).unwrap(),
-        window
+        window,
     }
 }
-
 
 /// Rebuilds an existing display.
 ///
@@ -183,7 +201,9 @@ fn parse_version() -> glutin::context::ContextApi {
             let minor = iter.next().unwrap().parse().unwrap();
 
             if ty == "OpenGL" {
-                glutin::context::ContextApi::OpenGl(Some(glutin::context::Version::new(major, minor)))
+                glutin::context::ContextApi::OpenGl(Some(glutin::context::Version::new(
+                    major, minor,
+                )))
             } else if ty == "OpenGL ES" {
                 glutin::context::ContextApi::Gles(Some(glutin::context::Version::new(major, minor)))
             } else if ty == "WebGL" {
@@ -191,36 +211,49 @@ fn parse_version() -> glutin::context::ContextApi {
             } else {
                 panic!();
             }
-        },
+        }
         Err(_) => glutin::context::ContextApi::OpenGl(None),
     }
 }
 
 /// Builds a 2x2 unicolor texture.
-pub fn build_unicolor_texture2d<F: ?Sized>(facade: &F, red: f32, green: f32, blue: f32)
-    -> glium::Texture2d where F: Facade
+pub fn build_unicolor_texture2d<F: ?Sized>(
+    facade: &F,
+    red: f32,
+    green: f32,
+    blue: f32,
+) -> glium::Texture2d
+where
+    F: Facade,
 {
-    let color = ((red * 255.0) as u8, (green * 255.0) as u8, (blue * 255.0) as u8);
+    let color = (
+        (red * 255.0) as u8,
+        (green * 255.0) as u8,
+        (blue * 255.0) as u8,
+    );
 
-    glium::texture::Texture2d::new(facade, vec![
-        vec![color, color],
-        vec![color, color],
-    ]).unwrap()
+    glium::texture::Texture2d::new(facade, vec![vec![color, color], vec![color, color]]).unwrap()
 }
 
 /// Builds a 2x2 depth texture.
 pub fn build_constant_depth_texture<F>(facade: &F, depth: f32) -> glium::texture::DepthTexture2d
-where F: Facade + ?Sized
+where
+    F: Facade + ?Sized,
 {
-    glium::texture::DepthTexture2d::new(facade, vec![
-        vec![depth, depth],
-        vec![depth, depth],
-    ]).unwrap()
+    glium::texture::DepthTexture2d::new(facade, vec![vec![depth, depth], vec![depth, depth]])
+        .unwrap()
 }
 
 /// Builds a vertex buffer, index buffer, and program, to draw red `(1.0, 0.0, 0.0, 1.0)` to the whole screen.
-pub fn build_fullscreen_red_pipeline<F: ?Sized>(facade: &F) -> (glium::vertex::VertexBufferAny,
-    glium::index::IndexBufferAny, glium::Program) where F: Facade
+pub fn build_fullscreen_red_pipeline<F: ?Sized>(
+    facade: &F,
+) -> (
+    glium::vertex::VertexBufferAny,
+    glium::index::IndexBufferAny,
+    glium::Program,
+)
+where
+    F: Facade,
 {
     #[derive(Copy, Clone)]
     struct Vertex {
@@ -230,13 +263,28 @@ pub fn build_fullscreen_red_pipeline<F: ?Sized>(facade: &F) -> (glium::vertex::V
     implement_vertex!(Vertex, position);
 
     (
-        glium::VertexBuffer::new(facade, &[
-            Vertex { position: [-1.0,  1.0] }, Vertex { position: [1.0,  1.0] },
-            Vertex { position: [-1.0, -1.0] }, Vertex { position: [1.0, -1.0] },
-        ]).unwrap().into(),
-
-        glium::IndexBuffer::new(facade, PrimitiveType::TriangleStrip, &[0u8, 1, 2, 3]).unwrap().into(),
-
+        glium::VertexBuffer::new(
+            facade,
+            &[
+                Vertex {
+                    position: [-1.0, 1.0],
+                },
+                Vertex {
+                    position: [1.0, 1.0],
+                },
+                Vertex {
+                    position: [-1.0, -1.0],
+                },
+                Vertex {
+                    position: [1.0, -1.0],
+                },
+            ],
+        )
+        .unwrap()
+        .into(),
+        glium::IndexBuffer::new(facade, PrimitiveType::TriangleStrip, &[0u8, 1, 2, 3])
+            .unwrap()
+            .into(),
         program!(facade,
             110 => {
                 vertex: "
@@ -274,15 +322,19 @@ pub fn build_fullscreen_red_pipeline<F: ?Sized>(facade: &F) -> (glium::vertex::V
                     }
                 ",
             },
-        ).unwrap()
+        )
+        .unwrap(),
     )
 }
 
 /// Builds a vertex buffer and an index buffer corresponding to a rectangle.
 ///
 /// The vertex buffer has the "position" attribute of type "vec2".
-pub fn build_rectangle_vb_ib<F: ?Sized>(facade: &F)
-    -> (glium::vertex::VertexBufferAny, glium::index::IndexBufferAny) where F: Facade
+pub fn build_rectangle_vb_ib<F: ?Sized>(
+    facade: &F,
+) -> (glium::vertex::VertexBufferAny, glium::index::IndexBufferAny)
+where
+    F: Facade,
 {
     #[derive(Copy, Clone)]
     struct Vertex {
@@ -292,16 +344,35 @@ pub fn build_rectangle_vb_ib<F: ?Sized>(facade: &F)
     implement_vertex!(Vertex, position);
 
     (
-        glium::VertexBuffer::new(facade, &[
-            Vertex { position: [-1.0,  1.0] }, Vertex { position: [1.0,  1.0] },
-            Vertex { position: [-1.0, -1.0] }, Vertex { position: [1.0, -1.0] },
-        ]).unwrap().into(),
-
-        glium::IndexBuffer::new(facade, PrimitiveType::TriangleStrip, &[0u8, 1, 2, 3]).unwrap().into(),
+        glium::VertexBuffer::new(
+            facade,
+            &[
+                Vertex {
+                    position: [-1.0, 1.0],
+                },
+                Vertex {
+                    position: [1.0, 1.0],
+                },
+                Vertex {
+                    position: [-1.0, -1.0],
+                },
+                Vertex {
+                    position: [1.0, -1.0],
+                },
+            ],
+        )
+        .unwrap()
+        .into(),
+        glium::IndexBuffer::new(facade, PrimitiveType::TriangleStrip, &[0u8, 1, 2, 3])
+            .unwrap()
+            .into(),
     )
 }
 
 /// Builds a texture suitable for rendering.
-pub fn build_renderable_texture<F: ?Sized>(facade: &F) -> glium::Texture2d where F: Facade {
+pub fn build_renderable_texture<F: ?Sized>(facade: &F) -> glium::Texture2d
+where
+    F: Facade,
+{
     glium::Texture2d::empty(facade, 1024, 1024).unwrap()
 }

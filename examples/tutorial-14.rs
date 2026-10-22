@@ -20,25 +20,54 @@ fn main() {
         tex_coords: [f32; 2],
     }
     implement_vertex!(Vertex, position, normal, tex_coords);
-    let shape = glium::vertex::VertexBuffer::new(&display, &[
-        Vertex { position: [-1.0,  1.0, 0.0], normal: [0.0, 0.0, -1.0], tex_coords: [0.0, 1.0] },
-        Vertex { position: [ 1.0,  1.0, 0.0], normal: [0.0, 0.0, -1.0], tex_coords: [1.0, 1.0] },
-        Vertex { position: [-1.0, -1.0, 0.0], normal: [0.0, 0.0, -1.0], tex_coords: [0.0, 0.0] },
-        Vertex { position: [ 1.0, -1.0, 0.0], normal: [0.0, 0.0, -1.0], tex_coords: [1.0, 0.0] },
-    ]).unwrap();
+    let shape = glium::vertex::VertexBuffer::new(
+        &display,
+        &[
+            Vertex {
+                position: [-1.0, 1.0, 0.0],
+                normal: [0.0, 0.0, -1.0],
+                tex_coords: [0.0, 1.0],
+            },
+            Vertex {
+                position: [1.0, 1.0, 0.0],
+                normal: [0.0, 0.0, -1.0],
+                tex_coords: [1.0, 1.0],
+            },
+            Vertex {
+                position: [-1.0, -1.0, 0.0],
+                normal: [0.0, 0.0, -1.0],
+                tex_coords: [0.0, 0.0],
+            },
+            Vertex {
+                position: [1.0, -1.0, 0.0],
+                normal: [0.0, 0.0, -1.0],
+                tex_coords: [1.0, 0.0],
+            },
+        ],
+    )
+    .unwrap();
 
-    let image = image::load(std::io::Cursor::new(&include_bytes!("../book/resources/tuto-14-diffuse.jpg")),
-                            image::ImageFormat::Jpeg).unwrap().to_rgba8();
+    let image = image::load(
+        std::io::Cursor::new(&include_bytes!("../book/resources/tuto-14-diffuse.jpg")),
+        image::ImageFormat::Jpeg,
+    )
+    .unwrap()
+    .to_rgba8();
     let image_dimensions = image.dimensions();
-    let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+    let image =
+        glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
     let diffuse_texture = glium::texture::Texture2d::new(&display, image).unwrap();
 
-    let image = image::load(std::io::Cursor::new(&include_bytes!("../book/resources/tuto-14-normal.png")),
-                            image::ImageFormat::Png).unwrap().to_rgba8();
+    let image = image::load(
+        std::io::Cursor::new(&include_bytes!("../book/resources/tuto-14-normal.png")),
+        image::ImageFormat::Png,
+    )
+    .unwrap()
+    .to_rgba8();
     let image_dimensions = image.dimensions();
-    let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+    let image =
+        glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
     let normal_map = glium::texture::Texture2d::new(&display, image).unwrap();
-
 
     let vertex_shader_src = r#"
         #version 150
@@ -113,8 +142,9 @@ fn main() {
         }
     "#;
 
-    let program = glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src,
-                                            None).unwrap();
+    let program =
+        glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None)
+            .unwrap();
     let start = std::time::Instant::now();
 
     #[allow(deprecated)]
