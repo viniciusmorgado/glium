@@ -4,24 +4,26 @@
 #[macro_use]
 extern crate glium;
 
-use std::num::NonZeroU32;
 use glium::index::PrimitiveType;
-use glium::program::{SpirvEntryPoint, ProgramCreationInput, SpirvProgram};
-use glium::{Surface};
+use glium::program::{ProgramCreationInput, SpirvEntryPoint, SpirvProgram};
+use glium::Surface;
 use glutin::context::Version;
-use glutin::prelude::*;
 use glutin::display::GetGlDisplay;
+use glutin::prelude::*;
 use glutin::surface::WindowSurface;
 use raw_window_handle::HasWindowHandle;
+use std::num::NonZeroU32;
 
 fn main() {
     // We start by creating the main EventLoop
     let event_loop = glium::winit::event_loop::EventLoop::builder()
         .build()
         .expect("event loop building");
-    let window_attributes = glium::winit::window::Window::default_attributes().with_title("Glium SPIR-V example");
+    let window_attributes =
+        glium::winit::window::Window::default_attributes().with_title("Glium SPIR-V example");
     let config_template_builder = glutin::config::ConfigTemplateBuilder::new();
-    let display_builder = glutin_winit::DisplayBuilder::new().with_window_attributes(Some(window_attributes));
+    let display_builder =
+        glutin_winit::DisplayBuilder::new().with_window_attributes(Some(window_attributes));
 
     // Now we need to create a window
     let (window, gl_config) = display_builder
@@ -33,14 +35,21 @@ fn main() {
     let window = window.unwrap();
 
     // Then the configuration which decides which OpenGL version we'll end up using, here we just use the default which is currently 3.3 core
-    let window_handle = window.window_handle().expect("couldn't obtain window handle");
+    let window_handle = window
+        .window_handle()
+        .expect("couldn't obtain window handle");
     // We need a 4.6 context for SPIR-V support
     let context_attributes = glutin::context::ContextAttributesBuilder::new()
-        .with_context_api(glutin::context::ContextApi::OpenGl(Some(Version::new(4, 6))))
+        .with_context_api(glutin::context::ContextApi::OpenGl(Some(Version::new(
+            4, 6,
+        ))))
         .build(Some(window_handle.into()));
 
     let not_current_gl_context = Some(unsafe {
-        gl_config.display().create_context(&gl_config, &context_attributes).expect("failed to create context")
+        gl_config
+            .display()
+            .create_context(&gl_config, &context_attributes)
+            .expect("failed to create context")
     });
 
     // Determine our framebuffer size based on the window size
@@ -51,8 +60,16 @@ fn main() {
         NonZeroU32::new(height).unwrap(),
     );
     // Now we can create our surface, use it to make our context current and finally create our display
-    let surface = unsafe { gl_config.display().create_window_surface(&gl_config, &attrs).unwrap() };
-    let current_context = not_current_gl_context.unwrap().make_current(&surface).unwrap();
+    let surface = unsafe {
+        gl_config
+            .display()
+            .create_window_surface(&gl_config, &attrs)
+            .unwrap()
+    };
+    let current_context = not_current_gl_context
+        .unwrap()
+        .make_current(&surface)
+        .unwrap();
     let display = glium::Display::from_context_surface(current_context, surface).unwrap();
 
     // building the vertex buffer with no vertices
@@ -69,15 +86,19 @@ fn main() {
     };
 
     // building the index buffer
-    let index_buffer = glium::IndexBuffer::new(&display, PrimitiveType::TrianglesList,
-                                               &[0u8, 1, 2]).unwrap();
+    let index_buffer =
+        glium::IndexBuffer::new(&display, PrimitiveType::TrianglesList, &[0u8, 1, 2]).unwrap();
 
     // loading SPIR-V module that contains fragment and vertex shader entry points both called "main"
-    let spirv = SpirvEntryPoint { binary: include_bytes!("shader.spv"), entry_point: "main" };
+    let spirv = SpirvEntryPoint {
+        binary: include_bytes!("shader.spv"),
+        entry_point: "main",
+    };
     let program = glium::Program::new(
         &display,
-        ProgramCreationInput::SpirV(SpirvProgram::from_vs_and_fs(spirv, spirv))
-    ).unwrap();
+        ProgramCreationInput::SpirV(SpirvProgram::from_vs_and_fs(spirv, spirv)),
+    )
+    .unwrap();
 
     // drawing once
 
@@ -94,12 +115,21 @@ fn main() {
     // drawing a frame
     let mut target = display.draw();
     target.clear_color(0.0, 0.0, 0.0, 0.0);
-    target.draw(&vertex_buffer, &index_buffer, &program, &uniforms, &Default::default()).unwrap();
+    target
+        .draw(
+            &vertex_buffer,
+            &index_buffer,
+            &program,
+            &uniforms,
+            &Default::default(),
+        )
+        .unwrap();
     target.finish().unwrap();
 
     // reading the front buffer into an image
     let image: glium::texture::RawImage2d<'_, u8> = display.read_front_buffer().unwrap();
-    let image = image::ImageBuffer::from_raw(image.width, image.height, image.data.into_owned()).unwrap();
+    let image =
+        image::ImageBuffer::from_raw(image.width, image.height, image.data.into_owned()).unwrap();
     let image = image::DynamicImage::ImageRgba8(image).flipv();
     image.save("glium-example-screenshot.png").unwrap();
 }

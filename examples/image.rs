@@ -25,7 +25,7 @@ struct Application {
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE:&'static str = "Glium image example";
+    const WINDOW_TITLE: &'static str = "Glium image example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         // building a texture with "OpenGL" drawn on it

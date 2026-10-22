@@ -23,7 +23,7 @@ struct Application {
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE:&'static str = "Glium displacement_mapping example";
+    const WINDOW_TITLE: &'static str = "Glium displacement_mapping example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         let image = image::load(
@@ -260,7 +260,11 @@ impl ApplicationContext for Application {
         frame.finish().unwrap();
     }
 
-    fn handle_window_event(&mut self, event: &glium::winit::event::WindowEvent, _window: &glium::winit::window::Window) {
+    fn handle_window_event(
+        &mut self,
+        event: &glium::winit::event::WindowEvent,
+        _window: &glium::winit::window::Window,
+    ) {
         self.camera.process_input(&event);
     }
 

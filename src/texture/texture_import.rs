@@ -7,7 +7,7 @@ pub enum ExternalTilingMode {
     /// Corresponds to VK_IMAGE_TILING_OPTIMAL
     Optimal,
     /// Corresponds to VK_IMAGE_TILING_LINEAR
-    Linear
+    Linear,
 }
 
 impl Into<crate::gl::types::GLenum> for ExternalTilingMode {
@@ -31,7 +31,6 @@ pub struct ImportParameters {
     /// Tiling mode used in the memory object.
     pub tiling: ExternalTilingMode,
 }
-
 
 /// Error that can happen when importing a texture.
 #[derive(Debug, Clone, Copy)]

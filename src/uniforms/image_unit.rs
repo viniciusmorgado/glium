@@ -1,8 +1,8 @@
 //! Image units, views into specific planes of textures
-use crate::ToGlEnum;
 use crate::gl;
 use crate::texture;
 use crate::texture::GetFormatError;
+use crate::ToGlEnum;
 
 #[derive(Debug)]
 /// Represents an error related to the use of an Image Unit
@@ -25,9 +25,17 @@ impl std::fmt::Display for ImageUnitError {
 
         let desc = match *self {
             NoMipmapAtLevel(level) => write!(f, "No mipmap level {} found", level),
-            LayeringNotSupported(kind) => write!(f, "Layering is not supported with textures of dimensions {:?}", kind),
+            LayeringNotSupported(kind) => write!(
+                f,
+                "Layering is not supported with textures of dimensions {:?}",
+                kind
+            ),
             LayerOutOfBounds(layer) => write!(f, "Request layer {} is out of bounds", layer),
-            BadFormatClass(tbits, ibits) => write!(f, "Texture format has {} bits but image format has {} bits", tbits, ibits),
+            BadFormatClass(tbits, ibits) => write!(
+                f,
+                "Texture format has {} bits but image format has {} bits",
+                tbits, ibits
+            ),
             GetFormat(error) => write!(f, "{}", error),
         };
         Ok(())
@@ -35,7 +43,6 @@ impl std::fmt::Display for ImageUnitError {
 }
 
 impl std::error::Error for ImageUnitError {}
-
 
 /// How we bind a texture to an image unit
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -62,25 +69,39 @@ impl Default for ImageUnitBehavior {
 }
 
 /// An image unit uniform marker
-pub struct ImageUnit<'t, T: 't + core::ops::Deref<Target = crate::texture::TextureAny>>(pub &'t T, pub ImageUnitBehavior);
+pub struct ImageUnit<'t, T: 't + core::ops::Deref<Target = crate::texture::TextureAny>>(
+    pub &'t T,
+    pub ImageUnitBehavior,
+);
 
 impl<'t, T: 't + core::ops::Deref<Target = crate::texture::TextureAny>> ImageUnit<'t, T> {
     /// Create a new marker
-    pub fn new(texture: &'t T, format: ImageUnitFormat) -> Result<ImageUnit<'t, T>, ImageUnitError> {
+    pub fn new(
+        texture: &'t T,
+        format: ImageUnitFormat,
+    ) -> Result<ImageUnit<'t, T>, ImageUnitError> {
         let tbits = texture.get_internal_format().unwrap().get_total_bits();
         if tbits != format.get_total_bits() {
-            return Err(ImageUnitError::BadFormatClass(tbits, format.get_total_bits()))
+            return Err(ImageUnitError::BadFormatClass(
+                tbits,
+                format.get_total_bits(),
+            ));
         }
 
-        Ok(ImageUnit(texture, ImageUnitBehavior {
-	    format,
-	    ..Default::default()
-	}))
+        Ok(ImageUnit(
+            texture,
+            ImageUnitBehavior {
+                format,
+                ..Default::default()
+            },
+        ))
     }
 
     /// Set the mip level that will be bound
     pub fn set_level(mut self, level: u32) -> Result<Self, ImageUnitError> {
-        self.0.mipmap(level).ok_or(ImageUnitError::NoMipmapAtLevel(level))?;
+        self.0
+            .mipmap(level)
+            .ok_or(ImageUnitError::NoMipmapAtLevel(level))?;
         self.1.level = level;
         Ok(self)
     }
@@ -90,24 +111,75 @@ impl<'t, T: 't + core::ops::Deref<Target = crate::texture::TextureAny>> ImageUni
     pub fn set_layer(mut self, layer: Option<u32>) -> Result<Self, ImageUnitError> {
         if let Some(layer) = layer {
             match self.0.dimensions() {
-                texture::Dimensions::Texture1d { width } =>
-                    Err(ImageUnitError::LayeringNotSupported(self.0.dimensions())),
-                texture::Dimensions::Texture2d { width, height } =>
-                    Err(ImageUnitError::LayeringNotSupported(self.0.dimensions())),
-                texture::Dimensions::Texture2dMultisample { width, height, samples } =>
-                    Err(ImageUnitError::LayeringNotSupported(self.0.dimensions())),
-                texture::Dimensions::Texture1dArray { width, array_size } =>
-                    if layer >= array_size { Err(ImageUnitError::LayerOutOfBounds(layer))} else { Ok(()) },
-                texture::Dimensions::Texture2dArray { width, height, array_size } =>
-                    if layer >= array_size { Err(ImageUnitError::LayerOutOfBounds(layer))} else { Ok(()) },
-                texture::Dimensions::Texture2dMultisampleArray { width, height, array_size, samples } =>
-                    if layer >= array_size { Err(ImageUnitError::LayerOutOfBounds(layer))} else { Ok(()) },
-                texture::Dimensions::Texture3d { width, height, depth } =>
-                    if layer >= depth { Err(ImageUnitError::LayerOutOfBounds(layer))} else { Ok(()) },
-                texture::Dimensions::Cubemap { dimension } =>
-                    if layer >= 6 { Err(ImageUnitError::LayerOutOfBounds(layer))} else { Ok(()) },
-                texture::Dimensions::CubemapArray { dimension, array_size } =>
-                    if layer >= 6*array_size { Err(ImageUnitError::LayerOutOfBounds(layer))} else { Ok(()) },
+                texture::Dimensions::Texture1d { width } => {
+                    Err(ImageUnitError::LayeringNotSupported(self.0.dimensions()))
+                }
+                texture::Dimensions::Texture2d { width, height } => {
+                    Err(ImageUnitError::LayeringNotSupported(self.0.dimensions()))
+                }
+                texture::Dimensions::Texture2dMultisample {
+                    width,
+                    height,
+                    samples,
+                } => Err(ImageUnitError::LayeringNotSupported(self.0.dimensions())),
+                texture::Dimensions::Texture1dArray { width, array_size } => {
+                    if layer >= array_size {
+                        Err(ImageUnitError::LayerOutOfBounds(layer))
+                    } else {
+                        Ok(())
+                    }
+                }
+                texture::Dimensions::Texture2dArray {
+                    width,
+                    height,
+                    array_size,
+                } => {
+                    if layer >= array_size {
+                        Err(ImageUnitError::LayerOutOfBounds(layer))
+                    } else {
+                        Ok(())
+                    }
+                }
+                texture::Dimensions::Texture2dMultisampleArray {
+                    width,
+                    height,
+                    array_size,
+                    samples,
+                } => {
+                    if layer >= array_size {
+                        Err(ImageUnitError::LayerOutOfBounds(layer))
+                    } else {
+                        Ok(())
+                    }
+                }
+                texture::Dimensions::Texture3d {
+                    width,
+                    height,
+                    depth,
+                } => {
+                    if layer >= depth {
+                        Err(ImageUnitError::LayerOutOfBounds(layer))
+                    } else {
+                        Ok(())
+                    }
+                }
+                texture::Dimensions::Cubemap { dimension } => {
+                    if layer >= 6 {
+                        Err(ImageUnitError::LayerOutOfBounds(layer))
+                    } else {
+                        Ok(())
+                    }
+                }
+                texture::Dimensions::CubemapArray {
+                    dimension,
+                    array_size,
+                } => {
+                    if layer >= 6 * array_size {
+                        Err(ImageUnitError::LayerOutOfBounds(layer))
+                    } else {
+                        Ok(())
+                    }
+                }
             }?;
         }
         self.1.layer = layer;
@@ -119,7 +191,6 @@ impl<'t, T: 't + core::ops::Deref<Target = crate::texture::TextureAny>> ImageUni
         self.1.access = access;
         self
     }
-
 }
 
 /// States how the shader will access the image unit
@@ -143,8 +214,6 @@ impl ToGlEnum for ImageUnitAccess {
         }
     }
 }
-
-
 
 /// How the shader should interpret the data in the image
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -236,49 +305,49 @@ pub enum ImageUnitFormat {
 impl ImageUnitFormat {
     fn get_total_bits(&self) -> usize {
         match self {
-            ImageUnitFormat::RGBA32F => 4*32,
-            ImageUnitFormat::RGBA16F => 4*16,
-            ImageUnitFormat::RG32F => 2*32,
-            ImageUnitFormat::RG16F => 2*16,
-            ImageUnitFormat::R11FG11FB10F => 11*2 + 10,
-            ImageUnitFormat::R32F => 1*32,
-            ImageUnitFormat::R16F => 1*16,
+            ImageUnitFormat::RGBA32F => 4 * 32,
+            ImageUnitFormat::RGBA16F => 4 * 16,
+            ImageUnitFormat::RG32F => 2 * 32,
+            ImageUnitFormat::RG16F => 2 * 16,
+            ImageUnitFormat::R11FG11FB10F => 11 * 2 + 10,
+            ImageUnitFormat::R32F => 1 * 32,
+            ImageUnitFormat::R16F => 1 * 16,
 
-            ImageUnitFormat::RGBA32UI => 4*32,
-            ImageUnitFormat::RGBA16UI => 4*16,
-            ImageUnitFormat::RGB10A2UI => 3*10 + 2,
-            ImageUnitFormat::RGBA8UI => 8*4,
-            ImageUnitFormat::RG32UI => 2*32,
-            ImageUnitFormat::RG16UI => 2*16,
-            ImageUnitFormat::RG8UI => 2*8,
-            ImageUnitFormat::R32UI => 1*32,
-            ImageUnitFormat::R16UI => 1*16,
-            ImageUnitFormat::R8UI => 1*8,
+            ImageUnitFormat::RGBA32UI => 4 * 32,
+            ImageUnitFormat::RGBA16UI => 4 * 16,
+            ImageUnitFormat::RGB10A2UI => 3 * 10 + 2,
+            ImageUnitFormat::RGBA8UI => 8 * 4,
+            ImageUnitFormat::RG32UI => 2 * 32,
+            ImageUnitFormat::RG16UI => 2 * 16,
+            ImageUnitFormat::RG8UI => 2 * 8,
+            ImageUnitFormat::R32UI => 1 * 32,
+            ImageUnitFormat::R16UI => 1 * 16,
+            ImageUnitFormat::R8UI => 1 * 8,
 
-            ImageUnitFormat::RGBA32I => 4*32,
-            ImageUnitFormat::RGBA16I => 2*32,
-            ImageUnitFormat::RGBA8I => 4*8,
-            ImageUnitFormat::RG32I => 2*32,
-            ImageUnitFormat::RG16I => 2*16,
-            ImageUnitFormat::RG8I => 2*8,
-            ImageUnitFormat::R32I => 1*32,
-            ImageUnitFormat::R16I => 1*16,
-            ImageUnitFormat::R8I => 1*8,
+            ImageUnitFormat::RGBA32I => 4 * 32,
+            ImageUnitFormat::RGBA16I => 2 * 32,
+            ImageUnitFormat::RGBA8I => 4 * 8,
+            ImageUnitFormat::RG32I => 2 * 32,
+            ImageUnitFormat::RG16I => 2 * 16,
+            ImageUnitFormat::RG8I => 2 * 8,
+            ImageUnitFormat::R32I => 1 * 32,
+            ImageUnitFormat::R16I => 1 * 16,
+            ImageUnitFormat::R8I => 1 * 8,
 
-            ImageUnitFormat::RGBA16 => 4*16,
-            ImageUnitFormat::RGB10A2 => 3*10+2,
-            ImageUnitFormat::RGBA8 => 4*8,
-            ImageUnitFormat::RG16 => 2*16,
-            ImageUnitFormat::RG8 => 2*8,
-            ImageUnitFormat::R16 => 1*16,
-            ImageUnitFormat::R8 => 1*8,
+            ImageUnitFormat::RGBA16 => 4 * 16,
+            ImageUnitFormat::RGB10A2 => 3 * 10 + 2,
+            ImageUnitFormat::RGBA8 => 4 * 8,
+            ImageUnitFormat::RG16 => 2 * 16,
+            ImageUnitFormat::RG8 => 2 * 8,
+            ImageUnitFormat::R16 => 1 * 16,
+            ImageUnitFormat::R8 => 1 * 8,
 
-            ImageUnitFormat::RGBA16snorm => 4*16,
-            ImageUnitFormat::RGBA8snorm => 4*8,
-            ImageUnitFormat::RG16snorm => 2*16,
-            ImageUnitFormat::RG8snorm => 2*8,
-            ImageUnitFormat::R16snorm => 1*16,
-            ImageUnitFormat::R8snorm => 1*8,
+            ImageUnitFormat::RGBA16snorm => 4 * 16,
+            ImageUnitFormat::RGBA8snorm => 4 * 8,
+            ImageUnitFormat::RG16snorm => 2 * 16,
+            ImageUnitFormat::RG8snorm => 2 * 8,
+            ImageUnitFormat::R16snorm => 1 * 16,
+            ImageUnitFormat::R8snorm => 1 * 8,
         }
     }
 }
@@ -333,4 +402,3 @@ impl ToGlEnum for ImageUnitFormat {
         }
     }
 }
-

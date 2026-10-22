@@ -78,7 +78,7 @@ pub struct SimpleWindowBuilder {
     attributes: WindowAttributes,
     config_template_builder: ConfigTemplateBuilder,
     context_attributes_builder: ContextAttributesBuilder,
-    vsync: bool
+    vsync: bool,
 }
 
 impl SimpleWindowBuilder {
@@ -90,7 +90,7 @@ impl SimpleWindowBuilder {
                 .with_inner_size(winit::dpi::PhysicalSize::new(800, 480)),
             config_template_builder: ConfigTemplateBuilder::new(),
             context_attributes_builder: ContextAttributesBuilder::default(),
-            vsync: true
+            vsync: true,
         }
     }
 
@@ -118,13 +118,19 @@ impl SimpleWindowBuilder {
 
     /// Replace the used [`ConfigTemplateBuilder`],
     /// Can be used to configure among other things buffer sizes and number of samples for the window.
-    pub fn with_config_template_builder(mut self, config_template_builder: ConfigTemplateBuilder) -> Self {
+    pub fn with_config_template_builder(
+        mut self,
+        config_template_builder: ConfigTemplateBuilder,
+    ) -> Self {
         self.config_template_builder = config_template_builder;
         self
     }
 
     /// Can be used to configure OpenGL version and mode (core vs compatibility) .
-    pub fn with_context_attributes_builder(mut self, context_attributes_builder: ContextAttributesBuilder) -> Self {
+    pub fn with_context_attributes_builder(
+        mut self,
+        context_attributes_builder: ContextAttributesBuilder,
+    ) -> Self {
         self.context_attributes_builder = context_attributes_builder;
         self
     }
@@ -145,21 +151,22 @@ impl SimpleWindowBuilder {
     pub fn build(
         self,
         event_loop: &impl GliumEventLoop,
-    ) -> (
-        Window,
-        Display<glutin::surface::WindowSurface>,
-    ) {
+    ) -> (Window, Display<glutin::surface::WindowSurface>) {
         use glutin::prelude::*;
         use raw_window_handle::HasWindowHandle;
 
         // First we start by opening a new Window
-        let display_builder =
-            DisplayBuilder::new().with_window_attributes(Some(self.attributes));
+        let display_builder = DisplayBuilder::new().with_window_attributes(Some(self.attributes));
         let config_template_builder = ConfigTemplateBuilder::new();
-        let (window, gl_config) = event_loop.build(display_builder, self.config_template_builder, |mut configs| {
-                // Just use the first configuration since we don't have any special preferences here
-                configs.next().unwrap()
-            })
+        let (window, gl_config) = event_loop
+            .build(
+                display_builder,
+                self.config_template_builder,
+                |mut configs| {
+                    // Just use the first configuration since we don't have any special preferences here
+                    configs.next().unwrap()
+                },
+            )
             .unwrap();
         let window = window.unwrap();
 
@@ -169,7 +176,10 @@ impl SimpleWindowBuilder {
         let attrs =
             glutin::surface::SurfaceAttributesBuilder::<glutin::surface::WindowSurface>::new()
                 .build(
-                    window.window_handle().expect("couldn't obtain raw window handle").into(),
+                    window
+                        .window_handle()
+                        .expect("couldn't obtain raw window handle")
+                        .into(),
                     NonZeroU32::new(width).unwrap(),
                     NonZeroU32::new(height).unwrap(),
                 );
@@ -182,8 +192,12 @@ impl SimpleWindowBuilder {
                 .unwrap()
         };
 
-        let context_attributes = self.context_attributes_builder
-            .build(Some(window.window_handle().expect("couldn't obtain raw window handle").into()));
+        let context_attributes = self.context_attributes_builder.build(Some(
+            window
+                .window_handle()
+                .expect("couldn't obtain raw window handle")
+                .into(),
+        ));
 
         let current_context = Some(unsafe {
             gl_config
@@ -200,7 +214,9 @@ impl SimpleWindowBuilder {
         } else {
             SwapInterval::DontWait
         };
-        surface.set_swap_interval(&current_context, swap_interval).unwrap();
+        surface
+            .set_swap_interval(&current_context, swap_interval)
+            .unwrap();
 
         let display = Display::from_context_surface(current_context, surface).unwrap();
 

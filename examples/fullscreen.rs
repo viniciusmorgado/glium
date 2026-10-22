@@ -4,11 +4,14 @@ extern crate glium;
 use std::io::Cursor;
 
 use glium::index::PrimitiveType;
+use glium::winit::{
+    keyboard::{KeyCode, PhysicalKey},
+    window::Fullscreen,
+};
 #[allow(unused_imports)]
 use glium::{Display, Frame, Surface};
 use glutin::surface::WindowSurface;
 use support::{ApplicationContext, State};
-use glium::winit::{window::Fullscreen, keyboard::{PhysicalKey, KeyCode}};
 
 mod support;
 
@@ -44,34 +47,56 @@ impl Application {
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE:&'static str = "Glium fullscreen example";
+    const WINDOW_TITLE: &'static str = "Glium fullscreen example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         // building a texture with "OpenGL" drawn on it
-        let image = image::load(Cursor::new(&include_bytes!("../tests/fixture/opengl.png")[..]),
-                                image::ImageFormat::Png).unwrap().to_rgba8();
+        let image = image::load(
+            Cursor::new(&include_bytes!("../tests/fixture/opengl.png")[..]),
+            image::ImageFormat::Png,
+        )
+        .unwrap()
+        .to_rgba8();
         let image_dimensions = image.dimensions();
-        let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+        let image =
+            glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
         let opengl_texture = glium::texture::CompressedTexture2d::new(display, image).unwrap();
 
         // building the vertex buffer, which contains all the vertices that we will draw
         let vertex_buffer = {
-            glium::VertexBuffer::new(display,
+            glium::VertexBuffer::new(
+                display,
                 &[
-                    Vertex { position: [-1.0, -1.0], tex_coords: [0.0, 0.0] },
-                    Vertex { position: [-1.0,  1.0], tex_coords: [0.0, 1.0] },
-                    Vertex { position: [ 1.0,  1.0], tex_coords: [1.0, 1.0] },
-                    Vertex { position: [ 1.0, -1.0], tex_coords: [1.0, 0.0] }
-                ]
-            ).unwrap()
+                    Vertex {
+                        position: [-1.0, -1.0],
+                        tex_coords: [0.0, 0.0],
+                    },
+                    Vertex {
+                        position: [-1.0, 1.0],
+                        tex_coords: [0.0, 1.0],
+                    },
+                    Vertex {
+                        position: [1.0, 1.0],
+                        tex_coords: [1.0, 1.0],
+                    },
+                    Vertex {
+                        position: [1.0, -1.0],
+                        tex_coords: [1.0, 0.0],
+                    },
+                ],
+            )
+            .unwrap()
         };
 
         // building the index buffer
-        let index_buffer = glium::IndexBuffer::new(display, PrimitiveType::TriangleStrip,
-                                                &[1 as u16, 2, 0, 3]).unwrap();
+        let index_buffer =
+            glium::IndexBuffer::new(display, PrimitiveType::TriangleStrip, &[1 as u16, 2, 0, 3])
+                .unwrap();
 
         // compiling shaders and linking them together
-        let program = glium::Program::from_source(display, r"
+        let program = glium::Program::from_source(
+            display,
+            r"
             #version 140
 
             uniform mat4 matrix;
@@ -85,7 +110,8 @@ impl ApplicationContext for Application {
                 gl_Position = matrix * vec4(position, 0.0, 1.0);
                 v_tex_coords = tex_coords;
             }
-        ", r"
+        ",
+            r"
             #version 140
             uniform sampler2D tex;
             in vec2 v_tex_coords;
@@ -94,8 +120,10 @@ impl ApplicationContext for Application {
             void main() {
                 color = texture(tex, v_tex_coords);
             }
-        ", None).unwrap();
-
+        ",
+            None,
+        )
+        .unwrap();
 
         let fullscreen = false;
 
@@ -111,19 +139,31 @@ impl ApplicationContext for Application {
     fn draw_frame(&mut self, display: &Display<WindowSurface>) {
         let mut frame = display.draw();
         frame.clear_color(0.0, 1.0, 0.0, 1.0);
-        frame.draw(&self.vertex_buffer, &self.index_buffer, &self.program, &uniform! {
-                matrix: [
-                    [0.5, 0.0, 0.0, 0.0],
-                    [0.0, 0.5, 0.0, 0.0],
-                    [0.0, 0.0, 0.5, 0.0],
-                    [0.0, 0.0, 0.0, 1.0f32]
-                ],
-                tex: &self.opengl_texture
-            }, &Default::default()).unwrap();
+        frame
+            .draw(
+                &self.vertex_buffer,
+                &self.index_buffer,
+                &self.program,
+                &uniform! {
+                    matrix: [
+                        [0.5, 0.0, 0.0, 0.0],
+                        [0.0, 0.5, 0.0, 0.0],
+                        [0.0, 0.0, 0.5, 0.0],
+                        [0.0, 0.0, 0.0, 1.0f32]
+                    ],
+                    tex: &self.opengl_texture
+                },
+                &Default::default(),
+            )
+            .unwrap();
         frame.finish().unwrap();
     }
 
-    fn handle_window_event(&mut self, event: &glium::winit::event::WindowEvent, window: &glium::winit::window::Window) {
+    fn handle_window_event(
+        &mut self,
+        event: &glium::winit::event::WindowEvent,
+        window: &glium::winit::window::Window,
+    ) {
         match event {
             glium::winit::event::WindowEvent::KeyboardInput { event, .. } => match event.state {
                 glium::winit::event::ElementState::Pressed => match event.physical_key {

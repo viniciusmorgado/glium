@@ -22,7 +22,7 @@ struct Application {
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE:&'static str = "Glium tesselation example";
+    const WINDOW_TITLE: &'static str = "Glium tesselation example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         // building the vertex buffer, which contains all the vertices that we will draw
@@ -189,8 +189,12 @@ impl ApplicationContext for Application {
         frame.finish().unwrap();
     }
 
-    fn handle_window_event(&mut self, event: &glium::winit::event::WindowEvent, _window: &glium::winit::window::Window) {
-        use glium::winit::keyboard::{PhysicalKey, KeyCode};
+    fn handle_window_event(
+        &mut self,
+        event: &glium::winit::event::WindowEvent,
+        _window: &glium::winit::window::Window,
+    ) {
+        use glium::winit::keyboard::{KeyCode, PhysicalKey};
         match event {
             glium::winit::event::WindowEvent::KeyboardInput { event, .. } => match event.state {
                 glium::winit::event::ElementState::Pressed => match event.physical_key {

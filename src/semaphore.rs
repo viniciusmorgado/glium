@@ -86,7 +86,7 @@ impl Into<crate::gl::types::GLenum> for TextureLayout {
 /// Similar to a GL sync object, this describes a semaphore which can be used for OpenGL-Vulkan command queue synchronization.
 pub struct Semaphore {
     context: Rc<Context>,
-    id: gl::types::GLuint,    
+    id: gl::types::GLuint,
 }
 
 impl Semaphore {

@@ -199,4 +199,3 @@ unsafe impl PixelValue for (f32, f32, f32, f32) {
         super::ClientFormat::F32F32F32F32
     }
 }
-

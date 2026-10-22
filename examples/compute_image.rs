@@ -32,7 +32,7 @@ struct Application {
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE:&'static str = "Glium compute_image example";
+    const WINDOW_TITLE: &'static str = "Glium compute_image example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         let start_time = Instant::now();

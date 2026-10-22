@@ -21,7 +21,7 @@ struct Application {
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE:&'static str = "Glium screenshot example";
+    const WINDOW_TITLE: &'static str = "Glium screenshot example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         let vertex_buffer = {
@@ -114,7 +114,9 @@ impl ApplicationContext for Application {
 
         // Now we can read the front buffer and save it
         let image: glium::texture::RawImage2d<'_, u8> = display.read_front_buffer().unwrap();
-        let image = image::ImageBuffer::from_raw(image.width, image.height, image.data.into_owned()).unwrap();
+        let image =
+            image::ImageBuffer::from_raw(image.width, image.height, image.data.into_owned())
+                .unwrap();
         let image = image::DynamicImage::ImageRgba8(image).flipv();
         image.save("glium-example-screenshot.png").unwrap();
     }

@@ -4,11 +4,11 @@ Contains everything related to external API memory objects.
 
 // TODO: Add Windows support via EXT_external_objects_win32
 
-use crate::GlObject;
 use crate::context::CommandContext;
 use crate::gl;
 use crate::version::Api;
 use crate::version::Version;
+use crate::GlObject;
 
 use crate::backend::Facade;
 use crate::context::Context;

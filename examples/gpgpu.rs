@@ -2,17 +2,19 @@
 extern crate glium;
 mod support;
 
-use glium::{Display};
+use glium::Display;
 use glutin::surface::WindowSurface;
 use support::{ApplicationContext, State};
 
-struct Application { }
+struct Application {}
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE:&'static str = "Glium GPGPU example";
+    const WINDOW_TITLE: &'static str = "Glium GPGPU example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
-        let program = glium::program::ComputeShader::from_source(display, r#"\
+        let program = glium::program::ComputeShader::from_source(
+            display,
+            r#"\
                 #version 430
                 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
@@ -27,7 +29,9 @@ impl ApplicationContext for Application {
                     values[gl_GlobalInvocationID.x] = pow(val, vec4(power));
                 }
 
-            "#).unwrap();
+            "#,
+        )
+        .unwrap();
 
         const NUM_VALUES: usize = 4096;
 
@@ -41,13 +45,18 @@ impl ApplicationContext for Application {
         implement_uniform_block!(Data, power, values);
 
         let mut buffer: glium::uniforms::UniformBuffer<Data> =
-                glium::uniforms::UniformBuffer::empty(display).unwrap();
+            glium::uniforms::UniformBuffer::empty(display).unwrap();
 
         {
             let mut mapping = buffer.map();
             mapping.power = rand::random();
             for val in mapping.values.iter_mut() {
-                *val = [rand::random::<f32>(),rand::random::<f32>(),rand::random::<f32>(),rand::random::<f32>()];
+                *val = [
+                    rand::random::<f32>(),
+                    rand::random::<f32>(),
+                    rand::random::<f32>(),
+                    rand::random::<f32>(),
+                ];
             }
         }
 
@@ -65,7 +74,7 @@ impl ApplicationContext for Application {
             println!("...");
         }
 
-        Self { }
+        Self {}
     }
 }
 

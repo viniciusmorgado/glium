@@ -5,12 +5,11 @@ use crate::texture;
 
 use crate::uniforms::AsUniformValue;
 use crate::uniforms::LayoutMismatchError;
-use crate::uniforms::UniformBlock;
 use crate::uniforms::SamplerBehavior;
+use crate::uniforms::UniformBlock;
 
-use crate::uniforms::ImageUnitBehavior;
 use crate::buffer::BufferAnySlice;
-
+use crate::uniforms::ImageUnitBehavior;
 
 /// Type of a uniform in a program.
 #[allow(missing_docs)]
@@ -146,7 +145,10 @@ pub enum UniformValue<'a> {
     /// can be bound on a block with the given layout.
     /// The last parameter is a sender which must be used to send a `SyncFence` that expires when
     /// the buffer has finished being used.
-    Block(BufferAnySlice<'a>, fn(&program::UniformBlock) -> Result<(), LayoutMismatchError>),
+    Block(
+        BufferAnySlice<'a>,
+        fn(&program::UniformBlock) -> Result<(), LayoutMismatchError>,
+    ),
     Subroutine(ShaderStage, &'a str),
     SignedInt(i32),
     UnsignedInt(u32),
@@ -174,9 +176,9 @@ pub enum UniformValue<'a> {
     DoubleVec2([f64; 2]),
     DoubleVec3([f64; 3]),
     DoubleVec4([f64; 4]),
-    DoubleMat2([[f64;2]; 2]),
-    DoubleMat3([[f64;3]; 3]),
-    DoubleMat4([[f64;4]; 4]),
+    DoubleMat2([[f64; 2]; 2]),
+    DoubleMat3([[f64; 3]; 3]),
+    DoubleMat4([[f64; 4]; 4]),
     Int64(i64),
     Int64Vec2([i64; 2]),
     Int64Vec3([i64; 3]),
@@ -188,48 +190,96 @@ pub enum UniformValue<'a> {
     Texture1d(&'a texture::Texture1d, Option<SamplerBehavior>),
     CompressedTexture1d(&'a texture::CompressedTexture1d, Option<SamplerBehavior>),
     SrgbTexture1d(&'a texture::SrgbTexture1d, Option<SamplerBehavior>),
-    CompressedSrgbTexture1d(&'a texture::CompressedSrgbTexture1d, Option<SamplerBehavior>),
+    CompressedSrgbTexture1d(
+        &'a texture::CompressedSrgbTexture1d,
+        Option<SamplerBehavior>,
+    ),
     IntegralTexture1d(&'a texture::IntegralTexture1d, Option<SamplerBehavior>),
     UnsignedTexture1d(&'a texture::UnsignedTexture1d, Option<SamplerBehavior>),
     DepthTexture1d(&'a texture::DepthTexture1d, Option<SamplerBehavior>),
     Texture2d(&'a texture::Texture2d, Option<SamplerBehavior>),
     CompressedTexture2d(&'a texture::CompressedTexture2d, Option<SamplerBehavior>),
     SrgbTexture2d(&'a texture::SrgbTexture2d, Option<SamplerBehavior>),
-    CompressedSrgbTexture2d(&'a texture::CompressedSrgbTexture2d, Option<SamplerBehavior>),
+    CompressedSrgbTexture2d(
+        &'a texture::CompressedSrgbTexture2d,
+        Option<SamplerBehavior>,
+    ),
     IntegralTexture2d(&'a texture::IntegralTexture2d, Option<SamplerBehavior>),
     UnsignedTexture2d(&'a texture::UnsignedTexture2d, Option<SamplerBehavior>),
     DepthTexture2d(&'a texture::DepthTexture2d, Option<SamplerBehavior>),
     Texture2dMultisample(&'a texture::Texture2dMultisample, Option<SamplerBehavior>),
-    SrgbTexture2dMultisample(&'a texture::SrgbTexture2dMultisample, Option<SamplerBehavior>),
-    IntegralTexture2dMultisample(&'a texture::IntegralTexture2dMultisample, Option<SamplerBehavior>),
-    UnsignedTexture2dMultisample(&'a texture::UnsignedTexture2dMultisample, Option<SamplerBehavior>),
-    DepthTexture2dMultisample(&'a texture::DepthTexture2dMultisample, Option<SamplerBehavior>),
+    SrgbTexture2dMultisample(
+        &'a texture::SrgbTexture2dMultisample,
+        Option<SamplerBehavior>,
+    ),
+    IntegralTexture2dMultisample(
+        &'a texture::IntegralTexture2dMultisample,
+        Option<SamplerBehavior>,
+    ),
+    UnsignedTexture2dMultisample(
+        &'a texture::UnsignedTexture2dMultisample,
+        Option<SamplerBehavior>,
+    ),
+    DepthTexture2dMultisample(
+        &'a texture::DepthTexture2dMultisample,
+        Option<SamplerBehavior>,
+    ),
     Texture3d(&'a texture::Texture3d, Option<SamplerBehavior>),
     CompressedTexture3d(&'a texture::CompressedTexture3d, Option<SamplerBehavior>),
     SrgbTexture3d(&'a texture::SrgbTexture3d, Option<SamplerBehavior>),
-    CompressedSrgbTexture3d(&'a texture::CompressedSrgbTexture3d, Option<SamplerBehavior>),
+    CompressedSrgbTexture3d(
+        &'a texture::CompressedSrgbTexture3d,
+        Option<SamplerBehavior>,
+    ),
     IntegralTexture3d(&'a texture::IntegralTexture3d, Option<SamplerBehavior>),
     UnsignedTexture3d(&'a texture::UnsignedTexture3d, Option<SamplerBehavior>),
     DepthTexture3d(&'a texture::DepthTexture3d, Option<SamplerBehavior>),
     Texture1dArray(&'a texture::Texture1dArray, Option<SamplerBehavior>),
-    CompressedTexture1dArray(&'a texture::CompressedTexture1dArray, Option<SamplerBehavior>),
+    CompressedTexture1dArray(
+        &'a texture::CompressedTexture1dArray,
+        Option<SamplerBehavior>,
+    ),
     SrgbTexture1dArray(&'a texture::SrgbTexture1dArray, Option<SamplerBehavior>),
-    CompressedSrgbTexture1dArray(&'a texture::CompressedSrgbTexture1dArray, Option<SamplerBehavior>),
+    CompressedSrgbTexture1dArray(
+        &'a texture::CompressedSrgbTexture1dArray,
+        Option<SamplerBehavior>,
+    ),
     IntegralTexture1dArray(&'a texture::IntegralTexture1dArray, Option<SamplerBehavior>),
     UnsignedTexture1dArray(&'a texture::UnsignedTexture1dArray, Option<SamplerBehavior>),
     DepthTexture1dArray(&'a texture::DepthTexture1dArray, Option<SamplerBehavior>),
     Texture2dArray(&'a texture::Texture2dArray, Option<SamplerBehavior>),
-    CompressedTexture2dArray(&'a texture::CompressedTexture2dArray, Option<SamplerBehavior>),
+    CompressedTexture2dArray(
+        &'a texture::CompressedTexture2dArray,
+        Option<SamplerBehavior>,
+    ),
     SrgbTexture2dArray(&'a texture::SrgbTexture2dArray, Option<SamplerBehavior>),
-    CompressedSrgbTexture2dArray(&'a texture::CompressedSrgbTexture2dArray, Option<SamplerBehavior>),
+    CompressedSrgbTexture2dArray(
+        &'a texture::CompressedSrgbTexture2dArray,
+        Option<SamplerBehavior>,
+    ),
     IntegralTexture2dArray(&'a texture::IntegralTexture2dArray, Option<SamplerBehavior>),
     UnsignedTexture2dArray(&'a texture::UnsignedTexture2dArray, Option<SamplerBehavior>),
     DepthTexture2dArray(&'a texture::DepthTexture2dArray, Option<SamplerBehavior>),
-    Texture2dMultisampleArray(&'a texture::Texture2dMultisampleArray, Option<SamplerBehavior>),
-    SrgbTexture2dMultisampleArray(&'a texture::SrgbTexture2dMultisampleArray, Option<SamplerBehavior>),
-    IntegralTexture2dMultisampleArray(&'a texture::IntegralTexture2dMultisampleArray, Option<SamplerBehavior>),
-    UnsignedTexture2dMultisampleArray(&'a texture::UnsignedTexture2dMultisampleArray, Option<SamplerBehavior>),
-    DepthTexture2dMultisampleArray(&'a texture::DepthTexture2dMultisampleArray, Option<SamplerBehavior>),
+    Texture2dMultisampleArray(
+        &'a texture::Texture2dMultisampleArray,
+        Option<SamplerBehavior>,
+    ),
+    SrgbTexture2dMultisampleArray(
+        &'a texture::SrgbTexture2dMultisampleArray,
+        Option<SamplerBehavior>,
+    ),
+    IntegralTexture2dMultisampleArray(
+        &'a texture::IntegralTexture2dMultisampleArray,
+        Option<SamplerBehavior>,
+    ),
+    UnsignedTexture2dMultisampleArray(
+        &'a texture::UnsignedTexture2dMultisampleArray,
+        Option<SamplerBehavior>,
+    ),
+    DepthTexture2dMultisampleArray(
+        &'a texture::DepthTexture2dMultisampleArray,
+        Option<SamplerBehavior>,
+    ),
     Cubemap(&'a texture::Cubemap, Option<SamplerBehavior>),
     CompressedCubemap(&'a texture::CompressedCubemap, Option<SamplerBehavior>),
     SrgbCubemap(&'a texture::SrgbCubemap, Option<SamplerBehavior>),
@@ -240,7 +290,10 @@ pub enum UniformValue<'a> {
     CubemapArray(&'a texture::CubemapArray, Option<SamplerBehavior>),
     CompressedCubemapArray(&'a texture::CompressedCubemapArray, Option<SamplerBehavior>),
     SrgbCubemapArray(&'a texture::SrgbCubemapArray, Option<SamplerBehavior>),
-    CompressedSrgbCubemapArray(&'a texture::CompressedSrgbCubemapArray, Option<SamplerBehavior>),
+    CompressedSrgbCubemapArray(
+        &'a texture::CompressedSrgbCubemapArray,
+        Option<SamplerBehavior>,
+    ),
     IntegralCubemapArray(&'a texture::IntegralCubemapArray, Option<SamplerBehavior>),
     UnsignedCubemapArray(&'a texture::UnsignedCubemapArray, Option<SamplerBehavior>),
     DepthCubemapArray(&'a texture::DepthCubemapArray, Option<SamplerBehavior>),
@@ -256,11 +309,23 @@ pub enum UniformValue<'a> {
     IntegralImage3d(&'a texture::IntegralTexture3d, Option<ImageUnitBehavior>),
     UnsignedImage3d(&'a texture::UnsignedTexture3d, Option<ImageUnitBehavior>),
     Image1dArray(&'a texture::Texture1dArray, Option<ImageUnitBehavior>),
-    IntegralImage1dArray(&'a texture::IntegralTexture1dArray, Option<ImageUnitBehavior>),
-    UnsignedImage1dArray(&'a texture::UnsignedTexture1dArray, Option<ImageUnitBehavior>),
+    IntegralImage1dArray(
+        &'a texture::IntegralTexture1dArray,
+        Option<ImageUnitBehavior>,
+    ),
+    UnsignedImage1dArray(
+        &'a texture::UnsignedTexture1dArray,
+        Option<ImageUnitBehavior>,
+    ),
     Image2dArray(&'a texture::Texture2dArray, Option<ImageUnitBehavior>),
-    IntegralImage2dArray(&'a texture::IntegralTexture2dArray, Option<ImageUnitBehavior>),
-    UnsignedImage2dArray(&'a texture::UnsignedTexture2dArray, Option<ImageUnitBehavior>),
+    IntegralImage2dArray(
+        &'a texture::IntegralTexture2dArray,
+        Option<ImageUnitBehavior>,
+    ),
+    UnsignedImage2dArray(
+        &'a texture::UnsignedTexture2dArray,
+        Option<ImageUnitBehavior>,
+    ),
     ImageCube(&'a texture::Cubemap, Option<ImageUnitBehavior>),
     IntegralImageCube(&'a texture::IntegralCubemap, Option<ImageUnitBehavior>),
     UnsignedImageCube(&'a texture::UnsignedCubemap, Option<ImageUnitBehavior>),
@@ -332,7 +397,9 @@ impl<'a> UniformValue<'a> {
             (&UniformValue::Texture1dArray(_, _), UniformType::Sampler1dArray) => true,
             (&UniformValue::CompressedTexture1dArray(_, _), UniformType::Sampler1dArray) => true,
             (&UniformValue::SrgbTexture1dArray(_, _), UniformType::Sampler1dArray) => true,
-            (&UniformValue::CompressedSrgbTexture1dArray(_, _), UniformType::Sampler1dArray) => true,
+            (&UniformValue::CompressedSrgbTexture1dArray(_, _), UniformType::Sampler1dArray) => {
+                true
+            }
             (&UniformValue::IntegralTexture1dArray(_, _), UniformType::ISampler1dArray) => true,
             (&UniformValue::UnsignedTexture1dArray(_, _), UniformType::USampler1dArray) => true,
             (&UniformValue::DepthTexture1dArray(_, _), UniformType::Sampler1dArray) => true,
@@ -340,7 +407,9 @@ impl<'a> UniformValue<'a> {
             (&UniformValue::Texture2dArray(_, _), UniformType::Sampler2dArray) => true,
             (&UniformValue::CompressedTexture2dArray(_, _), UniformType::Sampler2dArray) => true,
             (&UniformValue::SrgbTexture2dArray(_, _), UniformType::Sampler2dArray) => true,
-            (&UniformValue::CompressedSrgbTexture2dArray(_, _), UniformType::Sampler2dArray) => true,
+            (&UniformValue::CompressedSrgbTexture2dArray(_, _), UniformType::Sampler2dArray) => {
+                true
+            }
             (&UniformValue::IntegralTexture2dArray(_, _), UniformType::ISampler2dArray) => true,
             (&UniformValue::UnsignedTexture2dArray(_, _), UniformType::USampler2dArray) => true,
             (&UniformValue::DepthTexture2dArray(_, _), UniformType::Sampler2dArray) => true,
@@ -356,25 +425,37 @@ impl<'a> UniformValue<'a> {
             (&UniformValue::CubemapArray(_, _), UniformType::SamplerCubeArray) => true,
             (&UniformValue::CompressedCubemapArray(_, _), UniformType::SamplerCubeArray) => true,
             (&UniformValue::SrgbCubemapArray(_, _), UniformType::SamplerCubeArray) => true,
-            (&UniformValue::CompressedSrgbCubemapArray(_, _), UniformType::SamplerCubeArray) => true,
+            (&UniformValue::CompressedSrgbCubemapArray(_, _), UniformType::SamplerCubeArray) => {
+                true
+            }
             (&UniformValue::IntegralCubemapArray(_, _), UniformType::ISamplerCubeArray) => true,
             (&UniformValue::UnsignedCubemapArray(_, _), UniformType::USamplerCubeArray) => true,
             (&UniformValue::DepthCubemapArray(_, _), UniformType::SamplerCubeArray) => true,
             (&UniformValue::DepthCubemapArray(_, _), UniformType::SamplerCubeArrayShadow) => true,
             (&UniformValue::BufferTexture(tex), UniformType::SamplerBuffer) => {
                 tex.get_texture_type() == texture::buffer_texture::BufferTextureType::Float
-            },
+            }
             (&UniformValue::BufferTexture(tex), UniformType::ISamplerBuffer) => {
                 tex.get_texture_type() == texture::buffer_texture::BufferTextureType::Integral
-            },
+            }
             (&UniformValue::BufferTexture(tex), UniformType::USamplerBuffer) => {
                 tex.get_texture_type() == texture::buffer_texture::BufferTextureType::Unsigned
-            },
+            }
             (&UniformValue::Texture2dMultisample(..), UniformType::Sampler2dMultisample) => true,
-            (&UniformValue::SrgbTexture2dMultisample(..), UniformType::Sampler2dMultisample) => true,
-            (&UniformValue::IntegralTexture2dMultisample(..), UniformType::ISampler2dMultisample) => true,
-            (&UniformValue::UnsignedTexture2dMultisample(..), UniformType::USampler2dMultisample) => true,
-            (&UniformValue::DepthTexture2dMultisample(..), UniformType::Sampler2dMultisample) => true,
+            (&UniformValue::SrgbTexture2dMultisample(..), UniformType::Sampler2dMultisample) => {
+                true
+            }
+            (
+                &UniformValue::IntegralTexture2dMultisample(..),
+                UniformType::ISampler2dMultisample,
+            ) => true,
+            (
+                &UniformValue::UnsignedTexture2dMultisample(..),
+                UniformType::USampler2dMultisample,
+            ) => true,
+            (&UniformValue::DepthTexture2dMultisample(..), UniformType::Sampler2dMultisample) => {
+                true
+            }
             (&UniformValue::Image1d(..), UniformType::Image1d) => true,
             (&UniformValue::IntegralImage1d(..), UniformType::IImage1d) => true,
             (&UniformValue::UnsignedImage1d(..), UniformType::UImage1d) => true,
@@ -402,12 +483,17 @@ impl<'a> UniformValue<'a> {
 }
 
 macro_rules! impl_uniform_block_basic {
-    ($ty:ty, $uniform_ty:expr) => (
+    ($ty:ty, $uniform_ty:expr) => {
         impl UniformBlock for $ty {
-            fn matches(layout: &program::BlockLayout, base_offset: usize)
-                       -> Result<(), LayoutMismatchError>
-            {
-                if let &BlockLayout::BasicType { ty, offset_in_buffer } = layout {
+            fn matches(
+                layout: &program::BlockLayout,
+                base_offset: usize,
+            ) -> Result<(), LayoutMismatchError> {
+                if let &BlockLayout::BasicType {
+                    ty,
+                    offset_in_buffer,
+                } = layout
+                {
                     if ty != $uniform_ty {
                         return Err(LayoutMismatchError::TypeMismatch {
                             expected: ty,
@@ -423,14 +509,13 @@ macro_rules! impl_uniform_block_basic {
                     }
 
                     Ok(())
-
                 } else {
                     Err(LayoutMismatchError::LayoutMismatch {
                         expected: layout.clone(),
                         obtained: BlockLayout::BasicType {
                             ty: $uniform_ty,
                             offset_in_buffer: base_offset,
-                        }
+                        },
                     })
                 }
             }
@@ -443,7 +528,7 @@ macro_rules! impl_uniform_block_basic {
                 }
             }
         }
-    );
+    };
 }
 
 impl AsUniformValue for i8 {
