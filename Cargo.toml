@@ -1,20 +1,22 @@
 [package]
 name = "glium"
 version = "0.36.0"
-authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
+authors = ["Vinicius Donatto Morgado <34577818+viniciusmorgado@users.noreply.github.com>"]
 description = """
 Elegant and safe OpenGL wrapper.
 
-Glium is an intermediate layer between OpenGL and your application. You still need to manually handle
+SafeGL is an intermediate layer between OpenGL and your application. You still need to manually handle
 the graphics pipeline, but without having to use OpenGL's old and error-prone API.
 
-Its objectives:
+This project is a fork of glium, maintained by Oxidian Studios, a video game company, with the intent of using
+it to develop graphical tools for internal use.
 
- - Be safe to use. Many aspects of OpenGL that can trigger a crash if misused are automatically handled by glium.
- - Provide an API that enforces good pratices such as RAII or stateless function calls.
- - Be compatible with all OpenGL versions that support shaders, providing unified API when things diverge.
- - Avoid all OpenGL errors beforehand.
- - Produce optimized OpenGL function calls, and allow the user to easily use modern OpenGL techniques.
+Its objectives:
+    - Be safe to use. Many aspects of OpenGL that can trigger a crash if misused are automatically handled by SafeGL.
+    - Provide an API that enforces good practices such as RAII or stateless function calls.
+    - Be compatible with OpenGL 4.6 for modern desktops and OpenGL ES 3.0 for embedded devices.
+    - Avoid all OpenGL errors beforehand.
+    - Produce optimized OpenGL function calls, and allow the user to easily use modern OpenGL techniques.
 """
 keywords = ["opengl", "gamedev"]
 categories = ["api-bindings", "rendering::graphics-api"]
@@ -27,20 +29,20 @@ exclude = ["doc"]
 edition = "2021"
 
 [features]
-default = ["glutin_backend", "simple_window_builder", "glutin/default", "winit/default", "glutin-winit/default"]
+default = ["glutin_backend", "simple_window_builder", "glutin/default", "winit/rwh_06", "winit/x11", "winit/wayland", "winit/wayland-dlopen", "winit/wayland-csd-adwaita-notitle", "glutin-winit/default"]
 glutin_backend = ["glutin"]
 unstable = [] # used for benchmarks
 vk_interop = [] # used for texture import from Vulkan
 simple_window_builder = ["glutin", "glutin-winit", "winit", "raw-window-handle"] # used in the tutorial
 
 [dependencies.glutin]
-version = "0.32"
+version = "0.32.3"
 features = []
 optional = true
 default-features = false
 
 [dependencies.glutin-winit]
-version = "0.5"
+version = "0.5.0"
 features = []
 optional = true
 default-features = false
@@ -52,32 +54,171 @@ optional = true
 default-features = false
 
 [dependencies.raw-window-handle]
-version = "0.6"
+version = "0.6.2"
 features = []
 optional = true
 default-features = false
 
 [dependencies]
-memoffset = "0.9.0"
-backtrace = "0.3.2"
-smallvec = "1.0"
-fnv = "1.0.5"
+memoffset = "0.9.1"
+backtrace = "0.3.76"
+smallvec = "1.16.4"
+fnv = "1.0.7"
 
 [build-dependencies]
-gl_generator = "0.14"
+gl_generator = "0.14.0"
 
 [dev-dependencies]
-ouroboros = "0.18"
-cgmath = "0.18"
-genmesh = "0.6"
-image = "0.25"
-obj = { version = "0.10", features = ["genmesh"] }
-rand = "0.8"
-libc = "0.2.62"
-winit = "0.30"
-raw-window-handle = "0.6"
-glutin-winit = "0.5"
-takeable-option = "0.5"
+ouroboros = "0.18.5"
+nalgebra = "0.35.0"
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg"] }
+obj = "0.10.2"
+rand = "0.10.3"
+libc = "0.2.191"
+winit = { version = "0.30.13", default-features = false, features = ["rwh_06", "x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita-notitle"] }
+raw-window-handle = "0.6.2"
+glutin-winit = "0.5.0"
+takeable-option = "0.5.0"
 
 [package.metadata.docs.rs]
 all-features = true
+
+[[example]]
+name = "blitting"
+path = "examples/standalone/blitting.rs"
+
+[[example]]
+name = "compute_image"
+path = "examples/standalone/compute_image.rs"
+
+[[example]]
+name = "deferred"
+path = "examples/standalone/deferred.rs"
+
+[[example]]
+name = "displacement_mapping"
+path = "examples/standalone/displacement_mapping.rs"
+
+[[example]]
+name = "fullscreen"
+path = "examples/standalone/fullscreen.rs"
+
+[[example]]
+name = "fxaa"
+path = "examples/standalone/fxaa.rs"
+
+[[example]]
+name = "gpgpu"
+path = "examples/standalone/gpgpu.rs"
+
+[[example]]
+name = "image"
+path = "examples/standalone/image.rs"
+
+[[example]]
+name = "info"
+path = "examples/standalone/info.rs"
+
+[[example]]
+name = "instancing"
+path = "examples/standalone/instancing.rs"
+
+[[example]]
+name = "manual-creation"
+path = "examples/standalone/manual-creation.rs"
+
+[[example]]
+name = "multiple_windows"
+path = "examples/standalone/multiple_windows.rs"
+
+[[example]]
+name = "picking"
+path = "examples/standalone/picking.rs"
+
+[[example]]
+name = "screenshot-asynchronous"
+path = "examples/standalone/screenshot-asynchronous.rs"
+
+[[example]]
+name = "screenshot"
+path = "examples/standalone/screenshot.rs"
+
+[[example]]
+name = "shadow_mapping"
+path = "examples/standalone/shadow_mapping.rs"
+
+[[example]]
+name = "sprites-batching"
+path = "examples/standalone/sprites-batching.rs"
+
+[[example]]
+name = "subroutines"
+path = "examples/standalone/subroutines.rs"
+
+[[example]]
+name = "teapot"
+path = "examples/standalone/teapot.rs"
+
+[[example]]
+name = "tessellation"
+path = "examples/standalone/tessellation.rs"
+
+[[example]]
+name = "triangle"
+path = "examples/standalone/triangle.rs"
+
+[[example]]
+name = "tutorial-01"
+path = "examples/standalone/tutorial-01.rs"
+
+[[example]]
+name = "tutorial-02"
+path = "examples/standalone/tutorial-02.rs"
+
+[[example]]
+name = "tutorial-03"
+path = "examples/standalone/tutorial-03.rs"
+
+[[example]]
+name = "tutorial-04"
+path = "examples/standalone/tutorial-04.rs"
+
+[[example]]
+name = "tutorial-05"
+path = "examples/standalone/tutorial-05.rs"
+
+[[example]]
+name = "tutorial-06"
+path = "examples/standalone/tutorial-06.rs"
+
+[[example]]
+name = "tutorial-07"
+path = "examples/standalone/tutorial-07.rs"
+
+[[example]]
+name = "tutorial-08"
+path = "examples/standalone/tutorial-08.rs"
+
+[[example]]
+name = "tutorial-09"
+path = "examples/standalone/tutorial-09.rs"
+
+[[example]]
+name = "tutorial-10"
+path = "examples/standalone/tutorial-10.rs"
+
+[[example]]
+name = "tutorial-12"
+path = "examples/standalone/tutorial-12.rs"
+
+[[example]]
+name = "tutorial-13"
+path = "examples/standalone/tutorial-13.rs"
+
+[[example]]
+name = "tutorial-14"
+path = "examples/standalone/tutorial-14.rs"
+
+[[example]]
+name = "spirv"
+path = "examples/standalone/spirv/main.rs"

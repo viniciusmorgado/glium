@@ -51,7 +51,7 @@ impl ApplicationContext for Application {
                         vec3 color = (0.3 + 0.7 * lum) * vec3(1.0, 1.0, 1.0);
                         f_color = vec4(color, 1.0);
                     }
-                ",
+                "
             },
 
             110 => {
@@ -85,7 +85,7 @@ impl ApplicationContext for Application {
                         vec3 color = (0.3 + 0.7 * lum) * vec3(1.0, 1.0, 1.0);
                         gl_FragColor = vec4(color, 1.0);
                     }
-                ",
+                "
             },
 
             100 => {
@@ -119,7 +119,7 @@ impl ApplicationContext for Application {
                         lowp vec3 color = (0.3 + 0.7 * lum) * vec3(1.0, 1.0, 1.0);
                         gl_FragColor = vec4(color, 1.0);
                     }
-                ",
+                "
             },
         )
         .unwrap();
