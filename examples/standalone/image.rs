@@ -30,7 +30,7 @@ impl ApplicationContext for Application {
     fn new(display: &Display<WindowSurface>) -> Self {
         // building a texture with "OpenGL" drawn on it
         let image = image::load(
-            Cursor::new(&include_bytes!("../tests/fixture/opengl.png")[..]),
+            Cursor::new(&include_bytes!("../../tests/fixture/opengl.png")[..]),
             image::ImageFormat::Png,
         )
         .unwrap()
@@ -117,7 +117,7 @@ impl ApplicationContext for Application {
                     void main() {
                         gl_FragColor = texture2D(tex, v_tex_coords);
                     }
-                ",
+                "
             },
 
             100 => {
@@ -140,7 +140,7 @@ impl ApplicationContext for Application {
                     void main() {
                         gl_FragColor = texture2D(tex, v_tex_coords);
                     }
-                ",
+                "
             },
         )
         .unwrap();

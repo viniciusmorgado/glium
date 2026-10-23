@@ -211,7 +211,7 @@ impl ApplicationContext for Application {
                         void main() {
                             gl_FragColor = vec4(vColor, 1.0);
                         }
-                    ",
+                    "
                 },
             )
             .unwrap(),

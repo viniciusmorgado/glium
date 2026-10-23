@@ -29,7 +29,7 @@ exclude = ["doc"]
 edition = "2021"
 
 [features]
-default = ["glutin_backend", "simple_window_builder", "glutin/default", "winit/default", "glutin-winit/default"]
+default = ["glutin_backend", "simple_window_builder", "glutin/default", "winit/rwh_06", "winit/x11", "winit/wayland", "winit/wayland-dlopen", "winit/wayland-csd-adwaita-notitle", "glutin-winit/default"]
 glutin_backend = ["glutin"]
 unstable = [] # used for benchmarks
 vk_interop = [] # used for texture import from Vulkan
@@ -71,15 +71,154 @@ gl_generator = "0.14.0"
 [dev-dependencies]
 ouroboros = "0.18.5"
 nalgebra = "0.35.0"
-genmesh = "0.6.2"
-image = "0.25.10"
-obj = { version = "0.10.2", features = ["genmesh"] }
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg"] }
+obj = "0.10.2"
 rand = "0.10.3"
 libc = "0.2.191"
-winit = "0.30.13"
+winit = { version = "0.30.13", default-features = false, features = ["rwh_06", "x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita-notitle"] }
 raw-window-handle = "0.6.2"
 glutin-winit = "0.5.0"
 takeable-option = "0.5.0"
 
 [package.metadata.docs.rs]
 all-features = true
+
+[[example]]
+name = "blitting"
+path = "examples/standalone/blitting.rs"
+
+[[example]]
+name = "compute_image"
+path = "examples/standalone/compute_image.rs"
+
+[[example]]
+name = "deferred"
+path = "examples/standalone/deferred.rs"
+
+[[example]]
+name = "displacement_mapping"
+path = "examples/standalone/displacement_mapping.rs"
+
+[[example]]
+name = "fullscreen"
+path = "examples/standalone/fullscreen.rs"
+
+[[example]]
+name = "fxaa"
+path = "examples/standalone/fxaa.rs"
+
+[[example]]
+name = "gpgpu"
+path = "examples/standalone/gpgpu.rs"
+
+[[example]]
+name = "image"
+path = "examples/standalone/image.rs"
+
+[[example]]
+name = "info"
+path = "examples/standalone/info.rs"
+
+[[example]]
+name = "instancing"
+path = "examples/standalone/instancing.rs"
+
+[[example]]
+name = "manual-creation"
+path = "examples/standalone/manual-creation.rs"
+
+[[example]]
+name = "multiple_windows"
+path = "examples/standalone/multiple_windows.rs"
+
+[[example]]
+name = "picking"
+path = "examples/standalone/picking.rs"
+
+[[example]]
+name = "screenshot-asynchronous"
+path = "examples/standalone/screenshot-asynchronous.rs"
+
+[[example]]
+name = "screenshot"
+path = "examples/standalone/screenshot.rs"
+
+[[example]]
+name = "shadow_mapping"
+path = "examples/standalone/shadow_mapping.rs"
+
+[[example]]
+name = "sprites-batching"
+path = "examples/standalone/sprites-batching.rs"
+
+[[example]]
+name = "subroutines"
+path = "examples/standalone/subroutines.rs"
+
+[[example]]
+name = "teapot"
+path = "examples/standalone/teapot.rs"
+
+[[example]]
+name = "tessellation"
+path = "examples/standalone/tessellation.rs"
+
+[[example]]
+name = "triangle"
+path = "examples/standalone/triangle.rs"
+
+[[example]]
+name = "tutorial-01"
+path = "examples/standalone/tutorial-01.rs"
+
+[[example]]
+name = "tutorial-02"
+path = "examples/standalone/tutorial-02.rs"
+
+[[example]]
+name = "tutorial-03"
+path = "examples/standalone/tutorial-03.rs"
+
+[[example]]
+name = "tutorial-04"
+path = "examples/standalone/tutorial-04.rs"
+
+[[example]]
+name = "tutorial-05"
+path = "examples/standalone/tutorial-05.rs"
+
+[[example]]
+name = "tutorial-06"
+path = "examples/standalone/tutorial-06.rs"
+
+[[example]]
+name = "tutorial-07"
+path = "examples/standalone/tutorial-07.rs"
+
+[[example]]
+name = "tutorial-08"
+path = "examples/standalone/tutorial-08.rs"
+
+[[example]]
+name = "tutorial-09"
+path = "examples/standalone/tutorial-09.rs"
+
+[[example]]
+name = "tutorial-10"
+path = "examples/standalone/tutorial-10.rs"
+
+[[example]]
+name = "tutorial-12"
+path = "examples/standalone/tutorial-12.rs"
+
+[[example]]
+name = "tutorial-13"
+path = "examples/standalone/tutorial-13.rs"
+
+[[example]]
+name = "tutorial-14"
+path = "examples/standalone/tutorial-14.rs"
+
+[[example]]
+name = "spirv"
+path = "examples/standalone/spirv/main.rs"

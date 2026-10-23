@@ -2,7 +2,7 @@
 extern crate glium;
 use glium::Surface;
 
-#[path = "../book/tuto-07-teapot.rs"]
+#[path = "../../book/tuto-07-teapot.rs"]
 mod teapot;
 
 fn main() {

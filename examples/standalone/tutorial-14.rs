@@ -48,7 +48,7 @@ fn main() {
     .unwrap();
 
     let image = image::load(
-        std::io::Cursor::new(&include_bytes!("../book/resources/tuto-14-diffuse.jpg")),
+        std::io::Cursor::new(&include_bytes!("../../book/resources/tuto-14-diffuse.jpg")),
         image::ImageFormat::Jpeg,
     )
     .unwrap()
@@ -59,7 +59,7 @@ fn main() {
     let diffuse_texture = glium::texture::Texture2d::new(&display, image).unwrap();
 
     let image = image::load(
-        std::io::Cursor::new(&include_bytes!("../book/resources/tuto-14-normal.png")),
+        std::io::Cursor::new(&include_bytes!("../../book/resources/tuto-14-normal.png")),
         image::ImageFormat::Png,
     )
     .unwrap()

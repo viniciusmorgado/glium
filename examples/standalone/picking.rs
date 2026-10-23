@@ -75,7 +75,7 @@ impl ApplicationContext for Application {
                         vec3 color = (0.3 + 0.7 * lum) * v_color;
                         f_color = vec4(color, 1.0);
                     }
-                ",
+                "
             },
         ).unwrap();
 
@@ -110,7 +110,7 @@ impl ApplicationContext for Application {
                     void main() {
                         f_id = v_id;
                     }
-                ",
+                "
             },
         ).unwrap();
 
@@ -225,9 +225,9 @@ impl ApplicationContext for Application {
                     .0
                     .get_height()
                     .unwrap(),
-            ) != target.get_dimensions()
+            ) != target_dimensions
         {
-            let (width, height) = target.get_dimensions();
+            let (width, height) = target_dimensions;
             self.picking_attachments = Some((
                 glium::texture::UnsignedTexture2d::empty_with_format(
                     display,

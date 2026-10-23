@@ -2,52 +2,92 @@
 extern crate glium;
 use glium::Surface;
 
-#[path = "../book/tuto-07-teapot.rs"]
-mod teapot;
-
 fn main() {
     let event_loop = glium::winit::event_loop::EventLoop::builder()
         .build()
         .expect("event loop building");
     let (window, display) = glium::backend::glutin::SimpleWindowBuilder::new()
-        .with_title("Glium tutorial #7")
+        .with_title("Glium tutorial #6")
         .build(&event_loop);
 
-    let positions = glium::VertexBuffer::new(&display, &teapot::VERTICES).unwrap();
-    let normals = glium::VertexBuffer::new(&display, &teapot::NORMALS).unwrap();
-    let indices = glium::IndexBuffer::new(
-        &display,
-        glium::index::PrimitiveType::TrianglesList,
-        &teapot::INDICES,
+    let image = image::load(
+        std::io::Cursor::new(&include_bytes!("../../tests/fixture/opengl.png")),
+        image::ImageFormat::Png,
     )
-    .unwrap();
+    .unwrap()
+    .to_rgba8();
+    let image_dimensions = image.dimensions();
+    let image =
+        glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+    let texture = glium::Texture2d::new(&display, image).unwrap();
+
+    #[derive(Copy, Clone)]
+    struct Vertex {
+        position: [f32; 2],
+        tex_coords: [f32; 2],
+    }
+    implement_vertex!(Vertex, position, tex_coords);
+    // We've changed our shape to a rectangle so the image isn't distorted.
+    let shape = vec![
+        Vertex {
+            position: [-0.5, -0.5],
+            tex_coords: [0.0, 0.0],
+        },
+        Vertex {
+            position: [0.5, -0.5],
+            tex_coords: [1.0, 0.0],
+        },
+        Vertex {
+            position: [0.5, 0.5],
+            tex_coords: [1.0, 1.0],
+        },
+        Vertex {
+            position: [0.5, 0.5],
+            tex_coords: [1.0, 1.0],
+        },
+        Vertex {
+            position: [-0.5, 0.5],
+            tex_coords: [0.0, 1.0],
+        },
+        Vertex {
+            position: [-0.5, -0.5],
+            tex_coords: [0.0, 0.0],
+        },
+    ];
+    let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+    let vertex_buffer = glium::VertexBuffer::new(&display, &shape).unwrap();
 
     let vertex_shader_src = r#"
         #version 140
 
-        in vec3 position;
-        in vec3 normal;
+        in vec2 position;
+        in vec2 tex_coords;
+        out vec2 v_tex_coords;
 
         uniform mat4 matrix;
 
         void main() {
-            gl_Position = matrix * vec4(position, 1.0);
+            v_tex_coords = tex_coords;
+            gl_Position = matrix * vec4(position, 0.0, 1.0);
         }
     "#;
-
     let fragment_shader_src = r#"
         #version 140
 
+        in vec2 v_tex_coords;
         out vec4 color;
 
+        uniform sampler2D tex;
+
         void main() {
-            color = vec4(1.0, 0.0, 0.0, 1.0);
+            color = texture(tex, v_tex_coords);
         }
     "#;
-
     let program =
         glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None)
             .unwrap();
+
+    let mut t: f32 = 0.0;
 
     #[allow(deprecated)]
     event_loop
@@ -59,22 +99,29 @@ fn main() {
                     }
                     // We now need to render everyting in response to a RedrawRequested event due to the animation
                     glium::winit::event::WindowEvent::RedrawRequested => {
+                        // we update `t`
+                        t += 0.02;
+                        let x = t.sin() * 0.5;
+
                         let mut target = display.draw();
                         target.clear_color(0.0, 0.0, 1.0, 1.0);
 
-                        let matrix = [
-                            [0.01, 0.0, 0.0, 0.0],
-                            [0.0, 0.01, 0.0, 0.0],
-                            [0.0, 0.0, 0.01, 0.0],
-                            [0.0, 0.0, 0.0, 1.0f32],
-                        ];
+                        let uniforms = uniform! {
+                            matrix: [
+                                [1.0, 0.0, 0.0, 0.0],
+                                [0.0, 1.0, 0.0, 0.0],
+                                [0.0, 0.0, 1.0, 0.0],
+                                [ x , 0.0, 0.0, 1.0f32],
+                            ],
+                            tex: &texture,
+                        };
 
                         target
                             .draw(
-                                (&positions, &normals),
+                                &vertex_buffer,
                                 &indices,
                                 &program,
-                                &uniform! { matrix: matrix },
+                                &uniforms,
                                 &Default::default(),
                             )
                             .unwrap();

@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate glium;
 
-use cgmath::SquareMatrix;
 use glium::winit::keyboard::{KeyCode, PhysicalKey};
 use glium::{texture::DepthTexture2d, Display, IndexBuffer, Program, Surface, VertexBuffer};
 use glutin::surface::WindowSurface;
@@ -149,24 +148,24 @@ implement_vertex!(Vertex, position, normal);
 
 #[derive(Clone, Debug)]
 struct ModelData {
-    model_matrix: cgmath::Matrix4<f32>,
-    depth_mvp: cgmath::Matrix4<f32>,
+    model_matrix: nalgebra::Matrix4<f32>,
+    depth_mvp: nalgebra::Matrix4<f32>,
     color: [f32; 4],
 }
 impl ModelData {
     pub fn color(c: [f32; 3]) -> Self {
         Self {
-            model_matrix: cgmath::Matrix4::identity(),
-            depth_mvp: cgmath::Matrix4::identity(),
+            model_matrix: nalgebra::Matrix4::identity(),
+            depth_mvp: nalgebra::Matrix4::identity(),
             color: [c[0], c[1], c[2], 1.0],
         }
     }
     pub fn scale(mut self, s: f32) -> Self {
-        self.model_matrix = self.model_matrix * cgmath::Matrix4::from_scale(s);
+        self.model_matrix = self.model_matrix * nalgebra::Matrix4::new_scaling(s);
         self
     }
     pub fn translate(mut self, t: [f32; 3]) -> Self {
-        self.model_matrix = self.model_matrix * cgmath::Matrix4::from_translation(t.into());
+        self.model_matrix = self.model_matrix * nalgebra::Matrix4::new_translation(&nalgebra::Vector3::from(t));
         self
     }
 }
@@ -408,12 +407,12 @@ impl ApplicationContext for Application {
         {
             // Orthographic projection used to demostrate a far-away light source
             let w = 4.0;
-            let depth_projection_matrix: cgmath::Matrix4<f32> =
-                cgmath::ortho(-w, w, -w, w, -10.0, 20.0);
-            let view_center: cgmath::Point3<f32> = cgmath::Point3::new(0.0, 0.0, 0.0);
-            let view_up: cgmath::Vector3<f32> = cgmath::Vector3::new(0.0, 1.0, 0.0);
+            let depth_projection_matrix: nalgebra::Matrix4<f32> =
+                nalgebra::Matrix4::new_orthographic(-w, w, -w, w, -10.0, 20.0);
+            let view_center: nalgebra::Point3<f32> = nalgebra::Point3::new(0.0, 0.0, 0.0);
+            let view_up: nalgebra::Vector3<f32> = nalgebra::Vector3::new(0.0, 1.0, 0.0);
             let depth_view_matrix =
-                cgmath::Matrix4::look_at_rh(light_loc.into(), view_center, view_up);
+                nalgebra::Matrix4::look_at_rh(&nalgebra::Point3::from(light_loc), &view_center, &view_up);
 
             let mut draw_params: glium::draw_parameters::DrawParameters<'_> = Default::default();
             draw_params.depth = glium::Depth {
@@ -455,18 +454,18 @@ impl ApplicationContext for Application {
         // ===============================================================================
         let (width, height) = display.get_framebuffer_dimensions();
         let screen_ratio = (width / height) as f32;
-        let perspective_matrix: cgmath::Matrix4<f32> =
-            cgmath::perspective(cgmath::Deg(45.0), screen_ratio, 0.0001, 100.0);
+        let perspective_matrix: nalgebra::Matrix4<f32> =
+            nalgebra::Matrix4::new_perspective(screen_ratio, 45.0_f32.to_radians(), 0.0001, 100.0);
         let camera_x = 3.0 * self.camera_t.cos();
         let camera_z = 3.0 * self.camera_t.sin();
-        let view_eye: cgmath::Point3<f32> =
-            cgmath::Point3::new(camera_x as f32, 2.0, camera_z as f32);
-        let view_center: cgmath::Point3<f32> = cgmath::Point3::new(0.0, 0.0, 0.0);
-        let view_up: cgmath::Vector3<f32> = cgmath::Vector3::new(0.0, 1.0, 0.0);
-        let view_matrix: cgmath::Matrix4<f32> =
-            cgmath::Matrix4::look_at_rh(view_eye, view_center, view_up);
+        let view_eye: nalgebra::Point3<f32> =
+            nalgebra::Point3::new(camera_x as f32, 2.0, camera_z as f32);
+        let view_center: nalgebra::Point3<f32> = nalgebra::Point3::new(0.0, 0.0, 0.0);
+        let view_up: nalgebra::Vector3<f32> = nalgebra::Vector3::new(0.0, 1.0, 0.0);
+        let view_matrix: nalgebra::Matrix4<f32> =
+            nalgebra::Matrix4::look_at_rh(&view_eye, &view_center, &view_up);
 
-        let bias_matrix: cgmath::Matrix4<f32> = [
+        let bias_matrix: nalgebra::Matrix4<f32> = [
             [0.5, 0.0, 0.0, 0.0],
             [0.0, 0.5, 0.0, 0.0],
             [0.0, 0.0, 0.5, 0.0],
