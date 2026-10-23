@@ -3,8 +3,9 @@
 [![Build Status](https://github.com/glium/glium/actions/workflows/ci.yml/badge.svg)](https://github.com/glium/glium/actions/workflows/ci.yml)
 [![Coverage Status](https://coveralls.io/repos/tomaka/glium/badge.svg?branch=master&service=github)](https://coveralls.io/github/tomaka/glium?branch=master)
 [![crates.io page](https://img.shields.io/crates/v/glium.svg)](https://crates.io/crates/glium)
+[![Dependency status](https://deps.rs/repo/github/viniciusmorgado/safegl/status.svg)](https://deps.rs/repo/github/viniciusmorgado/safegl)
 
-SafeGL - A safe OpenGL wrapper for
+Elegant and safe OpenGL wrapper.
 
 SafeGL is an intermediate layer between OpenGL and your application. You still need to manage the
 graphics pipeline yourself, but you don't have to deal with OpenGL's old, error-prone API or with
@@ -22,34 +23,66 @@ maintenance by the surrounding community has slowed down over time.
 
 If you want to understand how we ended up here, check the links below:
 - [Glium post-mortem](https://users.rust-lang.org/t/glium-post-mortem/7063)
+- [Reword "Note to current and future Glium users"? (glium/glium#1912)](https://github.com/glium/glium/issues/1912)
 - [Original glium repo](https://github.com/glium/glium)
 
-### Note on OpenGL versions
+## Objectives
 
-Glium, SafeGL's predecessor, supports a wide range of OpenGL versions. SafeGL narrows that scope
-to three tiers:
+- **Be safe to use.** Misuse of the OpenGL API that could cause crashes or undefined behavior is
+  prevented by the type system or validated before reaching the driver.
+- **Enforce good practices** such as RAII and stateless function calls.
+- **Support a small set of well-established OpenGL feature tiers**, selected with Cargo features,
+  instead of the whole of OpenGL.
+- **Produce optimized OpenGL function calls**, and make modern OpenGL techniques easy to use.
 
-| Platform                    | Target             |
-|-----------------------------|--------------------|
-| Windows and Linux desktops  | **OpenGL 4.6**     |
-| macOS                       | **OpenGL 4.1**     |
-| Embedded devices            | **OpenGL ES 3.0**  |
+SafeGL validates how you use OpenGL, but it cannot detect or work around bugs in the drivers
+themselves.
 
-> [!NOTE]
-> OpenGL 4.2+ features are excluded at compile time on macOS, so using them there is a compile
-> error rather than a runtime failure.
+## OpenGL feature tiers
+
+Glium, SafeGL's predecessor, tries to expose the whole of OpenGL across a wide range of versions.
+SafeGL deliberately supports only a small set of well-established feature tiers, selected with
+Cargo features. Each tier includes everything in the tiers below it.
+
+| Feature  | API level                                     | Typical targets                                                                                |
+|----------|-----------------------------------------------|------------------------------------------------------------------------------------------------|
+| `gl46`   | Desktop OpenGL 4.6 core (**default**)         | Windows and Linux with current NVIDIA, AMD, Intel or Mesa drivers; Asahi Linux on Apple M1/M2   |
+| `gl41`   | Desktop OpenGL 4.1 core                       | macOS (Intel and Apple Silicon), older GPUs, most virtual machines and software renderers       |
+| `gles30` | Common subset of OpenGL ES 3.0 and OpenGL 4.1 | Embedded Linux (e.g. Raspberry Pi 4/5) and other OpenGL ES 3.0-class devices                     |
+
+APIs above the selected tier do not exist in the compiled crate, so using them is a compile error,
+not a runtime failure.
+
+`gl46` is enabled by default:
 
 ```toml
 [dependencies]
 safegl = "0.36.0"
 ```
 
-Its objectives:
- - Be safe to use. Many aspects of OpenGL that can trigger a crash if misused are automatically handled by SafeGL.
- - Provide an API that enforces good practices such as RAII or stateless function calls.
- - Be compatible with OpenGL 4.6 for modern desktops and OpenGL ES 3.0 for embedded devices.
- - Avoid all OpenGL errors beforehand.
- - Produce optimized OpenGL function calls, and allow the user to easily use modern OpenGL techniques.
+To select a lower tier, disable the default features:
+
+```toml
+[dependencies]
+safegl = { version = "0.36.0", default-features = false, features = ["gl41", "glutin_backend", "glutin/default"] }
+```
+
+### Platform notes
+
+- **macOS** stops at OpenGL 4.1, and Apple has deprecated OpenGL since macOS 10.14. Enabling `gl46`
+  on macOS is a compile error; use `gl41`.
+- **Asahi Linux** on Apple M1/M2 ships a conformant OpenGL 4.6 driver, so the same hardware that is
+  limited to `gl41` under macOS can use `gl46` under Linux.
+- **Raspberry Pi 4/5** and similar boards expose OpenGL ES 3.1 but only desktop OpenGL 3.1; use
+  `gles30`.
+- **Virtual machines and software renderers** (VirtualBox, VMware, Mesa llvmpipe) usually expose
+  OpenGL 4.1–4.5; use `gl41`.
+- **Windows without a vendor driver** (Microsoft's basic display driver, some Remote Desktop
+  sessions) only provides OpenGL 1.1 and is not supported by any tier.
+
+> [!NOTE]
+> A tier describes which APIs SafeGL compiles in. It does not guarantee that the driver on a given
+> machine actually provides that version.
 
 ## Why SafeGL matters for Oxidian
 

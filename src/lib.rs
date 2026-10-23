@@ -107,6 +107,13 @@ result to the user.
     clippy::wrong_self_convention,
 )]
 
+// macOS stops at OpenGL 4.1, so the 4.6 tier must never be compiled there.
+#[cfg(all(target_os = "macos", feature = "gl46"))]
+compile_error!(
+    "SafeGL: the `gl46` feature is not available on macOS, which supports OpenGL 4.1 at most. \
+     Use `default-features = false` and enable the `gl41` feature instead."
+);
+
 #[cfg(feature = "glutin")]
 pub use crate::backend::glutin::glutin;
 #[cfg(feature = "simple_window_builder")]
