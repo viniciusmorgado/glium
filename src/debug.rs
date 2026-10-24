@@ -7,8 +7,8 @@ use crate::backend::Facade;
 use crate::context::Context;
 use crate::gl;
 use crate::version::Api;
-use crate::version::Version;
 use crate::ContextExt;
+use glow::HasContext;
 use std::rc::Rc;
 
 pub use crate::context::DebugCallbackBehavior;
@@ -119,7 +119,7 @@ pub enum MessageType {
 ///
 pub struct TimestampQuery {
     context: Rc<Context>,
-    id: gl::types::GLuint,
+    id: glow::Query,
 }
 
 impl TimestampQuery {
@@ -130,22 +130,12 @@ impl TimestampQuery {
     {
         let ctxt = facade.get_context().make_current();
 
-        let id = if ctxt.version >= &Version(Api::Gl, 3, 2) {
-            // TODO: extension
+        // glow picks `glQueryCounter` or `glQueryCounterEXT` depending on which is loaded
+        let id = if ctxt.version.0 == Api::Gl || ctxt.extensions.gl_ext_disjoint_timer_query {
             unsafe {
-                let mut id = 0;
-                ctxt.gl.GenQueries(1, &mut id);
+                let id = ctxt.glow.create_query().expect("glGenQueries failed");
 
-                ctxt.gl.QueryCounter(id, gl::TIMESTAMP);
-
-                Some(id)
-            }
-        } else if ctxt.extensions.gl_ext_disjoint_timer_query {
-            unsafe {
-                let mut id = 0;
-                ctxt.gl.GenQueriesEXT(1, &mut id);
-
-                ctxt.gl.QueryCounterEXT(id, gl::TIMESTAMP);
+                ctxt.glow.query_counter(id, glow::TIMESTAMP);
 
                 Some(id)
             }
@@ -166,20 +156,11 @@ impl TimestampQuery {
     pub fn is_ready(&self) -> bool {
         let ctxt = self.context.make_current();
 
-        if ctxt.version >= &Version(Api::Gl, 3, 2) {
-            // TODO: extension
+        if ctxt.version.0 == Api::Gl || ctxt.extensions.gl_ext_disjoint_timer_query {
             unsafe {
-                let mut value = 0;
-                ctxt.gl
-                    .GetQueryObjectiv(self.id, gl::QUERY_RESULT_AVAILABLE, &mut value);
-                value != 0
-            }
-        } else if ctxt.extensions.gl_ext_disjoint_timer_query {
-            unsafe {
-                let mut value = 0;
-                ctxt.gl
-                    .GetQueryObjectivEXT(self.id, gl::QUERY_RESULT_AVAILABLE_EXT, &mut value);
-                value != 0
+                ctxt.glow
+                    .get_query_parameter_u32(self.id, glow::QUERY_RESULT_AVAILABLE)
+                    != 0
             }
         } else {
             unreachable!();
@@ -192,21 +173,12 @@ impl TimestampQuery {
     pub fn get(self) -> u64 {
         let ctxt = self.context.make_current();
 
-        if ctxt.version >= &Version(Api::Gl, 3, 2) {
-            // TODO: extension
+        if ctxt.version.0 == Api::Gl || ctxt.extensions.gl_ext_disjoint_timer_query {
             unsafe {
-                let mut value = 0;
-                ctxt.gl
-                    .GetQueryObjectui64v(self.id, gl::QUERY_RESULT, &mut value);
-                ctxt.gl.DeleteQueries(1, [self.id].as_ptr());
-                value
-            }
-        } else if ctxt.extensions.gl_ext_disjoint_timer_query {
-            unsafe {
-                let mut value = 0;
-                ctxt.gl
-                    .GetQueryObjectui64vEXT(self.id, gl::QUERY_RESULT_EXT, &mut value);
-                ctxt.gl.DeleteQueriesEXT(1, [self.id].as_ptr());
+                let value = ctxt
+                    .glow
+                    .get_query_parameter_u64(self.id, glow::QUERY_RESULT);
+                ctxt.glow.delete_query(self.id);
                 value
             }
         } else {

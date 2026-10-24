@@ -45,6 +45,40 @@ jobs:
           RUSTFLAGS: -D warnings
         run: |
           cargo doc --all --all-features
+  targets:
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            features: gl41,glutin_backend,glutin/default
+          - os: ubuntu-latest
+            target: wasm32-unknown-unknown
+            features: webgl
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@master
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+
+      - name: Check the tier for the target
+        env:
+          RUSTFLAGS: -D warnings
+        run: |
+          cargo check --target ${{ matrix.target }} --no-default-features --features ${{ matrix.features }}
+
+      - name: Build the WebGL example
+        if: matrix.target == 'wasm32-unknown-unknown'
+        run: |
+          cargo build --manifest-path examples/web/Cargo.toml --target wasm32-unknown-unknown
   book:
     runs-on: ubuntu-latest
     steps:

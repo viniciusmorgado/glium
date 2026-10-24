@@ -1,72 +1,62 @@
 use crate::DrawError;
 
-use crate::uniforms::SamplerBehavior;
+use crate::uniforms::{SamplerBehavior, SamplerWrapFunction};
+use crate::version::{Api, Version};
 
 use crate::context::CommandContext;
 use crate::gl;
-use crate::version::Api;
-use crate::version::Version;
 use crate::GlObject;
 use crate::ToGlEnum;
+use glow::HasContext;
 
 /// An OpenGL sampler object.
 pub struct SamplerObject {
-    id: gl::types::GLuint,
+    id: glow::Sampler,
     destroyed: bool,
 }
 
 impl SamplerObject {
     /// Builds a new sampler object.
     pub fn new(ctxt: &mut CommandContext<'_>, behavior: &SamplerBehavior) -> SamplerObject {
-        // making sure that the backend supports samplers
-        assert!(
-            ctxt.version >= &Version(Api::Gl, 3, 2)
-                || ctxt.version >= &Version(Api::GlEs, 3, 0)
-                || ctxt.extensions.gl_arb_sampler_objects
-        );
-
-        let sampler = unsafe {
-            let mut sampler: gl::types::GLuint = 0;
-            ctxt.gl.GenSamplers(1, &mut sampler);
-            sampler
-        };
+        // sampler objects are core in OpenGL 3.3 and OpenGL ES 3.0
+        let sampler = unsafe { ctxt.glow.create_sampler().expect("glGenSamplers failed") };
 
         unsafe {
-            ctxt.gl.SamplerParameteri(
+            ctxt.glow.sampler_parameter_i32(
                 sampler,
-                gl::TEXTURE_WRAP_S,
-                behavior.wrap_function.0.to_glenum() as gl::types::GLint,
+                glow::TEXTURE_WRAP_S,
+                wrap_mode(ctxt, behavior.wrap_function.0) as gl::types::GLint,
             );
-            ctxt.gl.SamplerParameteri(
+            ctxt.glow.sampler_parameter_i32(
                 sampler,
-                gl::TEXTURE_WRAP_T,
-                behavior.wrap_function.1.to_glenum() as gl::types::GLint,
+                glow::TEXTURE_WRAP_T,
+                wrap_mode(ctxt, behavior.wrap_function.1) as gl::types::GLint,
             );
-            ctxt.gl.SamplerParameteri(
+            ctxt.glow.sampler_parameter_i32(
                 sampler,
-                gl::TEXTURE_WRAP_R,
-                behavior.wrap_function.2.to_glenum() as gl::types::GLint,
+                glow::TEXTURE_WRAP_R,
+                wrap_mode(ctxt, behavior.wrap_function.2) as gl::types::GLint,
             );
-            ctxt.gl.SamplerParameteri(
+            ctxt.glow.sampler_parameter_i32(
                 sampler,
-                gl::TEXTURE_MIN_FILTER,
+                glow::TEXTURE_MIN_FILTER,
                 behavior.minify_filter.to_glenum() as gl::types::GLint,
             );
-            ctxt.gl.SamplerParameteri(
+            ctxt.glow.sampler_parameter_i32(
                 sampler,
-                gl::TEXTURE_MAG_FILTER,
+                glow::TEXTURE_MAG_FILTER,
                 behavior.magnify_filter.to_glenum() as gl::types::GLint,
             );
 
             if let Some(dtc) = behavior.depth_texture_comparison {
-                ctxt.gl.SamplerParameteri(
+                ctxt.glow.sampler_parameter_i32(
                     sampler,
-                    gl::TEXTURE_COMPARE_MODE,
+                    glow::TEXTURE_COMPARE_MODE,
                     gl::COMPARE_R_TO_TEXTURE as gl::types::GLint,
                 );
-                ctxt.gl.SamplerParameteri(
+                ctxt.glow.sampler_parameter_i32(
                     sampler,
-                    gl::TEXTURE_COMPARE_FUNC,
+                    glow::TEXTURE_COMPARE_FUNC,
                     dtc.to_glenum() as gl::types::GLint,
                 );
             }
@@ -78,8 +68,8 @@ impl SamplerObject {
                     behavior.max_anisotropy as f32
                 };
 
-                ctxt.gl
-                    .SamplerParameterf(sampler, gl::TEXTURE_MAX_ANISOTROPY_EXT, value);
+                ctxt.glow
+                    .sampler_parameter_f32(sampler, glow::TEXTURE_MAX_ANISOTROPY_EXT, value);
             }
         }
 
@@ -95,16 +85,16 @@ impl SamplerObject {
         self.destroyed = true;
 
         unsafe {
-            ctxt.gl.DeleteSamplers(1, [self.id].as_ptr());
+            ctxt.glow.delete_sampler(self.id);
         }
     }
 }
 
 impl GlObject for SamplerObject {
-    type Id = gl::types::GLuint;
+    type Id = glow::Sampler;
 
     #[inline]
-    fn get_id(&self) -> gl::types::GLuint {
+    fn get_id(&self) -> glow::Sampler {
         self.id
     }
 }
@@ -116,17 +106,38 @@ impl Drop for SamplerObject {
     }
 }
 
+/// Returns the OpenGL wrap mode of `function`.
+///
+/// Like the anisotropy, which is clamped to the maximum the backend supports, a wrap function
+/// that OpenGL ES (or WebGL) doesn't support falls back to the closest supported one,
+/// `GL_CLAMP_TO_EDGE`, instead of failing.
+fn wrap_mode(ctxt: &CommandContext<'_>, function: SamplerWrapFunction) -> gl::types::GLenum {
+    let supported = ctxt.version.0 == Api::Gl
+        || match function {
+            SamplerWrapFunction::BorderClamp => {
+                ctxt.version >= &Version(Api::GlEs, 3, 2)
+                    || ctxt.extensions.gl_ext_texture_border_clamp
+                    || ctxt.extensions.gl_oes_texture_border_clamp
+            }
+            SamplerWrapFunction::MirrorClamp => ctxt.extensions.gl_ext_texture_mirror_clamp_to_edge,
+            SamplerWrapFunction::Repeat
+            | SamplerWrapFunction::Mirror
+            | SamplerWrapFunction::Clamp => true,
+        };
+
+    if supported {
+        function.to_glenum()
+    } else {
+        gl::CLAMP_TO_EDGE
+    }
+}
+
 /// Returns the sampler corresponding to the given behavior, or a draw error if
 /// samplers are not supported.
 pub fn get_sampler(
     ctxt: &mut CommandContext<'_>,
     behavior: &SamplerBehavior,
-) -> Result<gl::types::GLuint, DrawError> {
-    // checking for compatibility
-    if ctxt.version < &Version(Api::Gl, 3, 2) && !ctxt.extensions.gl_arb_sampler_objects {
-        return Err(DrawError::SamplersNotSupported);
-    }
-
+) -> Result<glow::Sampler, DrawError> {
     // looking for an existing sampler
     if let Some(obj) = ctxt.samplers.get(behavior) {
         return Ok(obj.get_id());

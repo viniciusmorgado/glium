@@ -77,7 +77,7 @@ impl GliumEventLoop for winit::event_loop::ActiveEventLoop {
 pub struct SimpleWindowBuilder {
     attributes: WindowAttributes,
     config_template_builder: ConfigTemplateBuilder,
-    context_attributes_builder: ContextAttributesBuilder,
+    context_attributes_builder: Option<ContextAttributesBuilder>,
     vsync: bool,
 }
 
@@ -89,7 +89,7 @@ impl SimpleWindowBuilder {
                 .with_title("Simple Glium Window")
                 .with_inner_size(winit::dpi::PhysicalSize::new(800, 480)),
             config_template_builder: ConfigTemplateBuilder::new(),
-            context_attributes_builder: ContextAttributesBuilder::default(),
+            context_attributes_builder: None,
             vsync: true,
         }
     }
@@ -126,12 +126,13 @@ impl SimpleWindowBuilder {
         self
     }
 
-    /// Can be used to configure OpenGL version and mode (core vs compatibility) .
+    /// Can be used to configure OpenGL version and mode (core vs compatibility).
+    /// If this is not set, the builder requests the newest context version of the compiled tier.
     pub fn with_context_attributes_builder(
         mut self,
         context_attributes_builder: ContextAttributesBuilder,
     ) -> Self {
-        self.context_attributes_builder = context_attributes_builder;
+        self.context_attributes_builder = Some(context_attributes_builder);
         self
     }
 
@@ -192,22 +193,34 @@ impl SimpleWindowBuilder {
                 .unwrap()
         };
 
-        let context_attributes = self.context_attributes_builder.build(Some(
-            window
-                .window_handle()
-                .expect("couldn't obtain raw window handle")
-                .into(),
-        ));
+        let window_handle = window
+            .window_handle()
+            .expect("couldn't obtain raw window handle");
 
-        let current_context = Some(unsafe {
-            gl_config
-                .display()
-                .create_context(&gl_config, &context_attributes)
-                .expect("failed to create context")
-        })
-        .unwrap()
-        .make_current(&surface)
-        .unwrap();
+        // Without a user-provided builder, try the context versions of SafeGL's tier in order
+        let attribute_candidates = match self.context_attributes_builder {
+            Some(builder) => vec![builder.build(Some(window_handle.into()))],
+            None => super::tier_context_apis()
+                .into_iter()
+                .map(|api| {
+                    ContextAttributesBuilder::new()
+                        .with_context_api(api)
+                        .build(Some(window_handle.into()))
+                })
+                .collect(),
+        };
+
+        let not_current_context = attribute_candidates
+            .iter()
+            .find_map(|context_attributes| unsafe {
+                gl_config
+                    .display()
+                    .create_context(&gl_config, context_attributes)
+                    .ok()
+            })
+            .expect("failed to create context");
+
+        let current_context = not_current_context.make_current(&surface).unwrap();
 
         let swap_interval = if self.vsync {
             SwapInterval::Wait(NonZeroU32::new(1).unwrap())

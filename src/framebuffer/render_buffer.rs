@@ -12,6 +12,8 @@ use std::fmt;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
+use glow::HasContext;
+
 use crate::framebuffer::{ColorAttachment, ToColorAttachment};
 use crate::framebuffer::{DepthAttachment, ToDepthAttachment};
 use crate::framebuffer::{DepthStencilAttachment, ToDepthStencilAttachment};
@@ -26,8 +28,6 @@ use crate::backend::Facade;
 use crate::context::Context;
 use crate::fbo::FramebuffersContainer;
 use crate::gl;
-use crate::version::Api;
-use crate::version::Version;
 use crate::ContextExt;
 use crate::GlObject;
 
@@ -144,10 +144,10 @@ impl DerefMut for RenderBuffer {
 }
 
 impl GlObject for RenderBuffer {
-    type Id = gl::types::GLuint;
+    type Id = glow::Renderbuffer;
 
     #[inline]
-    fn get_id(&self) -> gl::types::GLuint {
+    fn get_id(&self) -> glow::Renderbuffer {
         self.buffer.get_id()
     }
 }
@@ -239,10 +239,10 @@ impl DerefMut for DepthRenderBuffer {
 }
 
 impl GlObject for DepthRenderBuffer {
-    type Id = gl::types::GLuint;
+    type Id = glow::Renderbuffer;
 
     #[inline]
-    fn get_id(&self) -> gl::types::GLuint {
+    fn get_id(&self) -> glow::Renderbuffer {
         self.buffer.get_id()
     }
 }
@@ -335,10 +335,10 @@ impl DerefMut for StencilRenderBuffer {
 }
 
 impl GlObject for StencilRenderBuffer {
-    type Id = gl::types::GLuint;
+    type Id = glow::Renderbuffer;
 
     #[inline]
-    fn get_id(&self) -> gl::types::GLuint {
+    fn get_id(&self) -> glow::Renderbuffer {
         self.buffer.get_id()
     }
 }
@@ -438,10 +438,10 @@ impl DerefMut for DepthStencilRenderBuffer {
 }
 
 impl GlObject for DepthStencilRenderBuffer {
-    type Id = gl::types::GLuint;
+    type Id = glow::Renderbuffer;
 
     #[inline]
-    fn get_id(&self) -> gl::types::GLuint {
+    fn get_id(&self) -> glow::Renderbuffer {
         self.buffer.get_id()
     }
 }
@@ -449,7 +449,7 @@ impl GlObject for DepthStencilRenderBuffer {
 /// A RenderBuffer of indeterminate type.
 pub struct RenderBufferAny {
     context: Rc<Context>,
-    id: gl::types::GLuint,
+    id: glow::Renderbuffer,
     width: u32,
     height: u32,
     samples: Option<u32>,
@@ -473,127 +473,29 @@ impl RenderBufferAny {
             // TODO: check that dimensions don't exceed GL_MAX_RENDERBUFFER_SIZE
             // FIXME: gles2 only supports very few formats
             let mut ctxt = facade.get_context().make_current();
-            let mut id = 0;
 
-            if ctxt.version >= &Version(Api::Gl, 4, 5) || ctxt.extensions.gl_arb_direct_state_access
-            {
-                ctxt.gl.CreateRenderbuffers(1, &mut id);
-                if let Some(samples) = samples {
-                    ctxt.gl.NamedRenderbufferStorageMultisample(
-                        id,
-                        samples as gl::types::GLsizei,
-                        format,
-                        width as gl::types::GLsizei,
-                        height as gl::types::GLsizei,
-                    );
-                } else {
-                    ctxt.gl.NamedRenderbufferStorage(
-                        id,
-                        format,
-                        width as gl::types::GLsizei,
-                        height as gl::types::GLsizei,
-                    );
-                }
-            } else if samples.is_some()
-                && (ctxt.version >= &Version(Api::Gl, 3, 0)
-                    || ctxt.version >= &Version(Api::GlEs, 3, 0)
-                    || ctxt.extensions.gl_apple_framebuffer_multisample
-                    || ctxt.extensions.gl_angle_framebuffer_multisample
-                    || ctxt.extensions.gl_ext_multisampled_render_to_texture
-                    || ctxt.extensions.gl_nv_framebuffer_multisample)
-            {
-                ctxt.gl.GenRenderbuffers(1, &mut id);
-                ctxt.gl.BindRenderbuffer(gl::RENDERBUFFER, id);
-                ctxt.state.renderbuffer = id;
+            let id = ctxt
+                .glow
+                .create_renderbuffer()
+                .expect("failed to create a renderbuffer object");
+            ctxt.glow.bind_renderbuffer(glow::RENDERBUFFER, Some(id));
+            ctxt.state.renderbuffer = Some(id);
 
-                let samples = samples.unwrap();
-
-                if ctxt.version >= &Version(Api::Gl, 3, 0)
-                    || ctxt.version >= &Version(Api::GlEs, 3, 0)
-                {
-                    ctxt.gl.RenderbufferStorageMultisample(
-                        gl::RENDERBUFFER,
-                        samples as gl::types::GLsizei,
-                        format,
-                        width as gl::types::GLsizei,
-                        height as gl::types::GLsizei,
-                    );
-                } else if ctxt.extensions.gl_apple_framebuffer_multisample {
-                    ctxt.gl.RenderbufferStorageMultisampleAPPLE(
-                        gl::RENDERBUFFER,
-                        samples as gl::types::GLsizei,
-                        format,
-                        width as gl::types::GLsizei,
-                        height as gl::types::GLsizei,
-                    );
-                } else if ctxt.extensions.gl_angle_framebuffer_multisample {
-                    ctxt.gl.RenderbufferStorageMultisampleANGLE(
-                        gl::RENDERBUFFER,
-                        samples as gl::types::GLsizei,
-                        format,
-                        width as gl::types::GLsizei,
-                        height as gl::types::GLsizei,
-                    );
-                } else if ctxt.extensions.gl_ext_multisampled_render_to_texture {
-                    ctxt.gl.RenderbufferStorageMultisampleEXT(
-                        gl::RENDERBUFFER,
-                        samples as gl::types::GLsizei,
-                        format,
-                        width as gl::types::GLsizei,
-                        height as gl::types::GLsizei,
-                    );
-                } else if ctxt.extensions.gl_nv_framebuffer_multisample {
-                    ctxt.gl.RenderbufferStorageMultisampleNV(
-                        gl::RENDERBUFFER,
-                        samples as gl::types::GLsizei,
-                        format,
-                        width as gl::types::GLsizei,
-                        height as gl::types::GLsizei,
-                    );
-                } else {
-                    unreachable!();
-                }
-            } else if samples.is_none()
-                && (ctxt.version >= &Version(Api::Gl, 3, 0)
-                    || ctxt.version >= &Version(Api::GlEs, 2, 0))
-            {
-                ctxt.gl.GenRenderbuffers(1, &mut id);
-                ctxt.gl.BindRenderbuffer(gl::RENDERBUFFER, id);
-                ctxt.state.renderbuffer = id;
-                ctxt.gl.RenderbufferStorage(
-                    gl::RENDERBUFFER,
-                    format,
-                    width as gl::types::GLsizei,
-                    height as gl::types::GLsizei,
-                );
-            } else if samples.is_some()
-                && ctxt.extensions.gl_ext_framebuffer_object
-                && ctxt.extensions.gl_ext_framebuffer_multisample
-            {
-                ctxt.gl.GenRenderbuffersEXT(1, &mut id);
-                ctxt.gl.BindRenderbufferEXT(gl::RENDERBUFFER_EXT, id);
-                ctxt.state.renderbuffer = id;
-
-                let samples = samples.unwrap();
-                ctxt.gl.RenderbufferStorageMultisampleEXT(
-                    gl::RENDERBUFFER_EXT,
+            if let Some(samples) = samples {
+                ctxt.glow.renderbuffer_storage_multisample(
+                    glow::RENDERBUFFER,
                     samples as gl::types::GLsizei,
                     format,
                     width as gl::types::GLsizei,
                     height as gl::types::GLsizei,
                 );
-            } else if samples.is_none() && ctxt.extensions.gl_ext_framebuffer_object {
-                ctxt.gl.GenRenderbuffersEXT(1, &mut id);
-                ctxt.gl.BindRenderbufferEXT(gl::RENDERBUFFER_EXT, id);
-                ctxt.state.renderbuffer = id;
-                ctxt.gl.RenderbufferStorageEXT(
-                    gl::RENDERBUFFER_EXT,
+            } else {
+                ctxt.glow.renderbuffer_storage(
+                    glow::RENDERBUFFER,
                     format,
                     width as gl::types::GLsizei,
                     height as gl::types::GLsizei,
                 );
-            } else {
-                unreachable!();
             }
 
             RenderBufferAny {
@@ -636,21 +538,17 @@ impl RenderBufferAny {
     pub fn get_depth_stencil_bits(&self) -> (u16, u16) {
         unsafe {
             let ctxt = self.context.make_current();
-            let mut depth_bits: gl::types::GLint = 0;
-            let mut stencil_bits: gl::types::GLint = 0;
-            ctxt.gl.BindRenderbuffer(gl::RENDERBUFFER, self.id);
+            ctxt.glow
+                .bind_renderbuffer(glow::RENDERBUFFER, Some(self.id));
             // FIXME: GL version considerations
-            ctxt.gl.GetRenderbufferParameteriv(
-                gl::RENDERBUFFER,
-                gl::RENDERBUFFER_DEPTH_SIZE,
-                &mut depth_bits,
+            let depth_bits: gl::types::GLint = ctxt
+                .glow
+                .get_renderbuffer_parameter_i32(glow::RENDERBUFFER, glow::RENDERBUFFER_DEPTH_SIZE);
+            let stencil_bits: gl::types::GLint = ctxt.glow.get_renderbuffer_parameter_i32(
+                glow::RENDERBUFFER,
+                glow::RENDERBUFFER_STENCIL_SIZE,
             );
-            ctxt.gl.GetRenderbufferParameteriv(
-                gl::RENDERBUFFER,
-                gl::RENDERBUFFER_STENCIL_SIZE,
-                &mut stencil_bits,
-            );
-            ctxt.gl.BindRenderbuffer(gl::RENDERBUFFER, 0);
+            ctxt.glow.bind_renderbuffer(glow::RENDERBUFFER, None);
             (depth_bits as u16, stencil_bits as u16)
         }
     }
@@ -664,31 +562,20 @@ impl Drop for RenderBufferAny {
             // removing FBOs which contain this buffer
             FramebuffersContainer::purge_renderbuffer(&mut ctxt, self.id);
 
-            if ctxt.version >= &Version(Api::Gl, 3, 0) || ctxt.version >= &Version(Api::GlEs, 2, 0)
-            {
-                if ctxt.state.renderbuffer == self.id {
-                    ctxt.state.renderbuffer = 0;
-                }
-
-                ctxt.gl.DeleteRenderbuffers(1, [self.id].as_ptr());
-            } else if ctxt.extensions.gl_ext_framebuffer_object {
-                if ctxt.state.renderbuffer == self.id {
-                    ctxt.state.renderbuffer = 0;
-                }
-
-                ctxt.gl.DeleteRenderbuffersEXT(1, [self.id].as_ptr());
-            } else {
-                unreachable!();
+            if ctxt.state.renderbuffer == Some(self.id) {
+                ctxt.state.renderbuffer = None;
             }
+
+            ctxt.glow.delete_renderbuffer(self.id);
         }
     }
 }
 
 impl GlObject for RenderBufferAny {
-    type Id = gl::types::GLuint;
+    type Id = glow::Renderbuffer;
 
     #[inline]
-    fn get_id(&self) -> gl::types::GLuint {
+    fn get_id(&self) -> glow::Renderbuffer {
         self.id
     }
 }

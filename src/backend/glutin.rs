@@ -32,6 +32,25 @@ use std::ops::Deref;
 use std::os::raw::c_void;
 use std::rc::Rc;
 
+/// Returns the context APIs to request from glutin, in order of preference, for the OpenGL tier
+/// SafeGL was compiled with.
+///
+/// glutin requests an OpenGL 3.3 core context when no version is given, which is below SafeGL's
+/// minimum, so context creation code should try these in order and keep the first that succeeds.
+pub fn tier_context_apis() -> Vec<glutin::context::ContextApi> {
+    use glutin::context::{ContextApi, Version};
+
+    let mut apis = Vec::with_capacity(3);
+    if cfg!(feature = "gl46") {
+        apis.push(ContextApi::OpenGl(Some(Version::new(4, 6))));
+    }
+    if cfg!(feature = "gl41") {
+        apis.push(ContextApi::OpenGl(Some(Version::new(4, 1))));
+    }
+    apis.push(ContextApi::Gles(Some(Version::new(3, 0))));
+    apis
+}
+
 #[cfg(feature = "simple_window_builder")]
 pub use self::simple_window_builder::SimpleWindowBuilder;
 
@@ -310,7 +329,11 @@ unsafe impl<T: SurfaceTypeTrait + ResizeableSurface> Backend for GlutinBackend<T
     }
 
     #[inline]
-    fn set_swap_interval(&self, interval: SwapInterval) {
+    fn set_swap_interval(&self, interval: backend::SwapInterval) {
+        let interval = match interval {
+            backend::SwapInterval::DontWait => SwapInterval::DontWait,
+            backend::SwapInterval::Wait(frames) => SwapInterval::Wait(frames),
+        };
         self.borrow()
             .as_ref()
             .unwrap()

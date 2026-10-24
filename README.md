@@ -26,6 +26,26 @@ If you want to understand how we ended up here, check the links below:
 - [Reword "Note to current and future Glium users"? (glium/glium#1912)](https://github.com/glium/glium/issues/1912)
 - [Original glium repo](https://github.com/glium/glium)
 
+## Where SafeGL fits in the Rust graphics ecosystem
+
+Rust crates for the open graphics APIs come in two layers: unsafe bindings that mirror the API,
+and safe layers built on top of them. Renderers and engines are not listed here.
+
+| Layer            | Vulkan                                        | OpenGL                                  |
+|------------------|-----------------------------------------------|-----------------------------------------|
+| Safe layer       | [vulkano](https://github.com/vulkano-rs/vulkano) | **SafeGL**                           |
+| Unsafe bindings  | [ash](https://github.com/ash-rs/ash)          | [glow](https://github.com/grovesNL/glow) |
+
+SafeGL fills the OpenGL slot that vulkano fills for Vulkan, using glow as its binding layer the
+way vulkano uses ash.
+
+### Discontinued
+
+| Crate                                   | Layer           | Last release      |
+|-----------------------------------------|-----------------|-------------------|
+| [glium](https://github.com/glium/glium) | Safe layer      | 0.36.0 (Oct 2024) |
+| [gl](https://github.com/brendanzab/gl-rs) | Unsafe bindings | 0.14.0 (Oct 2019) |
+
 ## Objectives
 
 - **Be safe to use.** Misuse of the OpenGL API that could cause crashes or undefined behavior is
@@ -49,9 +69,12 @@ Cargo features. Each tier includes everything in the tiers below it.
 | `gl46`   | Desktop OpenGL 4.6 core (**default**)         | Windows and Linux with current NVIDIA, AMD, Intel or Mesa drivers; Asahi Linux on Apple M1/M2   |
 | `gl41`   | Desktop OpenGL 4.1 core                       | macOS (Intel and Apple Silicon), older GPUs, most virtual machines and software renderers       |
 | `gles30` | Common subset of OpenGL ES 3.0 and OpenGL 4.1 | Embedded Linux (e.g. Raspberry Pi 4/5) and other OpenGL ES 3.0-class devices                     |
+| `webgl`  | WebGL 2, the `gles30` tier in a browser       | Browsers, through `wasm32-unknown-unknown` (see [examples/web](examples/web))                  |
 
-APIs above the selected tier do not exist in the compiled crate, so using them is a compile error,
-not a runtime failure.
+Selecting a tier above what the target platform supports is a compile error: `gl46` on macOS, or
+anything above `gles30` in the browser. Within a tier, optional features (for example bindless
+textures or compute shaders on a 4.1 driver) are still checked at runtime and return an error when
+the driver lacks them.
 
 `gl46` is enabled by default:
 
@@ -67,6 +90,14 @@ To select a lower tier, disable the default features:
 safegl = { version = "0.36.0", default-features = false, features = ["gl41", "glutin_backend", "glutin/default"] }
 ```
 
+For the browser, build for `wasm32-unknown-unknown` with the `webgl` feature and draw through
+`glium::backend::web::WebDisplay`:
+
+```toml
+[dependencies]
+safegl = { version = "0.36.0", default-features = false, features = ["webgl"] }
+```
+
 ### Platform notes
 
 - **macOS** stops at OpenGL 4.1, and Apple has deprecated OpenGL since macOS 10.14. Enabling `gl46`
@@ -79,10 +110,15 @@ safegl = { version = "0.36.0", default-features = false, features = ["gl41", "gl
   OpenGL 4.1–4.5; use `gl41`.
 - **Windows without a vendor driver** (Microsoft's basic display driver, some Remote Desktop
   sessions) only provides OpenGL 1.1 and is not supported by any tier.
+- **Browsers** provide WebGL 2, which SafeGL treats as OpenGL ES 3.0. WebGL can't map buffers or
+  block on fences, so buffer mappings are emulated with copies and `SyncFence::wait` returns after
+  `glFinish`. Shaders must start with `#version 300 es` on their very first line.
 
 > [!NOTE]
 > A tier describes which APIs SafeGL compiles in. It does not guarantee that the driver on a given
-> machine actually provides that version.
+> machine actually provides that version. Whatever the tier, SafeGL refuses to create a context
+> below desktop OpenGL 4.1 or OpenGL ES 3.0, and `SimpleWindowBuilder` requests the newest context
+> version of the compiled tier.
 
 ## Why SafeGL matters for Oxidian
 

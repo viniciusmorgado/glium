@@ -47,10 +47,10 @@ impl<T: ?Sized> GlObject for Buffer<T>
 where
     T: Content,
 {
-    type Id = gl::types::GLuint;
+    type Id = glow::Buffer;
 
     #[inline]
-    fn get_id(&self) -> gl::types::GLuint {
+    fn get_id(&self) -> glow::Buffer {
         self.alloc.as_ref().unwrap().get_id()
     }
 }
@@ -1469,10 +1469,10 @@ pub struct BufferAnySlice<'a> {
 }
 
 impl<'a> GlObject for BufferAnySlice<'a> {
-    type Id = gl::types::GLuint;
+    type Id = glow::Buffer;
 
     #[inline]
-    fn get_id(&self) -> gl::types::GLuint {
+    fn get_id(&self) -> glow::Buffer {
         self.alloc.get_id()
     }
 }

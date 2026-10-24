@@ -10,12 +10,9 @@ use crate::buffer::{
 use crate::vertex::format::VertexFormat;
 use crate::vertex::{PerInstance, Vertex, VerticesSource};
 
-use crate::gl;
 use crate::GlObject;
 
 use crate::backend::Facade;
-use crate::version::{Api, Version};
-use crate::CapabilitiesSource;
 
 /// Error that can happen when creating a vertex buffer.
 #[derive(Copy, Clone, Debug)]
@@ -58,10 +55,10 @@ impl Error for CreationError {
 }
 
 impl<T: Copy> GlObject for VertexBuffer<T> {
-    type Id = gl::types::GLuint;
+    type Id = glow::Buffer;
 
     #[inline]
-    fn get_id(&self) -> gl::types::GLuint {
+    fn get_id(&self) -> glow::Buffer {
         self.buffer.get_id()
     }
 }
@@ -98,14 +95,7 @@ where
     /// for each different instance.
     #[inline]
     pub fn per_instance(&'b self) -> Result<PerInstance<'b>, InstancingNotSupported> {
-        // TODO: don't check this here
-        if !(self.get_context().get_version() >= &Version(Api::Gl, 3, 3))
-            && !(self.get_context().get_version() >= &Version(Api::GlEs, 3, 0))
-            && !self.get_context().get_extensions().gl_arb_instanced_arrays
-        {
-            return Err(InstancingNotSupported);
-        }
-
+        // instancing is core in OpenGL 3.3 and OpenGL ES 3.0
         Ok(PerInstance(self.buffer.as_slice_any(), self.bindings))
     }
 }
@@ -369,18 +359,7 @@ where
     /// vertex shader, but each entry is passed for each different instance.
     #[inline]
     pub fn per_instance(&self) -> Result<PerInstance<'_>, InstancingNotSupported> {
-        // TODO: don't check this here
-        if !(self.buffer.get_context().get_version() >= &Version(Api::Gl, 3, 3))
-            && !(self.get_context().get_version() >= &Version(Api::GlEs, 3, 0))
-            && !self
-                .buffer
-                .get_context()
-                .get_extensions()
-                .gl_arb_instanced_arrays
-        {
-            return Err(InstancingNotSupported);
-        }
-
+        // instancing is core in OpenGL 3.3 and OpenGL ES 3.0
         Ok(PerInstance(self.buffer.as_slice_any(), self.bindings))
     }
 }
@@ -560,18 +539,7 @@ impl VertexBufferAny {
     /// vertex shader, but each entry is passed for each different instance.
     #[inline]
     pub fn per_instance(&self) -> Result<PerInstance<'_>, InstancingNotSupported> {
-        // TODO: don't check this here
-        if !(self.buffer.get_context().get_version() >= &Version(Api::Gl, 3, 3))
-            && !(self.get_context().get_version() >= &Version(Api::GlEs, 3, 0))
-            && !self
-                .buffer
-                .get_context()
-                .get_extensions()
-                .gl_arb_instanced_arrays
-        {
-            return Err(InstancingNotSupported);
-        }
-
+        // instancing is core in OpenGL 3.3 and OpenGL ES 3.0
         Ok(PerInstance(self.buffer.as_slice_any(), self.bindings))
     }
 }

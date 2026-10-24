@@ -25,13 +25,12 @@ use crate::uniforms::Uniforms;
 
 use crate::buffer::Inserter;
 use crate::context::CommandContext;
+use glow::HasContext;
 
 use crate::utils::bitsfield::Bitsfield;
 
 use crate::context;
 use crate::program;
-use crate::version::Api;
-use crate::version::Version;
 
 impl<U> UniformsExt for U
 where
@@ -1187,8 +1186,6 @@ where
         None
     };
 
-    let sampler = sampler.unwrap_or(0);
-
     // finding an appropriate texture unit
     let texture_unit = ctxt
         .state
@@ -1196,7 +1193,7 @@ where
         .iter()
         .enumerate()
         .find(|&(unit, content)| {
-            content.texture == texture.get_texture_id()
+            content.texture == Some(texture.get_texture_id())
                 && (content.sampler == sampler || !texture_bind_points.is_used(unit as u16))
         })
         .map(|(unit, _)| unit as u16)
@@ -1234,14 +1231,14 @@ where
     }
 
     // TODO: do better
-    if ctxt.state.texture_units[texture_unit as usize].texture != texture.get_texture_id()
+    if ctxt.state.texture_units[texture_unit as usize].texture != Some(texture.get_texture_id())
         || ctxt.state.texture_units[texture_unit as usize].sampler != sampler
     {
         // TODO: what if it's not supported?
         if ctxt.state.active_texture != texture_unit as gl::types::GLenum {
             unsafe {
-                ctxt.gl
-                    .ActiveTexture(texture_unit as gl::types::GLenum + gl::TEXTURE0)
+                ctxt.glow
+                    .active_texture(texture_unit as gl::types::GLenum + glow::TEXTURE0)
             };
             ctxt.state.active_texture = texture_unit as gl::types::GLenum;
         }
@@ -1249,15 +1246,9 @@ where
         texture.bind_to_current(ctxt);
 
         if ctxt.state.texture_units[texture_unit as usize].sampler != sampler {
-            assert!(
-                ctxt.version >= &Version(Api::Gl, 3, 3)
-                    || ctxt.version >= &Version(Api::GlEs, 3, 0)
-                    || ctxt.extensions.gl_arb_sampler_objects
-            );
-
             unsafe {
-                ctxt.gl
-                    .BindSampler(texture_unit as gl::types::GLenum, sampler);
+                ctxt.glow
+                    .bind_sampler(texture_unit as gl::types::GLenum, sampler);
             }
             ctxt.state.texture_units[texture_unit as usize].sampler = sampler;
         }
@@ -1306,11 +1297,11 @@ where
     texture.prepare_for_access(ctxt, crate::TextureAccess::ImageUnit { will_write });
 
     unsafe {
-        ctxt.gl.BindImageTexture(
+        ctxt.glow.bind_image_texture(
             image_unit as gl::types::GLuint,
-            texture.get_texture_id(),
+            Some(texture.get_texture_id()),
             unit_behavior.level as i32,
-            if layered { 1 } else { 0 },
+            layered,
             layer as i32,
             unit_behavior.access.to_glenum(),
             unit_behavior.format.to_glenum(),

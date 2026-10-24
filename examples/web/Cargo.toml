@@ -1,0 +1,14 @@
+[package]
+name = "safegl-web-example"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Draws a rotating triangle with SafeGL on a WebGL 2 canvas."
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+glium = { path = "../..", default-features = false, features = ["webgl"] }
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = ["Document", "Element", "HtmlCanvasElement", "Performance", "Window", "console"] }

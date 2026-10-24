@@ -123,9 +123,6 @@ pub use self::any::{TextureAny, TextureAnyLayer, TextureAnyLayerMipmap, TextureA
 pub use self::bindless::{BindlessTexturesNotSupportedError, ResidentTexture, TextureHandle};
 pub use self::get_format::{GetFormatError, InternalFormat, InternalFormatType};
 pub use self::pixel::PixelValue;
-pub use self::texture_import::ExternalTilingMode;
-pub use self::texture_import::ImportParameters;
-pub use self::texture_import::TextureImportError;
 pub use self::ty_support::is_cubemap_arrays_supported;
 pub use self::ty_support::{is_cubemaps_supported, is_texture_2d_multisample_array_supported};
 pub use self::ty_support::{is_texture_1d_array_supported, is_texture_3d_supported};
@@ -145,7 +142,6 @@ pub mod pixel_buffer;
 mod any;
 mod get_format;
 mod pixel;
-mod texture_import;
 mod ty_support;
 
 mod textures {

@@ -205,29 +205,29 @@ impl<T: ApplicationContext + 'static> State<T> {
             .unwrap();
         let window = window.unwrap();
 
-        // Then the configuration which decides which OpenGL version we'll end up using, here we just use the default which is currently 3.3 core
-        // When this fails we'll try and create an ES context, this is mainly used on mobile devices or various ARM SBC's
-        // If you depend on features available in modern OpenGL Versions you need to request a specific, modern, version. Otherwise things will very likely fail.
+        // Then the configuration which decides which OpenGL version we'll end up using. glutin's
+        // default (3.3 core) is below SafeGL's minimum, so we try the context versions of
+        // SafeGL's tier in order: the newest desktop OpenGL first, then OpenGL ES 3.0, which is
+        // mainly used on mobile devices or various ARM SBC's.
         let window_handle = window
             .window_handle()
             .expect("couldn't obtain window handle");
-        let context_attributes =
-            glutin::context::ContextAttributesBuilder::new().build(Some(window_handle.into()));
-        let fallback_context_attributes = glutin::context::ContextAttributesBuilder::new()
-            .with_context_api(glutin::context::ContextApi::Gles(None))
-            .build(Some(window_handle.into()));
-
-        let not_current_gl_context = Some(unsafe {
-            gl_config
-                .display()
-                .create_context(&gl_config, &context_attributes)
-                .unwrap_or_else(|_| {
-                    gl_config
-                        .display()
-                        .create_context(&gl_config, &fallback_context_attributes)
-                        .expect("failed to create context")
+        let not_current_gl_context = Some(
+            glium::backend::glutin::tier_context_apis()
+                .into_iter()
+                .find_map(|api| {
+                    let context_attributes = glutin::context::ContextAttributesBuilder::new()
+                        .with_context_api(api)
+                        .build(Some(window_handle.into()));
+                    unsafe {
+                        gl_config
+                            .display()
+                            .create_context(&gl_config, &context_attributes)
+                            .ok()
+                    }
                 })
-        });
+                .expect("failed to create context"),
+        );
 
         // Determine our framebuffer size based on the window size, or default to 800x600 if it's invisible
         let (width, height): (u32, u32) = if visible {

@@ -11,7 +11,6 @@ use std::ops::{Deref, DerefMut};
 use crate::backend::Facade;
 
 use crate::buffer::{Buffer, BufferMode, BufferType, ReadError};
-use crate::gl;
 use crate::GlObject;
 
 use crate::texture::PixelValue;
@@ -89,10 +88,10 @@ impl<T> GlObject for PixelBuffer<T>
 where
     T: PixelValue,
 {
-    type Id = gl::types::GLuint;
+    type Id = glow::Buffer;
 
     #[inline]
-    fn get_id(&self) -> gl::types::GLuint {
+    fn get_id(&self) -> glow::Buffer {
         self.buffer.get_id()
     }
 }

@@ -16,9 +16,15 @@ pub enum SamplerWrapFunction {
     Clamp,
 
     /// Use texture border.
+    ///
+    /// Requires OpenGL ES 3.2 or `GL_EXT_texture_border_clamp` on OpenGL ES, and isn't
+    /// available on WebGL. Falls back to `Clamp` where unsupported.
     BorderClamp,
 
     /// Same as Mirror, but only for one repetition,
+    ///
+    /// Requires `GL_EXT_texture_mirror_clamp_to_edge` on OpenGL ES, and isn't available on
+    /// WebGL. Falls back to `Clamp` where unsupported.
     MirrorClamp,
 }
 

@@ -12,7 +12,9 @@ There are three concepts in play:
    that implements this trait. It is implemented on `Rc<Context>`.
 
 */
+use std::num::NonZeroU32;
 use std::ops::Deref;
+#[cfg(not(all(target_family = "wasm", not(target_os = "emscripten"))))]
 use std::os::raw::c_void;
 use std::rc::Rc;
 
@@ -29,9 +31,20 @@ pub use crate::context::ReleaseBehavior;
 #[cfg(feature = "glutin")]
 pub mod glutin;
 
-use ::glutin::surface::SwapInterval;
+#[cfg(all(feature = "webgl", target_family = "wasm", not(target_os = "emscripten")))]
+pub mod web;
+
 #[cfg(feature = "simple_window_builder")]
 pub use winit;
+
+/// How the backend should synchronize buffer swaps with the display's refresh rate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SwapInterval {
+    /// Swap buffers immediately, without waiting for the display (no vsync).
+    DontWait,
+    /// Wait for the given number of vertical blanks before swapping buffers.
+    Wait(NonZeroU32),
+}
 
 /// Trait for types that can be used as a backend for a glium context.
 ///
@@ -44,7 +57,23 @@ pub unsafe trait Backend {
     /// Returns the address of an OpenGL function.
     ///
     /// Supposes that the context has been made current before this function is called.
+    #[cfg(not(all(target_family = "wasm", not(target_os = "emscripten"))))]
     unsafe fn get_proc_address(&self, symbol: &str) -> *const c_void;
+
+    /// Creates the `glow` context used to issue OpenGL calls.
+    ///
+    /// Called once, after the context has been made current. The default implementation loads
+    /// the functions with `get_proc_address`.
+    #[cfg(not(all(target_family = "wasm", not(target_os = "emscripten"))))]
+    unsafe fn create_glow_context(&self) -> glow::Context {
+        glow::Context::from_loader_function(|symbol| self.get_proc_address(symbol))
+    }
+
+    /// Creates the `glow` context used to issue OpenGL calls.
+    ///
+    /// Called once, after the context has been made current.
+    #[cfg(all(target_family = "wasm", not(target_os = "emscripten")))]
+    unsafe fn create_glow_context(&self) -> glow::Context;
 
     /// Returns the dimensions of the window, or screen, etc.
     fn get_framebuffer_dimensions(&self) -> (u32, u32);
@@ -60,6 +89,12 @@ pub unsafe trait Backend {
 
     /// Makes the OpenGL context the current context in the current thread.
     unsafe fn make_current(&self);
+
+    /// Returns true if the backend knows that the OpenGL context has been lost, for example a
+    /// browser's WebGL context. Backends that can't tell return `false`.
+    fn is_context_lost(&self) -> bool {
+        false
+    }
 }
 
 unsafe impl<T> Backend for Rc<T>
@@ -70,8 +105,13 @@ where
         self.deref().swap_buffers()
     }
 
+    #[cfg(not(all(target_family = "wasm", not(target_os = "emscripten"))))]
     unsafe fn get_proc_address(&self, symbol: &str) -> *const c_void {
         self.deref().get_proc_address(symbol)
+    }
+
+    unsafe fn create_glow_context(&self) -> glow::Context {
+        self.deref().create_glow_context()
     }
 
     fn get_framebuffer_dimensions(&self) -> (u32, u32) {
@@ -92,6 +132,10 @@ where
 
     unsafe fn make_current(&self) {
         self.deref().make_current();
+    }
+
+    fn is_context_lost(&self) -> bool {
+        self.deref().is_context_lost()
     }
 }
 

@@ -1,5 +1,7 @@
 use std::ptr;
 
+use glow::HasContext;
+
 use crate::BufferExt;
 use crate::BufferSliceExt;
 use crate::DrawError;
@@ -91,9 +93,8 @@ where
             IndicesSource::MultidrawElement { .. } => false,
             IndicesSource::NoIndices { .. } => true,
             _ => {
-                ctxt.version >= &Version(Api::Gl, 3, 2)
+                ctxt.version.0 == Api::Gl
                     || ctxt.version >= &Version(Api::GlEs, 3, 2)
-                    || ctxt.extensions.gl_arb_draw_elements_base_vertex
                     || ctxt.extensions.gl_oes_draw_elements_base_vertex
             }
         };
@@ -210,6 +211,7 @@ where
             } => {
                 let ptr: *const u8 = ptr::null_mut();
                 let ptr = unsafe { ptr.add(buffer.get_offset_bytes()) };
+                let offset = buffer.get_offset_bytes() as i32;
 
                 if let Some(fence) = buffer.add_fence() {
                     fences.push(fence);
@@ -218,20 +220,19 @@ where
                 unsafe {
                     if let Some(instances_count) = instances_count {
                         if base_vertex != 0 {
-                            if ctxt.version >= &Version(Api::Gl, 3, 2)
+                            if ctxt.version.0 == Api::Gl
                                 || ctxt.version >= &Version(Api::GlEs, 3, 2)
-                                || ctxt.extensions.gl_arb_draw_elements_base_vertex
                             {
-                                ctxt.gl.DrawElementsInstancedBaseVertex(
+                                ctxt.glow.draw_elements_instanced_base_vertex(
                                     primitives.to_glenum(),
                                     buffer.get_elements_count() as gl::types::GLsizei,
                                     data_type.to_glenum(),
-                                    ptr as *const _,
+                                    offset,
                                     instances_count as gl::types::GLsizei,
                                     base_vertex,
                                 );
                             } else if ctxt.extensions.gl_oes_draw_elements_base_vertex {
-                                ctxt.gl.DrawElementsInstancedBaseVertexOES(
+                                ctxt.extra.DrawElementsInstancedBaseVertexOES(
                                     primitives.to_glenum(),
                                     buffer.get_elements_count() as gl::types::GLsizei,
                                     data_type.to_glenum(),
@@ -243,28 +244,25 @@ where
                                 unreachable!();
                             }
                         } else {
-                            ctxt.gl.DrawElementsInstanced(
+                            ctxt.glow.draw_elements_instanced(
                                 primitives.to_glenum(),
                                 buffer.get_elements_count() as gl::types::GLsizei,
                                 data_type.to_glenum(),
-                                ptr as *const _,
+                                offset,
                                 instances_count as gl::types::GLsizei,
                             );
                         }
                     } else if base_vertex != 0 {
-                        if ctxt.version >= &Version(Api::Gl, 3, 2)
-                            || ctxt.version >= &Version(Api::GlEs, 3, 2)
-                            || ctxt.extensions.gl_arb_draw_elements_base_vertex
-                        {
-                            ctxt.gl.DrawElementsBaseVertex(
+                        if ctxt.version.0 == Api::Gl || ctxt.version >= &Version(Api::GlEs, 3, 2) {
+                            ctxt.glow.draw_elements_base_vertex(
                                 primitives.to_glenum(),
                                 buffer.get_elements_count() as gl::types::GLsizei,
                                 data_type.to_glenum(),
-                                ptr as *const _,
+                                offset,
                                 base_vertex,
                             );
                         } else if ctxt.extensions.gl_oes_draw_elements_base_vertex {
-                            ctxt.gl.DrawElementsBaseVertexOES(
+                            ctxt.extra.DrawElementsBaseVertexOES(
                                 primitives.to_glenum(),
                                 buffer.get_elements_count() as gl::types::GLsizei,
                                 data_type.to_glenum(),
@@ -275,11 +273,11 @@ where
                             unreachable!();
                         }
                     } else {
-                        ctxt.gl.DrawElements(
+                        ctxt.glow.draw_elements(
                             primitives.to_glenum(),
                             buffer.get_elements_count() as gl::types::GLsizei,
                             data_type.to_glenum(),
-                            ptr as *const _,
+                            offset,
                         );
                     }
                 }
@@ -300,7 +298,7 @@ where
 
                 unsafe {
                     buffer.prepare_and_bind_for_draw_indirect(&mut ctxt);
-                    ctxt.gl.MultiDrawArraysIndirect(
+                    ctxt.extra.MultiDrawArraysIndirect(
                         primitives.to_glenum(),
                         ptr as *const _,
                         buffer.get_elements_count() as gl::types::GLsizei,
@@ -329,7 +327,7 @@ where
                 unsafe {
                     commands.prepare_and_bind_for_draw_indirect(&mut ctxt);
                     debug_assert_eq!(base_vertex, 0); // enforced earlier in this function
-                    ctxt.gl.MultiDrawElementsIndirect(
+                    ctxt.extra.MultiDrawElementsIndirect(
                         primitives.to_glenum(),
                         data_type.to_glenum(),
                         cmd_ptr as *const _,
@@ -347,14 +345,14 @@ where
 
                 unsafe {
                     if let Some(instances_count) = instances_count {
-                        ctxt.gl.DrawArraysInstanced(
+                        ctxt.glow.draw_arrays_instanced(
                             primitives.to_glenum(),
                             base_vertex,
                             vertices_count as gl::types::GLsizei,
                             instances_count as gl::types::GLsizei,
                         );
                     } else {
-                        ctxt.gl.DrawArrays(
+                        ctxt.glow.draw_arrays(
                             primitives.to_glenum(),
                             base_vertex,
                             vertices_count as gl::types::GLsizei,
@@ -382,8 +380,8 @@ unsafe fn sync_vertices_per_patch(
     if let Some(vertices_per_patch) = vertices_per_patch {
         let vertices_per_patch = vertices_per_patch as gl::types::GLint;
         if ctxt.state.patch_patch_vertices != vertices_per_patch {
-            ctxt.gl
-                .PatchParameteri(gl::PATCH_VERTICES, vertices_per_patch);
+            ctxt.glow
+                .patch_parameter_i32(glow::PATCH_VERTICES, vertices_per_patch);
             ctxt.state.patch_patch_vertices = vertices_per_patch;
         }
     }

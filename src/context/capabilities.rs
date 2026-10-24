@@ -1,13 +1,14 @@
 use crate::context::ExtensionsList;
+use crate::version::is_webgl;
 use crate::version::Api;
 use crate::version::Version;
 
 use std::cmp;
 use std::collections::HashMap;
-use std::ffi::CStr;
 use std::hash::BuildHasherDefault;
 
 use fnv::FnvHasher;
+use glow::HasContext;
 
 use crate::gl;
 use crate::ToGlEnum;
@@ -170,59 +171,37 @@ pub enum ReleaseBehavior {
 /// unloaded functions being called.
 ///
 pub unsafe fn get_capabilities(
-    gl: &gl::Gl,
+    gl: &glow::Context,
     version: &Version,
     extensions: &ExtensionsList,
 ) -> Capabilities {
     // GL_CONTEXT_FLAGS are only available from GL 3.0 onwards
     let (debug, forward_compatible) = if version >= &Version(Api::Gl, 3, 0) {
-        let mut val = 0;
-        gl.GetIntegerv(gl::CONTEXT_FLAGS, &mut val);
-        let val = val as gl::types::GLenum;
+        let val = gl.get_parameter_i32(glow::CONTEXT_FLAGS) as gl::types::GLenum;
         (
-            (val & gl::CONTEXT_FLAG_DEBUG_BIT) != 0,
-            (val & gl::CONTEXT_FLAG_FORWARD_COMPATIBLE_BIT) != 0,
+            (val & glow::CONTEXT_FLAG_DEBUG_BIT) != 0,
+            (val & glow::CONTEXT_FLAG_FORWARD_COMPATIBLE_BIT) != 0,
         )
     } else {
         (false, false)
     };
 
     // getting the value of `GL_RENDERER`
-    let renderer = {
-        let s = gl.GetString(gl::RENDERER);
-        assert!(!s.is_null());
-        String::from_utf8(CStr::from_ptr(s as *const _).to_bytes().to_vec())
-            .ok()
-            .expect("glGetString(GL_RENDERER) returned a non-UTF8 string")
-    };
+    let renderer = gl.get_parameter_string(glow::RENDERER);
 
     Capabilities {
         supported_glsl_versions: { get_supported_glsl(gl, version, extensions) },
 
-        version: {
-            let s = gl.GetString(gl::VERSION);
-            assert!(!s.is_null());
-            String::from_utf8(CStr::from_ptr(s as *const _).to_bytes().to_vec())
-                .ok()
-                .expect("glGetString(GL_VERSION) returned a non-UTF8 string")
-        },
+        version: gl.get_parameter_string(glow::VERSION),
 
-        vendor: {
-            let s = gl.GetString(gl::VENDOR);
-            assert!(!s.is_null());
-            String::from_utf8(CStr::from_ptr(s as *const _).to_bytes().to_vec())
-                .ok()
-                .expect("glGetString(GL_VENDOR) returned a non-UTF8 string")
-        },
+        vendor: gl.get_parameter_string(glow::VENDOR),
 
         profile: {
             if version >= &Version(Api::Gl, 3, 2) {
-                let mut val = 0;
-                gl.GetIntegerv(gl::CONTEXT_PROFILE_MASK, &mut val);
-                let val = val as gl::types::GLenum;
-                if (val & gl::CONTEXT_COMPATIBILITY_PROFILE_BIT) != 0 {
+                let val = gl.get_parameter_i32(glow::CONTEXT_PROFILE_MASK) as gl::types::GLenum;
+                if (val & glow::CONTEXT_COMPATIBILITY_PROFILE_BIT) != 0 {
                     Some(Profile::Compatibility)
-                } else if (val & gl::CONTEXT_CORE_PROFILE_BIT) != 0 {
+                } else if (val & glow::CONTEXT_CORE_PROFILE_BIT) != 0 {
                     Some(Profile::Core)
                 } else {
                     None
@@ -242,14 +221,10 @@ pub unsafe fn get_capabilities(
         {
             // TODO: there seems to be no way to query `GL_CONTEXT_FLAGS` before OpenGL 3.0, even
             //       if `GL_ARB_robustness` is there
-            let mut val = 0;
-            gl.GetIntegerv(gl::CONTEXT_FLAGS, &mut val);
-            let val = val as gl::types::GLenum;
-            (val & gl::CONTEXT_FLAG_ROBUST_ACCESS_BIT) != 0
+            let val = gl.get_parameter_i32(glow::CONTEXT_FLAGS) as gl::types::GLenum;
+            (val & glow::CONTEXT_FLAG_ROBUST_ACCESS_BIT) != 0
         } else if extensions.gl_khr_robustness || extensions.gl_ext_robustness {
-            let mut val = 0;
-            gl.GetBooleanv(gl::CONTEXT_ROBUST_ACCESS, &mut val);
-            val != 0
+            gl.get_parameter_bool(gl::CONTEXT_ROBUST_ACCESS)
         } else {
             false
         },
@@ -259,8 +234,7 @@ pub unsafe fn get_capabilities(
             || extensions.gl_arb_robustness
             || extensions.gl_ext_robustness
         {
-            let mut val = 0;
-            gl.GetIntegerv(gl::RESET_NOTIFICATION_STRATEGY, &mut val);
+            let val = gl.get_parameter_i32(glow::RESET_NOTIFICATION_STRATEGY);
 
             match val as gl::types::GLenum {
                 gl::LOSE_CONTEXT_ON_RESET => true,
@@ -281,8 +255,7 @@ pub unsafe fn get_capabilities(
         },
 
         release_behavior: if extensions.gl_khr_context_flush_control {
-            let mut val = 0;
-            gl.GetIntegerv(gl::CONTEXT_RELEASE_BEHAVIOR, &mut val);
+            let val = gl.get_parameter_i32(glow::CONTEXT_RELEASE_BEHAVIOR);
 
             match val as gl::types::GLenum {
                 gl::NONE => ReleaseBehavior::None,
@@ -295,9 +268,7 @@ pub unsafe fn get_capabilities(
 
         stereo: {
             if version >= &Version(Api::Gl, 1, 0) {
-                let mut val: gl::types::GLboolean = 0;
-                gl.GetBooleanv(gl::STEREO, &mut val);
-                val != 0
+                gl.get_parameter_bool(glow::STEREO)
             } else {
                 false
             }
@@ -307,32 +278,27 @@ pub unsafe fn get_capabilities(
             // `glGetFramebufferAttachmentParameteriv` incorrectly returns GL_INVALID_ENUM on some
             // drivers, so we prefer using `glGetIntegerv` if possible.
             if version >= &Version(Api::Gl, 3, 0) && !extensions.gl_ext_framebuffer_srgb {
-                let mut fb = 0;
-                gl.GetIntegerv(gl::DRAW_FRAMEBUFFER_BINDING, &mut fb);
+                let fb = gl.get_parameter_i32(glow::DRAW_FRAMEBUFFER_BINDING);
                 let attachment = if fb == 0 {
                     gl::FRONT_LEFT
                 } else {
                     gl::COLOR_ATTACHMENT0
                 };
-                let mut value = 0;
-                gl.GetFramebufferAttachmentParameteriv(
-                    gl::FRAMEBUFFER,
+                let value = gl.get_framebuffer_attachment_parameter_i32(
+                    glow::FRAMEBUFFER,
                     attachment,
-                    gl::FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING,
-                    &mut value,
+                    glow::FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING,
                 );
                 value as gl::types::GLenum == gl::SRGB
             } else if extensions.gl_ext_framebuffer_srgb {
-                let mut value = 0;
-                gl.GetBooleanv(gl::FRAMEBUFFER_SRGB_CAPABLE_EXT, &mut value);
-                value != 0
+                gl.get_parameter_bool(gl::FRAMEBUFFER_SRGB_CAPABLE_EXT)
             } else {
                 false
             }
         },
 
         depth_bits: {
-            let mut value = 0;
+            let value;
 
             // `glGetFramebufferAttachmentParameteriv` incorrectly returns GL_INVALID_ENUM on some
             // drivers, so we prefer using `glGetIntegerv` if possible.
@@ -341,33 +307,29 @@ pub unsafe fn get_capabilities(
             // doesn't even though it provides this extension. I'm not sure whether this is a bug
             // with OS/X or just the extension actually not providing it.
             if version >= &Version(Api::Gl, 3, 0) && !extensions.gl_arb_compatibility {
-                let mut fb = 0;
-                gl.GetIntegerv(gl::DRAW_FRAMEBUFFER_BINDING, &mut fb);
+                let fb = gl.get_parameter_i32(glow::DRAW_FRAMEBUFFER_BINDING);
                 let attachment = if fb == 0 {
                     gl::DEPTH
                 } else {
                     gl::DEPTH_ATTACHMENT
                 };
-                let mut ty = 0;
-                gl.GetFramebufferAttachmentParameteriv(
-                    gl::FRAMEBUFFER,
+                let ty = gl.get_framebuffer_attachment_parameter_i32(
+                    glow::FRAMEBUFFER,
                     attachment,
-                    gl::FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE,
-                    &mut ty,
+                    glow::FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE,
                 );
 
                 if ty as gl::types::GLenum == gl::NONE {
                     value = 0;
                 } else {
-                    gl.GetFramebufferAttachmentParameteriv(
-                        gl::FRAMEBUFFER,
+                    value = gl.get_framebuffer_attachment_parameter_i32(
+                        glow::FRAMEBUFFER,
                         attachment,
-                        gl::FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE,
-                        &mut value,
+                        glow::FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE,
                     );
                 }
             } else {
-                gl.GetIntegerv(gl::DEPTH_BITS, &mut value);
+                value = gl.get_parameter_i32(glow::DEPTH_BITS);
             };
 
             match value {
@@ -377,7 +339,7 @@ pub unsafe fn get_capabilities(
         },
 
         stencil_bits: {
-            let mut value = 0;
+            let value;
 
             // `glGetFramebufferAttachmentParameteriv` incorrectly returns GL_INVALID_ENUM on some
             // drivers, so we prefer using `glGetIntegerv` if possible.
@@ -386,33 +348,29 @@ pub unsafe fn get_capabilities(
             // doesn't even though it provides this extension. I'm not sure whether this is a bug
             // with OS/X or just the extension actually not providing it.
             if version >= &Version(Api::Gl, 3, 0) && !extensions.gl_arb_compatibility {
-                let mut fb = 0;
-                gl.GetIntegerv(gl::DRAW_FRAMEBUFFER_BINDING, &mut fb);
+                let fb = gl.get_parameter_i32(glow::DRAW_FRAMEBUFFER_BINDING);
                 let attachment = if fb == 0 {
                     gl::STENCIL
                 } else {
                     gl::STENCIL_ATTACHMENT
                 };
-                let mut ty = 0;
-                gl.GetFramebufferAttachmentParameteriv(
-                    gl::FRAMEBUFFER,
+                let ty = gl.get_framebuffer_attachment_parameter_i32(
+                    glow::FRAMEBUFFER,
                     attachment,
-                    gl::FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE,
-                    &mut ty,
+                    glow::FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE,
                 );
 
                 if ty as gl::types::GLenum == gl::NONE {
                     value = 0;
                 } else {
-                    gl.GetFramebufferAttachmentParameteriv(
-                        gl::FRAMEBUFFER,
+                    value = gl.get_framebuffer_attachment_parameter_i32(
+                        glow::FRAMEBUFFER,
                         attachment,
-                        gl::FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE,
-                        &mut value,
+                        glow::FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE,
                     );
                 }
             } else {
-                gl.GetIntegerv(gl::STENCIL_BITS, &mut value);
+                value = gl.get_parameter_i32(glow::STENCIL_BITS);
             };
 
             match value {
@@ -425,8 +383,7 @@ pub unsafe fn get_capabilities(
         internal_formats_renderbuffers: get_internal_formats(gl, version, extensions, true),
 
         max_combined_texture_image_units: {
-            let mut val = 2;
-            gl.GetIntegerv(gl::MAX_COMBINED_TEXTURE_IMAGE_UNITS, &mut val);
+            let mut val = gl.get_parameter_i32(glow::MAX_COMBINED_TEXTURE_IMAGE_UNITS);
 
             // WORK-AROUND (issue #1181)
             // Some Radeon drivers crash if you use texture units 32 or more.
@@ -440,18 +397,10 @@ pub unsafe fn get_capabilities(
         max_texture_max_anisotropy: if !extensions.gl_ext_texture_filter_anisotropic {
             None
         } else {
-            Some({
-                let mut val = 0.0;
-                gl.GetFloatv(gl::MAX_TEXTURE_MAX_ANISOTROPY_EXT, &mut val);
-                val
-            })
+            Some(gl.get_parameter_f32(glow::MAX_TEXTURE_MAX_ANISOTROPY_EXT))
         },
 
-        max_texture_size: {
-            let mut val = 0;
-            gl.GetIntegerv(gl::MAX_TEXTURE_SIZE, &mut val);
-            val
-        },
+        max_texture_size: gl.get_parameter_i32(glow::MAX_TEXTURE_SIZE),
 
         max_texture_buffer_size: {
             if version >= &Version(Api::Gl, 3, 0)
@@ -460,11 +409,7 @@ pub unsafe fn get_capabilities(
                 || extensions.gl_oes_texture_buffer
                 || extensions.gl_ext_texture_buffer
             {
-                Some({
-                    let mut val = 0;
-                    gl.GetIntegerv(gl::MAX_TEXTURE_BUFFER_SIZE, &mut val);
-                    val
-                })
+                Some(gl.get_parameter_i32(glow::MAX_TEXTURE_BUFFER_SIZE))
             } else {
                 None
             }
@@ -472,7 +417,7 @@ pub unsafe fn get_capabilities(
 
         max_viewport_dims: {
             let mut val: [gl::types::GLint; 2] = [0, 0];
-            gl.GetIntegerv(gl::MAX_VIEWPORT_DIMS, val.as_mut_ptr());
+            gl.get_parameter_i32_slice(glow::MAX_VIEWPORT_DIMS, &mut val);
             (val[0], val[1])
         },
 
@@ -482,9 +427,7 @@ pub unsafe fn get_capabilities(
                 || extensions.gl_ati_draw_buffers
                 || extensions.gl_arb_draw_buffers
             {
-                let mut val = 1;
-                gl.GetIntegerv(gl::MAX_DRAW_BUFFERS, &mut val);
-                val
+                gl.get_parameter_i32(glow::MAX_DRAW_BUFFERS)
             } else {
                 1
             }
@@ -493,20 +436,14 @@ pub unsafe fn get_capabilities(
         max_patch_vertices: if version >= &Version(Api::Gl, 4, 0)
             || extensions.gl_arb_tessellation_shader
         {
-            Some({
-                let mut val = 0;
-                gl.GetIntegerv(gl::MAX_PATCH_VERTICES, &mut val);
-                val
-            })
+            Some(gl.get_parameter_i32(glow::MAX_PATCH_VERTICES))
         } else {
             None
         },
 
         max_indexed_atomic_counter_buffer: if version >= &Version(Api::Gl, 4, 2) {
             // TODO: ARB_shader_atomic_counters   // TODO: GLES
-            let mut val = 0;
-            gl.GetIntegerv(gl::MAX_ATOMIC_COUNTER_BUFFER_BINDINGS, &mut val);
-            val
+            gl.get_parameter_i32(glow::MAX_ATOMIC_COUNTER_BUFFER_BINDINGS)
         } else {
             0
         },
@@ -515,9 +452,7 @@ pub unsafe fn get_capabilities(
             if version >= &Version(Api::Gl, 4, 3) || extensions.gl_arb_shader_storage_buffer_object
             {
                 // TODO: GLES
-                let mut val = 0;
-                gl.GetIntegerv(gl::MAX_SHADER_STORAGE_BUFFER_BINDINGS, &mut val);
-                val
+                gl.get_parameter_i32(glow::MAX_SHADER_STORAGE_BUFFER_BINDINGS)
             } else {
                 0
             }
@@ -526,13 +461,9 @@ pub unsafe fn get_capabilities(
         max_indexed_transform_feedback_buffer: {
             if version >= &Version(Api::Gl, 4, 0) || extensions.gl_arb_transform_feedback3 {
                 // TODO: GLES
-                let mut val = 0;
-                gl.GetIntegerv(gl::MAX_TRANSFORM_FEEDBACK_BUFFERS, &mut val);
-                val
+                gl.get_parameter_i32(glow::MAX_TRANSFORM_FEEDBACK_BUFFERS)
             } else if version >= &Version(Api::Gl, 3, 0) || extensions.gl_ext_transform_feedback {
-                let mut val = 0;
-                gl.GetIntegerv(gl::MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS_EXT, &mut val);
-                val
+                gl.get_parameter_i32(gl::MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS_EXT)
             } else {
                 0
             }
@@ -541,9 +472,7 @@ pub unsafe fn get_capabilities(
         max_indexed_uniform_buffer: {
             if version >= &Version(Api::Gl, 3, 1) || extensions.gl_arb_uniform_buffer_object {
                 // TODO: GLES
-                let mut val = 0;
-                gl.GetIntegerv(gl::MAX_UNIFORM_BUFFER_BINDINGS, &mut val);
-                val
+                gl.get_parameter_i32(glow::MAX_UNIFORM_BUFFER_BINDINGS)
             } else {
                 0
             }
@@ -553,12 +482,9 @@ pub unsafe fn get_capabilities(
             || version >= &Version(Api::GlEs, 3, 1)
             || extensions.gl_arb_compute_shader
         {
-            let mut val1 = 0;
-            let mut val2 = 0;
-            let mut val3 = 0;
-            gl.GetIntegeri_v(gl::MAX_COMPUTE_WORK_GROUP_COUNT, 0, &mut val1);
-            gl.GetIntegeri_v(gl::MAX_COMPUTE_WORK_GROUP_COUNT, 1, &mut val2);
-            gl.GetIntegeri_v(gl::MAX_COMPUTE_WORK_GROUP_COUNT, 2, &mut val3);
+            let val1 = gl.get_parameter_indexed_i32(glow::MAX_COMPUTE_WORK_GROUP_COUNT, 0);
+            let val2 = gl.get_parameter_indexed_i32(glow::MAX_COMPUTE_WORK_GROUP_COUNT, 1);
+            let val3 = gl.get_parameter_indexed_i32(glow::MAX_COMPUTE_WORK_GROUP_COUNT, 2);
             (val1, val2, val3)
         } else {
             (0, 0, 0)
@@ -571,9 +497,7 @@ pub unsafe fn get_capabilities(
                 || extensions.gl_ext_framebuffer_object
                 || extensions.gl_nv_fbo_color_attachments
             {
-                let mut val = 4;
-                gl.GetIntegerv(gl::MAX_COLOR_ATTACHMENTS, &mut val);
-                val
+                gl.get_parameter_i32(glow::MAX_COLOR_ATTACHMENTS)
             } else if version >= &Version(Api::GlEs, 2, 0) {
                 1
             } else {
@@ -587,9 +511,7 @@ pub unsafe fn get_capabilities(
                 || version >= &Version(Api::GlEs, 3, 1)
                 || extensions.gl_arb_framebuffer_no_attachments
             {
-                let mut val = 0;
-                gl.GetIntegerv(gl::MAX_FRAMEBUFFER_WIDTH, &mut val);
-                Some(val)
+                Some(gl.get_parameter_i32(glow::MAX_FRAMEBUFFER_WIDTH))
             } else {
                 None
             }
@@ -600,9 +522,7 @@ pub unsafe fn get_capabilities(
                 || version >= &Version(Api::GlEs, 3, 1)
                 || extensions.gl_arb_framebuffer_no_attachments
             {
-                let mut val = 0;
-                gl.GetIntegerv(gl::MAX_FRAMEBUFFER_HEIGHT, &mut val);
-                Some(val)
+                Some(gl.get_parameter_i32(glow::MAX_FRAMEBUFFER_HEIGHT))
             } else {
                 None
             }
@@ -613,9 +533,7 @@ pub unsafe fn get_capabilities(
                 || version >= &Version(Api::GlEs, 3, 2)
                 || extensions.gl_arb_framebuffer_no_attachments
             {
-                let mut val = 0;
-                gl.GetIntegerv(gl::MAX_FRAMEBUFFER_LAYERS, &mut val);
-                Some(val)
+                Some(gl.get_parameter_i32(glow::MAX_FRAMEBUFFER_LAYERS))
             } else {
                 None
             }
@@ -626,9 +544,7 @@ pub unsafe fn get_capabilities(
                 || version >= &Version(Api::GlEs, 3, 1)
                 || extensions.gl_arb_framebuffer_no_attachments
             {
-                let mut val = 0;
-                gl.GetIntegerv(gl::MAX_FRAMEBUFFER_SAMPLES, &mut val);
-                Some(val)
+                Some(gl.get_parameter_i32(glow::MAX_FRAMEBUFFER_SAMPLES))
             } else {
                 None
             }
@@ -648,18 +564,14 @@ pub unsafe fn get_capabilities(
 /// unloaded functions being called.
 ///
 pub unsafe fn get_supported_glsl(
-    gl: &gl::Gl,
+    gl: &glow::Context,
     version: &Version,
     extensions: &ExtensionsList,
 ) -> Vec<Version> {
     // checking if the implementation has a shader compiler
-    // a compiler is optional in OpenGL ES
-    if version.0 == Api::GlEs {
-        let mut val = 0;
-        gl.GetBooleanv(gl::SHADER_COMPILER, &mut val);
-        if val == 0 {
-            return vec![];
-        }
+    // a compiler is optional in OpenGL ES, but always present in WebGL, which can't be queried
+    if version.0 == Api::GlEs && !is_webgl() &&!gl.get_parameter_bool(glow::SHADER_COMPILER) {
+        return vec![];
     }
 
     // some recent versions have an API to determine the list of supported versions
@@ -729,7 +641,7 @@ pub unsafe fn get_supported_glsl(
 
 /// Returns all informations about all supported internal formats.
 pub fn get_internal_formats(
-    gl: &gl::Gl,
+    gl: &glow::Context,
     version: &Version,
     extensions: &ExtensionsList,
     renderbuffer: bool,
@@ -770,7 +682,7 @@ pub fn get_internal_formats(
 
 /// Returns informations about a precise internal format.
 pub fn get_internal_format(
-    gl: &gl::Gl,
+    gl: &glow::Context,
     version: &Version,
     extensions: &ExtensionsList,
     format: TextureFormat,
@@ -795,35 +707,35 @@ pub fn get_internal_format(
 
     unsafe {
         let target = if renderbuffer {
-            gl::RENDERBUFFER
+            glow::RENDERBUFFER
         } else {
-            gl::TEXTURE_2D_MULTISAMPLE
+            glow::TEXTURE_2D_MULTISAMPLE
         };
 
+        // WebGL only accepts `SAMPLES`, not `NUM_SAMPLE_COUNTS`, so the list can't be sized
         let samples = if format.is_renderable(&dummy)
+            && !is_webgl()
             && ((version >= &Version(Api::GlEs, 3, 0) && renderbuffer)
                 || version >= &Version(Api::Gl, 4, 2)
                 || extensions.gl_arb_internalformat_query)
         {
-            let mut num = 0;
-            gl.GetInternalformativ(
+            let mut num = [0];
+            gl.get_internal_format_i32_slice(
                 target,
                 format.to_glenum(),
-                gl::NUM_SAMPLE_COUNTS,
-                1,
+                glow::NUM_SAMPLE_COUNTS,
                 &mut num,
             );
+            let num = num[0];
 
             if num >= 1 {
-                let mut formats = Vec::with_capacity(num as usize);
-                gl.GetInternalformativ(
+                let mut formats = vec![0; num as usize];
+                gl.get_internal_format_i32_slice(
                     target,
                     format.to_glenum(),
-                    gl::SAMPLES,
-                    num,
-                    formats.as_mut_ptr(),
+                    glow::SAMPLES,
+                    &mut formats,
                 );
-                formats.set_len(num as usize);
                 Some(formats)
             } else {
                 Some(Vec::new())

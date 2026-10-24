@@ -12,7 +12,6 @@ use fnv::FnvHasher;
 
 use crate::CapabilitiesSource;
 use crate::GlObject;
-use crate::Handle;
 use crate::ProgramExt;
 use crate::RawUniformValue;
 
@@ -197,10 +196,10 @@ impl fmt::Debug for ComputeShader {
 }
 
 impl GlObject for ComputeShader {
-    type Id = Handle;
+    type Id = glow::Program;
 
     #[inline]
-    fn get_id(&self) -> Handle {
+    fn get_id(&self) -> glow::Program {
         self.raw.get_id()
     }
 }

@@ -1,4 +1,5 @@
 use crate::gl;
+use crate::handles::RawName;
 use crate::version::Api;
 use crate::version::Version;
 
@@ -10,22 +11,23 @@ use crate::ContextExt;
 use std::rc::Rc;
 use std::{ffi, ptr};
 
+use glow::HasContext;
+
 use crate::GlObject;
-use crate::Handle;
 
 use crate::program::{ProgramCreationError, ShaderType, SpirvEntryPoint};
 
 /// A single, compiled but unlinked, shader.
 pub struct Shader {
     context: Rc<Context>,
-    id: Handle,
+    id: glow::Shader,
 }
 
 impl GlObject for Shader {
-    type Id = Handle;
+    type Id = glow::Shader;
 
     #[inline]
-    fn get_id(&self) -> Handle {
+    fn get_id(&self) -> glow::Shader {
         self.id
     }
 }
@@ -35,19 +37,7 @@ impl Drop for Shader {
         let ctxt = self.context.make_current();
 
         unsafe {
-            match self.id {
-                Handle::Id(id) => {
-                    assert!(
-                        ctxt.version >= &Version(Api::Gl, 2, 0)
-                            || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                    );
-                    ctxt.gl.DeleteShader(id);
-                }
-                Handle::Handle(id) => {
-                    assert!(ctxt.extensions.gl_arb_shader_objects);
-                    ctxt.gl.DeleteObjectARB(id);
-                }
-            }
+            ctxt.glow.delete_shader(self.id);
         }
     }
 }
@@ -72,151 +62,34 @@ where
             return Err(ProgramCreationError::ShaderTypeNotSupported);
         }
 
-        let source_code = ffi::CString::new(source_code.as_bytes()).unwrap();
-
-        let id = if ctxt.version >= &Version(Api::Gl, 2, 0)
-            || ctxt.version >= &Version(Api::GlEs, 2, 0)
-        {
-            Handle::Id(ctxt.gl.CreateShader(shader_type))
-        } else if ctxt.extensions.gl_arb_shader_objects {
-            Handle::Handle(ctxt.gl.CreateShaderObjectARB(shader_type))
-        } else {
-            unreachable!()
+        let shader = match ctxt.glow.create_shader(shader_type) {
+            Ok(shader) => shader,
+            Err(_) => return Err(ProgramCreationError::ShaderTypeNotSupported),
         };
 
-        if id == Handle::Id(0) || id == Handle::Handle(0 as gl::types::GLhandleARB) {
-            return Err(ProgramCreationError::ShaderTypeNotSupported);
-        }
-
-        match id {
-            Handle::Id(id) => {
-                assert!(
-                    ctxt.version >= &Version(Api::Gl, 2, 0)
-                        || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                );
-                ctxt.gl
-                    .ShaderSource(id, 1, [source_code.as_ptr()].as_ptr(), ptr::null());
-            }
-            Handle::Handle(id) => {
-                assert!(ctxt.extensions.gl_arb_shader_objects);
-                ctxt.gl
-                    .ShaderSourceARB(id, 1, [source_code.as_ptr()].as_ptr(), ptr::null());
-            }
-        }
+        ctxt.glow.shader_source(shader, source_code);
 
         // compiling
         {
             ctxt.report_debug_output_errors.set(false);
-
-            match id {
-                Handle::Id(id) => {
-                    assert!(
-                        ctxt.version >= &Version(Api::Gl, 2, 0)
-                            || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                    );
-                    ctxt.gl.CompileShader(id);
-                }
-                Handle::Handle(id) => {
-                    assert!(ctxt.extensions.gl_arb_shader_objects);
-                    ctxt.gl.CompileShaderARB(id);
-                }
-            }
-
+            ctxt.glow.compile_shader(shader);
             ctxt.report_debug_output_errors.set(true);
         }
 
         // checking compilation success by reading a flag on the shader
-        let compilation_success = {
-            let mut compilation_success: gl::types::GLint = 0;
-            match id {
-                Handle::Id(id) => {
-                    assert!(
-                        ctxt.version >= &Version(Api::Gl, 2, 0)
-                            || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                    );
-                    ctxt.gl
-                        .GetShaderiv(id, gl::COMPILE_STATUS, &mut compilation_success);
-                }
-                Handle::Handle(id) => {
-                    assert!(ctxt.extensions.gl_arb_shader_objects);
-                    ctxt.gl.GetObjectParameterivARB(
-                        id,
-                        gl::OBJECT_COMPILE_STATUS_ARB,
-                        &mut compilation_success,
-                    );
-                }
-            }
-            compilation_success
-        };
-
-        if compilation_success == 1 {
+        if ctxt.glow.get_shader_compile_status(shader) {
             Ok(Shader {
                 context: facade.get_context().clone(),
-                id,
+                id: shader,
             })
         } else {
             // compilation error
-            let mut error_log_size: gl::types::GLint = 0;
+            let msg = ctxt.glow.get_shader_info_log(shader);
 
-            match id {
-                Handle::Id(id) => {
-                    assert!(
-                        ctxt.version >= &Version(Api::Gl, 2, 0)
-                            || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                    );
-                    ctxt.gl
-                        .GetShaderiv(id, gl::INFO_LOG_LENGTH, &mut error_log_size);
-                }
-                Handle::Handle(id) => {
-                    assert!(ctxt.extensions.gl_arb_shader_objects);
-                    ctxt.gl.GetObjectParameterivARB(
-                        id,
-                        gl::OBJECT_INFO_LOG_LENGTH_ARB,
-                        &mut error_log_size,
-                    );
-                }
-            }
-
-            let mut error_log: Vec<u8> = Vec::with_capacity(error_log_size as usize);
-
-            match id {
-                Handle::Id(id) => {
-                    assert!(
-                        ctxt.version >= &Version(Api::Gl, 2, 0)
-                            || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                    );
-                    ctxt.gl.GetShaderInfoLog(
-                        id,
-                        error_log_size,
-                        &mut error_log_size,
-                        error_log.as_mut_ptr() as *mut gl::types::GLchar,
-                    );
-                }
-                Handle::Handle(id) => {
-                    assert!(ctxt.extensions.gl_arb_shader_objects);
-                    ctxt.gl.GetInfoLogARB(
-                        id,
-                        error_log_size,
-                        &mut error_log_size,
-                        error_log.as_mut_ptr() as *mut gl::types::GLchar,
-                    );
-                }
-            }
-
-            error_log.set_len(error_log_size as usize);
-
-            match String::from_utf8(error_log) {
-                Ok(msg) => Err(ProgramCreationError::CompilationError(
-                    msg,
-                    ShaderType::from_opengl_type(shader_type),
-                )),
-                Err(_) => Err(ProgramCreationError::CompilationError(
-                    "Could not convert the log \
-                                                            message to UTF-8"
-                        .to_owned(),
-                    ShaderType::from_opengl_type(shader_type),
-                )),
-            }
+            Err(ProgramCreationError::CompilationError(
+                msg,
+                ShaderType::from_opengl_type(shader_type),
+            ))
         }
     }
 }
@@ -241,24 +114,26 @@ where
             return Err(ProgramCreationError::ShaderTypeNotSupported);
         }
 
-        let id = if ctxt.version >= &Version(Api::Gl, 4, 6)
-            || (ctxt.version >= &Version(Api::Gl, 4, 1) && ctxt.extensions.gl_arb_gl_spirv)
+        let shader = if ctxt.version >= &Version(Api::Gl, 4, 6)
+            || (ctxt.version.0 == Api::Gl && ctxt.extensions.gl_arb_gl_spirv)
         {
-            ctxt.gl.CreateShader(shader_type)
+            ctxt.glow.create_shader(shader_type)
         } else {
             return Err(ProgramCreationError::CompilationNotSupported);
         };
 
-        if id == 0 {
-            return Err(ProgramCreationError::ShaderTypeNotSupported);
-        }
+        let shader = match shader {
+            Ok(shader) => shader,
+            Err(_) => return Err(ProgramCreationError::ShaderTypeNotSupported),
+        };
+        let id = shader.raw_name();
 
         let binary = &spirv.binary;
         let entry_point = ffi::CString::new(spirv.entry_point.as_bytes()).unwrap();
 
         const GL_SHADER_BINARY_FORMAT_SPIR_V: gl::types::GLenum = 0x9551;
 
-        ctxt.gl.ShaderBinary(
+        ctxt.extra.ShaderBinary(
             1,
             &id,
             GL_SHADER_BINARY_FORMAT_SPIR_V,
@@ -270,55 +145,26 @@ where
         {
             ctxt.report_debug_output_errors.set(false);
 
-            ctxt.gl
+            ctxt.extra
                 .SpecializeShader(id, entry_point.as_ptr() as _, 0, ptr::null(), ptr::null());
 
             ctxt.report_debug_output_errors.set(true);
         }
 
         // checking compilation success by reading a flag on the shader
-        let compilation_success = {
-            let mut compilation_success: gl::types::GLint = 0;
-            ctxt.gl
-                .GetShaderiv(id, gl::COMPILE_STATUS, &mut compilation_success);
-            compilation_success
-        };
-
-        if compilation_success == 1 {
+        if ctxt.glow.get_shader_compile_status(shader) {
             Ok(Shader {
                 context: facade.get_context().clone(),
-                id: Handle::Id(id),
+                id: shader,
             })
         } else {
             // compilation error
-            let mut error_log_size: gl::types::GLint = 0;
+            let msg = ctxt.glow.get_shader_info_log(shader);
 
-            ctxt.gl
-                .GetShaderiv(id, gl::INFO_LOG_LENGTH, &mut error_log_size);
-
-            let mut error_log: Vec<u8> = Vec::with_capacity(error_log_size as usize);
-
-            ctxt.gl.GetShaderInfoLog(
-                id,
-                error_log_size,
-                &mut error_log_size,
-                error_log.as_mut_ptr() as *mut gl::types::GLchar,
-            );
-
-            error_log.set_len(error_log_size as usize);
-
-            match String::from_utf8(error_log) {
-                Ok(msg) => Err(ProgramCreationError::CompilationError(
-                    msg,
-                    ShaderType::from_opengl_type(shader_type),
-                )),
-                Err(_) => Err(ProgramCreationError::CompilationError(
-                    "Could not convert the log \
-                                                            message to UTF-8"
-                        .to_owned(),
-                    ShaderType::from_opengl_type(shader_type),
-                )),
-            }
+            Err(ProgramCreationError::CompilationError(
+                msg,
+                ShaderType::from_opengl_type(shader_type),
+            ))
         }
     }
 }
@@ -330,7 +176,7 @@ where
     match shader_type {
         gl::VERTEX_SHADER | gl::FRAGMENT_SHADER => (),
         gl::GEOMETRY_SHADER => {
-            if !(ctxt.get_version() >= &Version(Api::Gl, 3, 2))
+            if ctxt.get_version().0 != Api::Gl
                 && !(ctxt.get_version() >= &Version(Api::GlEs, 3, 2))
                 && !ctxt.get_extensions().gl_arb_geometry_shader4
                 && !ctxt.get_extensions().gl_ext_geometry_shader4
@@ -341,7 +187,7 @@ where
             }
         }
         gl::TESS_CONTROL_SHADER | gl::TESS_EVALUATION_SHADER => {
-            if !(ctxt.get_version() >= &Version(Api::Gl, 4, 0))
+            if ctxt.get_version().0 != Api::Gl
                 && !(ctxt.get_version() >= &Version(Api::GlEs, 3, 2))
                 && !ctxt.get_extensions().gl_arb_tessellation_shader
                 && !ctxt.get_extensions().gl_oes_tessellation_shader

@@ -66,6 +66,7 @@ use crate::GlObject;
 use crate::TextureExt;
 
 use crate::gl;
+use crate::handles::RawName;
 use crate::ContextExt;
 
 use std::marker::PhantomData;
@@ -97,8 +98,8 @@ impl ResidentTexture {
                 return Err(BindlessTexturesNotSupportedError);
             }
 
-            let handle = unsafe { ctxt.gl.GetTextureHandleARB(texture.get_id()) };
-            unsafe { ctxt.gl.MakeTextureHandleResidentARB(handle) };
+            let handle = unsafe { ctxt.extra.GetTextureHandleARB(texture.get_id().raw_name()) };
+            unsafe { ctxt.extra.MakeTextureHandleResidentARB(handle) };
             ctxt.resident_texture_handles.push(handle);
             handle
         };
@@ -122,7 +123,7 @@ impl ResidentTexture {
 
         {
             let mut ctxt = texture.get_context().make_current();
-            unsafe { ctxt.gl.MakeTextureHandleNonResidentARB(self.handle) };
+            unsafe { ctxt.extra.MakeTextureHandleNonResidentARB(self.handle) };
             ctxt.resident_texture_handles.retain(|&t| t != self.handle);
         }
 

@@ -3,7 +3,6 @@ use crate::buffer::{BufferMutSlice, BufferSlice};
 use crate::program;
 use crate::uniforms::{AsUniformValue, LayoutMismatchError, UniformBlock, UniformValue};
 
-use crate::gl;
 use crate::GlObject;
 
 use std::ops::{Deref, DerefMut};
@@ -39,10 +38,10 @@ pub struct TypelessUniformBuffer {
 }
 
 impl<T: ?Sized + Content> GlObject for UniformBuffer<T> {
-    type Id = gl::types::GLuint;
+    type Id = glow::Buffer;
 
     #[inline]
-    fn get_id(&self) -> gl::types::GLuint {
+    fn get_id(&self) -> glow::Buffer {
         self.buffer.get_id()
     }
 }

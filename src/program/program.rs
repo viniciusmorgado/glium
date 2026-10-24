@@ -2,7 +2,6 @@ use crate::gl;
 
 use crate::context::CommandContext;
 use crate::version::Api;
-use crate::version::Version;
 
 use crate::backend::Facade;
 use crate::CapabilitiesSource;
@@ -12,9 +11,9 @@ use std::fmt;
 use std::hash::BuildHasherDefault;
 
 use fnv::FnvHasher;
+use glow::HasContext;
 
 use crate::GlObject;
-use crate::Handle;
 use crate::ProgramExt;
 use crate::RawUniformValue;
 
@@ -86,20 +85,9 @@ impl Program {
 
                 // TODO: move somewhere else
                 if transform_feedback_varyings.is_some()
-                    && !(facade.get_context().get_version() >= &Version(Api::Gl, 3, 0))
-                    && !facade
-                        .get_context()
-                        .get_extensions()
-                        .gl_ext_transform_feedback
+                    && facade.get_context().get_version().0 != Api::Gl
                 {
                     return Err(ProgramCreationError::TransformFeedbackNotSupported);
-                }
-
-                if uses_point_size
-                    && (facade.get_context().get_version().0 == Api::Gl)
-                    && !(facade.get_context().get_version() >= &Version(Api::Gl, 2, 0))
-                {
-                    return Err(ProgramCreationError::PointSizeNotSupported);
                 }
 
                 let _lock = COMPILER_GLOBAL_LOCK.lock();
@@ -130,20 +118,11 @@ impl Program {
                 data,
                 outputs_srgb,
                 uses_point_size,
-            } => {
-                if uses_point_size
-                    && (facade.get_context().get_version().0 == Api::Gl)
-                    && !(facade.get_context().get_version() >= &Version(Api::Gl, 2, 0))
-                {
-                    return Err(ProgramCreationError::PointSizeNotSupported);
-                }
-
-                (
-                    RawProgram::from_binary(facade, data)?,
-                    outputs_srgb,
-                    uses_point_size,
-                )
-            }
+            } => (
+                RawProgram::from_binary(facade, data)?,
+                outputs_srgb,
+                uses_point_size,
+            ),
 
             ProgramCreationInput::SpirV(SpirvProgram {
                 vertex_shader,
@@ -181,20 +160,9 @@ impl Program {
 
                 // TODO: move somewhere else
                 if transform_feedback_varyings.is_some()
-                    && !(facade.get_context().get_version() >= &Version(Api::Gl, 3, 0))
-                    && !facade
-                        .get_context()
-                        .get_extensions()
-                        .gl_ext_transform_feedback
+                    && facade.get_context().get_version().0 != Api::Gl
                 {
                     return Err(ProgramCreationError::TransformFeedbackNotSupported);
-                }
-
-                if uses_point_size
-                    && (facade.get_context().get_version().0 == Api::Gl)
-                    && !(facade.get_context().get_version() >= &Version(Api::Gl, 2, 0))
-                {
-                    return Err(ProgramCreationError::PointSizeNotSupported);
                 }
 
                 let _lock = COMPILER_GLOBAL_LOCK.lock();
@@ -490,10 +458,10 @@ impl fmt::Debug for Program {
 }
 
 impl GlObject for Program {
-    type Id = Handle;
+    type Id = glow::Program;
 
     #[inline]
-    fn get_id(&self) -> Handle {
+    fn get_id(&self) -> glow::Program {
         self.raw.get_id()
     }
 }
@@ -504,16 +472,16 @@ impl ProgramExt for Program {
         if ctxt.version.0 == Api::Gl {
             if self.uses_point_size && !ctxt.state.enabled_program_point_size {
                 unsafe {
-                    ctxt.gl.Enable(gl::PROGRAM_POINT_SIZE);
+                    ctxt.glow.enable(glow::PROGRAM_POINT_SIZE);
                 }
             } else if !self.uses_point_size && ctxt.state.enabled_program_point_size {
                 unsafe {
-                    ctxt.gl.Disable(gl::PROGRAM_POINT_SIZE);
+                    ctxt.glow.disable(glow::PROGRAM_POINT_SIZE);
                 }
             }
         }
 
-        if (ctxt.version >= &Version(Api::Gl, 3, 0)
+        if (ctxt.version.0 == Api::Gl
             || ctxt.extensions.gl_arb_framebuffer_srgb
             || ctxt.extensions.gl_ext_framebuffer_srgb
             || ctxt.extensions.gl_ext_srgb_write_control)
@@ -522,9 +490,9 @@ impl ProgramExt for Program {
             ctxt.state.enabled_framebuffer_srgb = !self.outputs_srgb;
 
             if self.outputs_srgb {
-                unsafe { ctxt.gl.Disable(gl::FRAMEBUFFER_SRGB) };
+                unsafe { ctxt.glow.disable(glow::FRAMEBUFFER_SRGB) };
             } else {
-                unsafe { ctxt.gl.Enable(gl::FRAMEBUFFER_SRGB) };
+                unsafe { ctxt.glow.enable(glow::FRAMEBUFFER_SRGB) };
             }
         }
 

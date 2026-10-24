@@ -64,20 +64,23 @@ impl ApplicationHandler<DisplayRequest> for Tests {
         let window = window.unwrap();
         let raw_window_handle = window.window_handle().unwrap().as_raw();
 
-        // Then the configuration which decides which OpenGL version we'll end up using, here we just use the default which is currently 3.3 core
-        // When this fails we'll try and create an ES context, this is mainly used on mobile devices or various ARM SBC's
-        // If you depend on features available in modern OpenGL Versions you need to request a specific, modern, version. Otherwise things will very likely fail.
-        let version = parse_version();
-        let context_attributes = ContextAttributesBuilder::new()
-            .with_context_api(version)
-            .build(Some(raw_window_handle));
-
-        let not_current_gl_context = unsafe {
-            gl_config
-                .display()
-                .create_context(&gl_config, &context_attributes)
-                .unwrap()
-        };
+        // Then the configuration which decides which OpenGL version we'll end up using. Unless
+        // GLIUM_GL_VERSION is set, we try the context versions of SafeGL's tier in order, because
+        // glutin's default (3.3 core) is below SafeGL's minimum.
+        let not_current_gl_context = parse_version()
+            .into_iter()
+            .find_map(|version| {
+                let context_attributes = ContextAttributesBuilder::new()
+                    .with_context_api(version)
+                    .build(Some(raw_window_handle));
+                unsafe {
+                    gl_config
+                        .display()
+                        .create_context(&gl_config, &context_attributes)
+                        .ok()
+                }
+            })
+            .expect("failed to create context");
 
         let attrs = SurfaceAttributesBuilder::<WindowSurface>::new().build(
             raw_window_handle,
@@ -186,7 +189,7 @@ pub fn rebuild_display(_display: &glium::Display<WindowSurface>) {
      */
 }
 
-fn parse_version() -> glutin::context::ContextApi {
+fn parse_version() -> Vec<glutin::context::ContextApi> {
     match env::var("GLIUM_GL_VERSION") {
         Ok(version) => {
             // expects "OpenGL 3.3" for example
@@ -200,7 +203,7 @@ fn parse_version() -> glutin::context::ContextApi {
             let major = iter.next().unwrap().parse().unwrap();
             let minor = iter.next().unwrap().parse().unwrap();
 
-            if ty == "OpenGL" {
+            vec![if ty == "OpenGL" {
                 glutin::context::ContextApi::OpenGl(Some(glutin::context::Version::new(
                     major, minor,
                 )))
@@ -210,9 +213,9 @@ fn parse_version() -> glutin::context::ContextApi {
                 glutin::context::ContextApi::Gles(Some(glutin::context::Version::new(major, minor)))
             } else {
                 panic!();
-            }
+            }]
         }
-        Err(_) => glutin::context::ContextApi::OpenGl(None),
+        Err(_) => glium::backend::glutin::tier_context_apis(),
     }
 }
 

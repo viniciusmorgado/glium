@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::mem;
 
 use crate::version::Api;
-use crate::version::Version;
 use crate::vertex::Attribute;
 use crate::CapabilitiesSource;
 
@@ -188,10 +187,7 @@ impl AttributeType {
             | &AttributeType::U32
             | &AttributeType::U32U32
             | &AttributeType::U32U32U32
-            | &AttributeType::U32U32U32U32 => {
-                caps.get_version() >= &Version(Api::Gl, 1, 0)
-                    || caps.get_version() >= &Version(Api::GlEs, 3, 0)
-            }
+            | &AttributeType::U32U32U32U32 => true,
 
             &AttributeType::I64
             | &AttributeType::I64I64
@@ -220,7 +216,7 @@ impl AttributeType {
             | &AttributeType::F64x3x4
             | &AttributeType::F64x4x2
             | &AttributeType::F64x4x3
-            | &AttributeType::F64x4x4 => caps.get_version() >= &Version(Api::Gl, 1, 0),
+            | &AttributeType::F64x4x4 => caps.get_version().0 == Api::Gl,
 
             &AttributeType::F16
             | &AttributeType::F16F16
@@ -234,37 +230,17 @@ impl AttributeType {
             | &AttributeType::F16x3x4
             | &AttributeType::F16x4x2
             | &AttributeType::F16x4x3
-            | &AttributeType::F16x4x4 => {
-                caps.get_version() >= &Version(Api::GlEs, 3, 0)
-                    || caps.get_version() >= &Version(Api::Gl, 4, 0)
-                    || caps.get_extensions().gl_arb_es3_compatibility
-                    || caps.get_extensions().gl_oes_vertex_half_float
-                    || caps.get_extensions().gl_arb_vertex_half_float
-                    || caps.get_extensions().gl_nv_half_float
-            }
+            | &AttributeType::F16x4x4 => true,
 
-            &AttributeType::FixedFloatI16U16 => {
-                caps.get_version() >= &Version(Api::GlEs, 2, 0)
-                    || caps.get_version() >= &Version(Api::Gl, 4, 0)
-                    || caps.get_extensions().gl_arb_es2_compatibility
-                    || caps.get_extensions().gl_oes_fixed_point
-            }
+            &AttributeType::FixedFloatI16U16 => true,
 
-            &AttributeType::I2I10I10I10Reversed | &AttributeType::U2U10U10U10Reversed => {
-                caps.get_version() >= &Version(Api::Gl, 3, 0)
-                    || caps.get_version() >= &Version(Api::GlEs, 3, 0)
-                    || caps.get_extensions().gl_arb_vertex_type_2_10_10_10_rev
-                    || caps.get_extensions().gl_arb_es3_compatibility
-            }
+            &AttributeType::I2I10I10I10Reversed | &AttributeType::U2U10U10U10Reversed => true,
 
             &AttributeType::I10I10I10I2 | &AttributeType::U10U10U10U2 => {
                 caps.get_extensions().gl_oes_vertex_type_10_10_10_2
             }
 
-            &AttributeType::F10F11F11UnsignedIntReversed => {
-                caps.get_version() >= &Version(Api::Gl, 4, 0)
-                    || caps.get_extensions().gl_arb_vertex_type_10f_11f_11f_rev
-            }
+            &AttributeType::F10F11F11UnsignedIntReversed => caps.get_version().0 == Api::Gl,
         }
     }
 

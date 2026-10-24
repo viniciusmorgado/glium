@@ -1,5 +1,47 @@
 # Changelog
 
+## Unreleased
+
+SafeGL now issues OpenGL calls through [glow](https://github.com/grovesNL/glow) and can run in the
+browser on WebGL 2. Breaking changes:
+
+- **Bindings:** the generated `gl_generator` bindings are gone. GL calls go through `glow`, plus a
+  small private table (`src/gl.rs`) for the entry points glow doesn't provide yet.
+- **Minimum versions:** creating a context below desktop OpenGL 4.1 or OpenGL ES 3.0 now fails with
+  `IncompatibleOpenGl`. Code paths for older versions and their extensions (ARB shader objects,
+  EXT framebuffer objects, APPLE/OES vertex arrays, APPLE sync, ...) were removed.
+- **Feature tiers:** new Cargo features `gl46` (default), `gl41`, `gles30` and `webgl`. Enabling
+  `gl46` on macOS, or a tier above `gles30` for `wasm32-unknown-unknown`, is a compile error.
+- **Object ids:** `GlObject::get_id()` returns glow handle types (`glow::Buffer`, `glow::Texture`,
+  `glow::Program`, ...) instead of `GLuint`, and `from_id` takes a `glow::Texture`. The public
+  `Handle` enum was removed. `glow` is re-exported as `glium::glow`.
+- **Backend trait:** `Backend::set_swap_interval` takes `glium::backend::SwapInterval` instead of
+  glutin's type. New methods `create_glow_context` (provided on native targets) and
+  `is_context_lost` (defaults to `false`). `get_proc_address` only exists on native targets.
+- **Context creation:** `SimpleWindowBuilder` requests the newest context version of the compiled
+  tier, then falls back (4.6 → 4.1 → OpenGL ES 3.0). See
+  `glium::backend::glutin::tier_context_apis`.
+- **Vulkan interop removed:** `memory_object`, `semaphore`, texture import from file descriptors
+  (`new_from_fd`), `UuidError` and the `vk_interop` feature.
+- **Direct state access:** `EXT_direct_state_access` is no longer used, and a few OpenGL 4.5 DSA
+  paths that glow can't express now bind objects instead.
+
+Additions:
+
+- WebGL 2 backend: `glium::backend::web::{WebDisplay, WebGlBackend}` behind the `webgl` feature,
+  with an example in `examples/web`.
+- `Context::glow_context()` gives access to the underlying `glow::Context` (for example to share it
+  with `egui_glow`).
+- `SyncFence::is_signaled()` checks a fence without blocking.
+
+Fixes:
+
+- Primitive restart returns `FixedIndexRestartingNotSupported` on OpenGL 4.1/4.2 drivers without
+  `ARB_ES3_compatibility` instead of issuing an invalid enum.
+- Uniform names longer than 62 bytes are no longer truncated during program reflection.
+- Copying between buffers no longer overwrites the source binding when the source is already bound
+  to `COPY_WRITE_BUFFER`.
+
 ## Version 0.36.0 (2024-10-11)
 
 - Fix UB around FDs being closed

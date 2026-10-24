@@ -31,7 +31,6 @@ The idea is to put a list of things to render in a buffer, and pass that buffer 
 */
 use crate::gl;
 use crate::version::Api;
-use crate::version::Version;
 use crate::CapabilitiesSource;
 use crate::ToGlEnum;
 
@@ -211,16 +210,10 @@ impl PrimitiveType {
             | &PrimitiveType::LineStripAdjacency
             | &PrimitiveType::TrianglesListAdjacency
             | &PrimitiveType::TriangleStripAdjacency => {
-                caps.get_version() >= &Version(Api::Gl, 3, 0)
-                    || caps.get_extensions().gl_arb_geometry_shader4
-                    || caps.get_extensions().gl_ext_geometry_shader4
-                    || caps.get_extensions().gl_ext_geometry_shader
+                caps.get_version().0 == Api::Gl || caps.get_extensions().gl_ext_geometry_shader
             }
 
-            &PrimitiveType::Patches { .. } => {
-                caps.get_version() >= &Version(Api::Gl, 4, 0)
-                    || caps.get_extensions().gl_arb_tessellation_shader
-            }
+            &PrimitiveType::Patches { .. } => caps.get_version().0 == Api::Gl,
         }
     }
 }
@@ -302,11 +295,7 @@ impl IndexType {
         match self {
             IndexType::U8 => true,
             IndexType::U16 => true,
-            IndexType::U32 => {
-                caps.get_version() >= &Version(Api::Gl, 1, 0)
-                    || caps.get_version() >= &Version(Api::GlEs, 3, 0)
-                    || caps.get_extensions().gl_oes_element_index_uint
-            }
+            IndexType::U32 => true,
         }
     }
 }

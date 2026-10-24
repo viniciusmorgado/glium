@@ -7,7 +7,6 @@ use std::sync::Mutex;
 
 use crate::gl;
 use crate::version::Api;
-use crate::version::Version;
 
 pub use self::compute::{ComputeCommand, ComputeShader};
 pub use self::program::Program;
@@ -45,13 +44,12 @@ where
 
 /// Returns true if the backend supports creating and retrieving binary format.
 #[inline]
-pub fn is_binary_supported<C: ?Sized>(ctxt: &C) -> bool
+pub fn is_binary_supported<C: ?Sized>(_ctxt: &C) -> bool
 where
     C: CapabilitiesSource,
 {
-    ctxt.get_version() >= &Version(Api::Gl, 4, 1)
-        || ctxt.get_version() >= &Version(Api::GlEs, 2, 0)
-        || ctxt.get_extensions().gl_arb_get_programy_binary
+    // program binaries are core in OpenGL 4.1 and OpenGL ES 3.0, but don't exist on WebGL
+    !crate::version::is_webgl()
 }
 
 /// Returns true if the backend supports shader subroutines.
@@ -60,15 +58,7 @@ pub fn is_subroutine_supported<C: ?Sized>(ctxt: &C) -> bool
 where
     C: CapabilitiesSource,
 {
-    // WORKAROUND: Windows only; NVIDIA doesn't actually return a valid function pointer for
-    //              GetProgramStageiv despite supporting ARB_shader_subroutine; see #1439
-    if cfg!(target_os = "windows")
-        && ctxt.get_version() <= &Version(Api::Gl, 4, 0)
-        && ctxt.get_capabilities().vendor == "NVIDIA Corporation"
-    {
-        return false;
-    }
-    ctxt.get_version() >= &Version(Api::Gl, 4, 0) || ctxt.get_extensions().gl_arb_shader_subroutine
+    ctxt.get_version().0 == Api::Gl || ctxt.get_extensions().gl_arb_shader_subroutine
 }
 
 // Some shader compilers have race-condition issues, so we lock this mutex
@@ -148,6 +138,9 @@ pub enum ProgramCreationError {
 
     /// The glium-specific binary header was not found or is corrupt.
     BinaryHeaderError,
+
+    /// The backend doesn't support loading program binaries (WebGL). See `is_binary_supported`.
+    BinaryNotSupported,
 }
 
 impl fmt::Display for ProgramCreationError {
@@ -172,6 +165,7 @@ impl fmt::Display for ProgramCreationError {
             TransformFeedbackNotSupported => "Transform feedback is not supported by the backend.",
             PointSizeNotSupported => "Point size is not supported by the backend.",
             BinaryHeaderError => "The glium-specific binary header was not found or is corrupt.",
+            BinaryNotSupported => "Program binaries are not supported by the backend.",
         };
         match *self {
             CompilationError(ref s, _) => write!(fmt, "{}: {}", desc, s),

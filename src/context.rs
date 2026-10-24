@@ -12,12 +12,15 @@ use std::mem;
 use std::os::raw;
 use std::ptr;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::str;
 
 use fnv::FnvHasher;
+use glow::HasContext;
 
 use crate::backend::Backend;
 use crate::version;
+use crate::version::is_webgl;
 use crate::version::Api;
 use crate::version::Version;
 use crate::CapabilitiesSource;
@@ -36,18 +39,19 @@ use crate::vertex_array_object;
 pub use self::capabilities::{Capabilities, Profile, ReleaseBehavior};
 pub use self::extensions::ExtensionsList;
 pub use self::state::GlState;
-pub use self::uuid::UuidError;
 
 mod capabilities;
 mod extensions;
 mod state;
-mod uuid;
 
 /// Stores the state and information required for glium to execute commands. Most public glium
 /// functions require passing a `Rc<Context>`.
 pub struct Context {
+    /// The glow context used to issue OpenGL calls.
+    glow: Arc<glow::Context>,
+
     /// Contains the pointers to OpenGL functions.
-    gl: gl::Gl,
+    extra: gl::Extra,
 
     /// The current state of the OpenGL state machine. Contains for example which buffer is bound
     /// to which bind point, whether depth testing is activated, etc.
@@ -107,8 +111,11 @@ pub struct Context {
 
 /// This struct is a guard that is returned when you want to access the OpenGL backend.
 pub struct CommandContext<'a> {
+    /// The glow context used to issue OpenGL calls.
+    pub glow: &'a glow::Context,
+
     /// Source of OpenGL function pointers.
-    pub gl: &'a gl::Gl,
+    pub extra: &'a gl::Extra,
 
     /// Refers to the state of the OpenGL backend. Maintained between multiple calls.
     /// **Must** be synchronized with the real state of the backend.
@@ -178,14 +185,18 @@ impl Context {
     {
         backend.make_current();
 
-        let gl = gl::Gl::load_with(|symbol| backend.get_proc_address(symbol) as *const _);
+        let glow = Arc::new(backend.create_glow_context());
+        #[cfg(not(all(target_family = "wasm", not(target_os = "emscripten"))))]
+        let extra = gl::Extra::load(|symbol| backend.get_proc_address(symbol));
+        #[cfg(all(target_family = "wasm", not(target_os = "emscripten")))]
+        let extra = gl::Extra::unloaded();
         let gl_state: RefCell<GlState> = RefCell::new(Default::default());
 
-        let version = version::get_gl_version(&gl);
-        let extensions = extensions::get_extensions(&gl, &version);
-        check_gl_compatibility(&version, &extensions)?;
+        let version = version::get_gl_version(&glow);
+        let extensions = extensions::get_extensions(&glow);
+        check_gl_compatibility(&version)?;
 
-        let capabilities = capabilities::get_capabilities(&gl, &version, &extensions);
+        let capabilities = capabilities::get_capabilities(&glow, &version, &extensions);
         let report_debug_output_errors = Cell::new(true);
 
         let vertex_array_objects = vertex_array_object::VertexAttributesSystem::new();
@@ -215,7 +226,8 @@ impl Context {
         };
 
         let context = Rc::new(Context {
-            gl,
+            glow,
+            extra,
             state: gl_state,
             version,
             extensions,
@@ -247,8 +259,8 @@ impl Context {
             /*assert!(::get_gl_error(&mut ctxt).is_none(),
             "glium has triggered an OpenGL error during initialization. Please report \
              this error: https://github.com/glium/glium/issues");*/
-            if ctxt.version >= &Version(Api::Gl, 3, 2) && ctxt.extensions.gl_arb_seamless_cube_map {
-                ctxt.gl.Enable(gl::TEXTURE_CUBE_MAP_SEAMLESS);
+            if ctxt.version.0 == Api::Gl && ctxt.extensions.gl_arb_seamless_cube_map {
+                ctxt.glow.enable(glow::TEXTURE_CUBE_MAP_SEAMLESS);
             }
         }
 
@@ -285,13 +297,13 @@ impl Context {
         // making textures resident
         let textures = self.resident_texture_handles.borrow();
         for &texture in textures.iter() {
-            self.gl.MakeTextureHandleResidentARB(texture);
+            self.extra.MakeTextureHandleResidentARB(texture);
         }
 
         // making images resident
         let images = self.resident_image_handles.borrow();
         for &(image, access) in images.iter() {
-            self.gl.MakeImageHandleResidentARB(image, access);
+            self.extra.MakeImageHandleResidentARB(image, access);
         }
 
         Ok(())
@@ -307,31 +319,16 @@ impl Context {
         //       The Fraps software calls `glClear` with scissoring and reads the image of the
         //       current framebuffer.
         //       Therefore we need to bind the default framebuffer before swapping.
-        if self.state.borrow().draw_framebuffer != 0 || self.state.borrow().read_framebuffer != 0 {
+        if self.state.borrow().draw_framebuffer.is_some()
+            || self.state.borrow().read_framebuffer.is_some()
+        {
             let mut ctxt = self.make_current();
 
-            if ctxt.version >= &Version(Api::Gl, 3, 0) || ctxt.extensions.gl_arb_framebuffer_object
-            {
-                unsafe {
-                    ctxt.gl.BindFramebuffer(gl::FRAMEBUFFER, 0);
-                }
-                ctxt.state.draw_framebuffer = 0;
-                ctxt.state.read_framebuffer = 0;
-            } else if ctxt.version >= &Version(Api::GlEs, 2, 0) {
-                unsafe {
-                    ctxt.gl.BindFramebuffer(gl::FRAMEBUFFER, 0);
-                }
-                ctxt.state.draw_framebuffer = 0;
-                ctxt.state.read_framebuffer = 0;
-            } else if ctxt.extensions.gl_ext_framebuffer_object {
-                unsafe {
-                    ctxt.gl.BindFramebufferEXT(gl::FRAMEBUFFER_EXT, 0);
-                }
-                ctxt.state.draw_framebuffer = 0;
-                ctxt.state.read_framebuffer = 0;
-            } else {
-                unreachable!();
+            unsafe {
+                ctxt.glow.bind_framebuffer(glow::FRAMEBUFFER, None);
             }
+            ctxt.state.draw_framebuffer = None;
+            ctxt.state.read_framebuffer = None;
         }
 
         let backend = self.backend.borrow();
@@ -440,24 +437,32 @@ impl Context {
     /// # Implementation
     ///
     /// If it has been determined that the context has been lost before, then the function
-    /// immediately returns true. Otherwise, calls `glGetGraphicsResetStatus`. If this function
-    /// is not available, returns false.
+    /// immediately returns true. Otherwise, asks the backend (which is how a WebGL context loss
+    /// is detected), then calls `glGetGraphicsResetStatus`. If this function is not available,
+    /// returns false.
     pub fn is_context_lost(&self) -> bool {
         if self.state.borrow().lost_context {
             return true;
         }
 
+        let lost_by_backend = self.backend.borrow().is_context_lost();
+
         let mut ctxt = self.make_current();
 
-        let lost = if ctxt.version >= &Version(Api::Gl, 4, 5)
+        let lost = if lost_by_backend {
+            true
+        } else if is_webgl() {
+            // WebGL has no `glGetGraphicsResetStatus`; the backend is the only source
+            false
+        } else if ctxt.version >= &Version(Api::Gl, 4, 5)
             || ctxt.version >= &Version(Api::GlEs, 3, 2)
             || ctxt.extensions.gl_khr_robustness
         {
-            unsafe { ctxt.gl.GetGraphicsResetStatus() != gl::NO_ERROR }
+            unsafe { ctxt.extra.GetGraphicsResetStatus() != gl::NO_ERROR }
         } else if ctxt.extensions.gl_ext_robustness {
-            unsafe { ctxt.gl.GetGraphicsResetStatusEXT() != gl::NO_ERROR }
+            unsafe { ctxt.extra.GetGraphicsResetStatusEXT() != gl::NO_ERROR }
         } else if ctxt.extensions.gl_arb_robustness {
-            unsafe { ctxt.gl.GetGraphicsResetStatusARB() != gl::NO_ERROR }
+            unsafe { ctxt.extra.GetGraphicsResetStatusARB() != gl::NO_ERROR }
         } else {
             false
         };
@@ -502,11 +507,15 @@ impl Context {
         unsafe {
             let ctxt = self.make_current();
 
-            if (ctxt.version >= &Version(Api::GlEs, 2, 0)
-                || ctxt.version >= &Version(Api::Gl, 4, 1))
-                && !ctxt.capabilities.supported_glsl_versions.is_empty()
-            {
-                ctxt.gl.ReleaseShaderCompiler();
+            // `glReleaseShaderCompiler` is core in OpenGL 4.1 and OpenGL ES 2.0, but doesn't
+            // exist on WebGL
+            let available = !is_webgl()
+                && (ctxt.version.0 == Api::GlEs
+                    || ctxt.version >= &Version(Api::Gl, 4, 1)
+                    || ctxt.extensions.gl_arb_es2_compatibility);
+
+            if available && !ctxt.capabilities.supported_glsl_versions.is_empty() {
+                ctxt.extra.ReleaseShaderCompiler();
             }
         }
     }
@@ -521,14 +530,14 @@ impl Context {
             let mut value: [gl::types::GLint; 4] = [0; 4];
 
             if ctxt.extensions.gl_nvx_gpu_memory_info {
-                ctxt.gl.GetIntegerv(
+                ctxt.glow.get_parameter_i32_slice(
                     gl::GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX,
-                    &mut value[0],
+                    &mut value,
                 );
                 Some(value[0] as usize * 1024)
             } else if ctxt.extensions.gl_ati_meminfo {
-                ctxt.gl
-                    .GetIntegerv(gl::TEXTURE_FREE_MEMORY_ATI, &mut value[0]);
+                ctxt.glow
+                    .get_parameter_i32_slice(gl::TEXTURE_FREE_MEMORY_ATI, &mut value);
                 Some(value[0] as usize * 1024)
             } else {
                 None
@@ -539,6 +548,10 @@ impl Context {
     /// Reads the content of the front buffer.
     ///
     /// You will only see the data that has finished being drawn.
+    ///
+    /// OpenGL ES and WebGL can't read the front buffer, so this reads the back buffer instead.
+    /// On WebGL, the back buffer is cleared after it is presented unless the context was
+    /// created with `preserveDrawingBuffer`.
     ///
     /// This function can return any type that implements `Texture2dDataSink<(u8, u8, u8, u8)>`.
     ///
@@ -589,6 +602,22 @@ impl Context {
         action()
     }
 
+    /// Returns the `glow` context that glium uses to issue OpenGL calls. Useful for interop
+    /// with libraries built on `glow`, such as `egui_glow`.
+    ///
+    /// The context isn't made current by this function: issue calls from within
+    /// `exec_in_context`, or otherwise make sure that this context is the current one.
+    ///
+    /// # Safety
+    ///
+    /// Same contract as `exec_in_context`: **if the caller manipulates any OpenGL state through
+    /// the returned context, it must be restored before glium is used again**, as glium caches
+    /// the state it has set.
+    #[inline]
+    pub unsafe fn glow_context(&self) -> &Arc<glow::Context> {
+        &self.glow
+    }
+
     /// Asserts that there are no OpenGL errors pending.
     ///
     /// This function should be used in tests.
@@ -620,7 +649,7 @@ impl Context {
     pub fn finish(&self) {
         let ctxt = self.make_current();
         unsafe {
-            ctxt.gl.Finish();
+            ctxt.glow.finish();
         }
     }
 
@@ -637,7 +666,7 @@ impl Context {
     pub fn flush(&self) {
         let ctxt = self.make_current();
         unsafe {
-            ctxt.gl.Flush();
+            ctxt.glow.flush();
         }
     }
 
@@ -654,7 +683,7 @@ impl Context {
         if ctxt.extensions.gl_gremedy_string_marker {
             let marker = marker.as_bytes();
             unsafe {
-                ctxt.gl.StringMarkerGREMEDY(
+                ctxt.extra.StringMarkerGREMEDY(
                     marker.len() as gl::types::GLsizei,
                     marker.as_ptr() as *const _,
                 )
@@ -663,7 +692,7 @@ impl Context {
         } else if ctxt.extensions.gl_ext_debug_marker {
             let marker = marker.as_bytes();
             unsafe {
-                ctxt.gl.InsertEventMarkerEXT(
+                ctxt.extra.InsertEventMarkerEXT(
                     marker.len() as gl::types::GLsizei,
                     marker.as_ptr() as *const _,
                 )
@@ -702,7 +731,8 @@ impl ContextExt for Context {
         }
 
         CommandContext {
-            gl: &self.gl,
+            glow: &self.glow,
+            extra: &self.extra,
             state: self.state.borrow_mut(),
             version: &self.version,
             extensions: &self.extensions,
@@ -753,7 +783,8 @@ impl Drop for Context {
             }
 
             let mut ctxt = CommandContext {
-                gl: &self.gl,
+                glow: &self.glow,
+                extra: &self.extra,
                 state: self.state.borrow_mut(),
                 version: &self.version,
                 extensions: &self.extensions,
@@ -780,13 +811,13 @@ impl Drop for Context {
             // disabling callback
             if ctxt.state.enabled_debug_output != Some(false) {
                 if ctxt.version >= &Version(Api::Gl, 4, 5) || ctxt.extensions.gl_khr_debug {
-                    ctxt.gl.Disable(gl::DEBUG_OUTPUT);
+                    ctxt.glow.disable(glow::DEBUG_OUTPUT);
                 } else if ctxt.extensions.gl_arb_debug_output {
-                    ctxt.gl.DebugMessageCallbackARB(None, ptr::null());
+                    ctxt.extra.DebugMessageCallbackARB(None, ptr::null());
                 }
 
                 ctxt.state.enabled_debug_output = Some(false);
-                ctxt.gl.Finish();
+                ctxt.glow.finish();
             }
         }
     }
@@ -810,47 +841,24 @@ impl<'a> CapabilitiesSource for CommandContext<'a> {
 }
 
 /// Checks whether the backend supports glium. Returns an `Err` if it doesn't.
-fn check_gl_compatibility(
-    version: &Version,
-    extensions: &ExtensionsList,
-) -> Result<(), IncompatibleOpenGl> {
-    let mut result = Vec::with_capacity(0);
+/// Minimum desktop OpenGL version supported by SafeGL (the `gl41` tier).
+const MIN_GL_VERSION: Version = Version(Api::Gl, 4, 1);
+/// Minimum OpenGL ES version supported by SafeGL (the `gles30` tier, also WebGL 2).
+const MIN_GLES_VERSION: Version = Version(Api::GlEs, 3, 0);
 
-    if !(version >= &Version(Api::Gl, 1, 5))
-        && !(version >= &Version(Api::GlEs, 2, 0))
-        && (!extensions.gl_arb_vertex_buffer_object || !extensions.gl_arb_map_buffer_range)
-    {
-        result.push("OpenGL implementation doesn't support buffer objects");
-    }
+fn check_gl_compatibility(version: &Version) -> Result<(), IncompatibleOpenGl> {
+    let minimum = match version.0 {
+        Api::Gl => MIN_GL_VERSION,
+        Api::GlEs => MIN_GLES_VERSION,
+    };
 
-    if !(version >= &Version(Api::Gl, 2, 0))
-        && !(version >= &Version(Api::GlEs, 2, 0))
-        && (!extensions.gl_arb_shader_objects
-            || !extensions.gl_arb_vertex_shader
-            || !extensions.gl_arb_fragment_shader)
-    {
-        result.push("OpenGL implementation doesn't support vertex/fragment shaders");
-    }
-
-    if !extensions.gl_ext_framebuffer_object
-        && !(version >= &Version(Api::Gl, 3, 0))
-        && !(version >= &Version(Api::GlEs, 2, 0))
-        && !extensions.gl_arb_framebuffer_object
-    {
-        result.push("OpenGL implementation doesn't support framebuffers");
-    }
-
-    if !extensions.gl_ext_framebuffer_blit
-        && !(version >= &Version(Api::Gl, 3, 0))
-        && !(version >= &Version(Api::GlEs, 2, 0))
-    {
-        result.push("OpenGL implementation doesn't support blitting framebuffers");
-    }
-
-    if result.len() == 0 {
+    if version >= &minimum {
         Ok(())
     } else {
-        Err(IncompatibleOpenGl(result.join("\n")))
+        Err(IncompatibleOpenGl(format!(
+            "SafeGL requires {:?} {}.{} or newer, but the driver provides {}.{}",
+            minimum.0, minimum.1, minimum.2, version.1, version.2
+        )))
     }
 }
 
@@ -1046,17 +1054,17 @@ fn init_debug_callback(context: &Rc<Context>, synchronous: bool) {
             || ctxt.extensions.gl_arb_debug_output
         {
             if synchronous && !ctxt.state.enabled_debug_output_synchronous {
-                ctxt.gl.Enable(gl::DEBUG_OUTPUT_SYNCHRONOUS);
+                ctxt.glow.enable(glow::DEBUG_OUTPUT_SYNCHRONOUS);
                 ctxt.state.enabled_debug_output_synchronous = true;
             }
 
             if ctxt.version >= &Version(Api::Gl, 4, 5)
                 || ctxt.version >= &Version(Api::GlEs, 3, 2)
-                || (ctxt.version >= &Version(Api::Gl, 1, 0) && ctxt.extensions.gl_khr_debug)
+                || (ctxt.version.0 == Api::Gl && ctxt.extensions.gl_khr_debug)
             {
-                ctxt.gl
+                ctxt.extra
                     .DebugMessageCallback(Some(callback_wrapper), context_raw_ptr.0 as *const _);
-                ctxt.gl.DebugMessageControl(
+                ctxt.extra.DebugMessageControl(
                     gl::DONT_CARE,
                     gl::DONT_CARE,
                     gl::DONT_CARE,
@@ -1066,13 +1074,13 @@ fn init_debug_callback(context: &Rc<Context>, synchronous: bool) {
                 );
 
                 if ctxt.state.enabled_debug_output != Some(true) {
-                    ctxt.gl.Enable(gl::DEBUG_OUTPUT);
+                    ctxt.glow.enable(glow::DEBUG_OUTPUT);
                     ctxt.state.enabled_debug_output = Some(true);
                 }
-            } else if ctxt.version >= &Version(Api::GlEs, 2, 0) && ctxt.extensions.gl_khr_debug {
-                ctxt.gl
+            } else if ctxt.extensions.gl_khr_debug {
+                ctxt.extra
                     .DebugMessageCallbackKHR(Some(callback_wrapper), context_raw_ptr.0 as *const _);
-                ctxt.gl.DebugMessageControlKHR(
+                ctxt.extra.DebugMessageControlKHR(
                     gl::DONT_CARE,
                     gl::DONT_CARE,
                     gl::DONT_CARE,
@@ -1082,13 +1090,13 @@ fn init_debug_callback(context: &Rc<Context>, synchronous: bool) {
                 );
 
                 if ctxt.state.enabled_debug_output != Some(true) {
-                    ctxt.gl.Enable(gl::DEBUG_OUTPUT);
+                    ctxt.glow.enable(glow::DEBUG_OUTPUT);
                     ctxt.state.enabled_debug_output = Some(true);
                 }
             } else {
-                ctxt.gl
+                ctxt.extra
                     .DebugMessageCallbackARB(Some(callback_wrapper), context_raw_ptr.0 as *const _);
-                ctxt.gl.DebugMessageControlARB(
+                ctxt.extra.DebugMessageControlARB(
                     gl::DONT_CARE,
                     gl::DONT_CARE,
                     gl::DONT_CARE,

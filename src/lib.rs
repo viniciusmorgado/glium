@@ -114,11 +114,20 @@ compile_error!(
      Use `default-features = false` and enable the `gl41` feature instead."
 );
 
+// WebGL 2 is the `gles30` tier, and the browser backend lives behind the `webgl` feature.
+#[cfg(all(target_arch = "wasm32", target_os = "unknown", feature = "gl41"))]
+compile_error!(
+    "SafeGL: WebGL 2 only supports the `gles30` tier. \
+     Use `default-features = false, features = [\"webgl\"]`."
+);
+#[cfg(all(target_arch = "wasm32", target_os = "unknown", not(feature = "webgl")))]
+compile_error!("SafeGL: building for the browser requires the `webgl` feature.");
+
 #[cfg(feature = "glutin")]
 pub use crate::backend::glutin::glutin;
 #[cfg(feature = "simple_window_builder")]
 pub use crate::backend::winit;
-pub use crate::context::{Capabilities, ExtensionsList, Profile, UuidError};
+pub use crate::context::{Capabilities, ExtensionsList, Profile};
 pub use crate::draw_parameters::Smooth;
 pub use crate::draw_parameters::{
     BackfaceCullingMode, Blend, BlendingFunction, LinearBlendingFactor,
@@ -136,6 +145,10 @@ pub use crate::sync::{LinearSyncFence, SyncFence};
 pub use crate::texture::Texture2d;
 pub use crate::version::{get_supported_glsl_version, Api, Version};
 pub use crate::vertex::{Vertex, VertexBuffer, VertexFormat};
+
+/// The `glow` crate, whose handle types (`glow::Buffer`, `glow::Texture`, ...) are the ids returned
+/// by [`GlObject::get_id`].
+pub use glow;
 
 use std::collections::HashMap;
 use std::error::Error;
@@ -159,16 +172,15 @@ pub mod draw_parameters;
 pub mod field;
 pub mod framebuffer;
 pub mod index;
-pub mod memory_object;
 pub mod pixel_buffer;
 pub mod program;
-pub mod semaphore;
 pub mod texture;
 pub mod uniforms;
 pub mod vertex;
 
 mod context;
 mod fbo;
+mod handles;
 mod image_format;
 mod ops;
 mod sampler_object;
@@ -177,10 +189,7 @@ mod utils;
 mod version;
 mod vertex_array_object;
 
-mod gl {
-    #![allow(clippy::all)]
-    include!(concat!(env!("OUT_DIR"), "/gl_bindings.rs"));
-}
+mod gl;
 
 #[doc(hidden)]
 pub use memoffset::offset_of as __glium_offset_of;
@@ -215,18 +224,6 @@ pub trait GlObject {
     /// Returns the id of the object.
     fn get_id(&self) -> Self::Id;
 }
-
-/// Handle to a shader or a program.
-// TODO: Handle(null()) is equal to Id(0)
-#[derive(PartialEq, Eq, Copy, Clone, Debug, Hash)]
-pub enum Handle {
-    /// A numeric identifier.
-    Id(gl::types::GLuint),
-    /// A `GLhandleARB`.
-    Handle(gl::types::GLhandleARB),
-}
-
-unsafe impl Send for Handle {}
 
 /// Internal trait for enums that can be turned into GLenum.
 trait ToGlEnum {
@@ -389,7 +386,12 @@ trait QueryExt {
 
     fn end_transform_feedback_primitives_written_query(ctxt: &mut CommandContext<'_>);
 
-    fn begin_conditional_render(&self, ctxt: &mut CommandContext<'_>, wait: bool, per_region: bool);
+    fn begin_conditional_render(
+        &self,
+        ctxt: &mut CommandContext<'_>,
+        wait: bool,
+        per_region: bool,
+    ) -> Result<(), DrawError>;
 
     fn end_conditional_render(ctxt: &mut CommandContext<'_>);
 
@@ -400,7 +402,7 @@ trait QueryExt {
 /// Internal trait for textures.
 trait TextureExt {
     /// Returns the ID of the texture.
-    fn get_texture_id(&self) -> gl::types::GLuint;
+    fn get_texture_id(&self) -> glow::Texture;
 
     /// Returns the context associated to this texture.
     fn get_context(&self) -> &Rc<Context>;
@@ -459,7 +461,7 @@ trait TransformFeedbackSessionExt {
     fn unbind(_: &mut CommandContext<'_>);
 
     /// Ensures that a buffer isn't used by transform feedback.
-    fn ensure_buffer_out_of_transform_feedback(_: &mut CommandContext<'_>, _: gl::types::GLuint);
+    fn ensure_buffer_out_of_transform_feedback(_: &mut CommandContext<'_>, _: glow::Buffer);
 }
 
 /// Internal trait for uniforms handling.
@@ -1238,6 +1240,18 @@ pub enum DrawError {
 
     /// Tried to use too many image units simultaneously
     InsufficientImageUnits,
+
+    /// A polygon mode other than `Fill` was requested, but the backend doesn't support it.
+    PolygonModeNotSupported,
+
+    /// Disabling multisampling isn't supported by the backend.
+    MultisamplingNotSupported,
+
+    /// Offsetting the depth of points or lines isn't supported by the backend.
+    PolygonOffsetNotSupported,
+
+    /// Conditional rendering isn't supported by the backend.
+    ConditionalRenderingNotSupported,
 }
 
 impl Error for DrawError {
@@ -1312,6 +1326,14 @@ impl fmt::Display for DrawError {
                 "Tried to enable a clip plane that does not exist.",
             InsufficientImageUnits =>
                 "Tried to use more image uniforms that the implementation has support for",
+            PolygonModeNotSupported =>
+                "A polygon mode other than `Fill` is not supported by the backend",
+            MultisamplingNotSupported =>
+                "Disabling multisampling is not supported by the backend",
+            PolygonOffsetNotSupported =>
+                "Offsetting the depth of points or lines is not supported by the backend",
+            ConditionalRenderingNotSupported =>
+                "Conditional rendering is not supported by the backend",
         };
         match self {
             UniformTypeMismatch {
@@ -1577,16 +1599,18 @@ impl Error for IncompatibleOpenGl {}
 #[allow(dead_code)]
 #[inline]
 fn get_gl_error(ctxt: &mut context::CommandContext<'_>) -> Option<&'static str> {
-    match unsafe { ctxt.gl.GetError() } {
-        gl::NO_ERROR => None,
-        gl::INVALID_ENUM => Some("GL_INVALID_ENUM"),
-        gl::INVALID_VALUE => Some("GL_INVALID_VALUE"),
-        gl::INVALID_OPERATION => Some("GL_INVALID_OPERATION"),
-        gl::INVALID_FRAMEBUFFER_OPERATION => Some("GL_INVALID_FRAMEBUFFER_OPERATION"),
-        gl::OUT_OF_MEMORY => Some("GL_OUT_OF_MEMORY"),
-        gl::STACK_UNDERFLOW => Some("GL_STACK_UNDERFLOW"),
-        gl::STACK_OVERFLOW => Some("GL_STACK_OVERFLOW"),
-        gl::CONTEXT_LOST => Some("GL_CONTEXT_LOST"),
+    use glow::HasContext;
+
+    match unsafe { ctxt.glow.get_error() } {
+        glow::NO_ERROR => None,
+        glow::INVALID_ENUM => Some("GL_INVALID_ENUM"),
+        glow::INVALID_VALUE => Some("GL_INVALID_VALUE"),
+        glow::INVALID_OPERATION => Some("GL_INVALID_OPERATION"),
+        glow::INVALID_FRAMEBUFFER_OPERATION => Some("GL_INVALID_FRAMEBUFFER_OPERATION"),
+        glow::OUT_OF_MEMORY => Some("GL_OUT_OF_MEMORY"),
+        glow::STACK_UNDERFLOW => Some("GL_STACK_UNDERFLOW"),
+        glow::STACK_OVERFLOW => Some("GL_STACK_OVERFLOW"),
+        glow::CONTEXT_LOST => Some("GL_CONTEXT_LOST"),
         _ => Some("Unknown glGetError return value"),
     }
 }

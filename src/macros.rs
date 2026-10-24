@@ -641,7 +641,7 @@ macro_rules! program {
     );
 
     (_inner, $context:ident, $vers:ident, {$($ty:ident:$src:expr),+,}$($rest:tt)*) => (
-        $crate::program!(_inner, $context, $vers, {$($ty:$src),+} $($rest)*);
+        $crate::program!(_inner, $context, $vers, {$($ty:$src),+} $($rest)*)
     );
 
     (_program_ty vertex, $src:expr, $vs:ident, $tcs:ident, $tes:ident, $gs:ident, $fs:ident, $srgb:ident, $ps:ident) => (

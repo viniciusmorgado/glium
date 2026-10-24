@@ -19,7 +19,7 @@ There are three concepts in play:
 
 use glium::Surface;
 use glutin::config::ConfigTemplateBuilder;
-use glutin::context::{ContextApi, ContextAttributesBuilder};
+use glutin::context::{ContextApi, ContextAttributesBuilder, Version};
 use glutin::display::GetGlDisplay;
 use glutin::prelude::*;
 use glutin::surface::SurfaceAttributesBuilder;
@@ -50,13 +50,17 @@ fn main() {
         .unwrap();
     let window = window.unwrap();
 
-    // Then the configuration which decides which OpenGL version we'll end up using, here we just use the default which is currently 3.3 core
-    // When this fails we'll try and create an ES context, this is mainly used on mobile devices or various ARM SBC's
+    // Then the configuration which decides which OpenGL version we'll end up using. SafeGL needs at
+    // least OpenGL 4.1, so we request it explicitly: glutin's default is 3.3 core, which is too old.
+    // When this fails we'll try and create an OpenGL ES 3.0 context, this is mainly used on mobile
+    // devices or various ARM SBC's.
     // If you depend on features available in modern OpenGL Versions you need to request a specific, modern, version. Otherwise things will very likely fail.
     let window_handle = window.window_handle().unwrap();
-    let context_attributes = ContextAttributesBuilder::new().build(Some(window_handle.into()));
+    let context_attributes = ContextAttributesBuilder::new()
+        .with_context_api(ContextApi::OpenGl(Some(Version::new(4, 1))))
+        .build(Some(window_handle.into()));
     let fallback_context_attributes = ContextAttributesBuilder::new()
-        .with_context_api(ContextApi::Gles(None))
+        .with_context_api(ContextApi::Gles(Some(Version::new(3, 0))))
         .build(Some(window_handle.into()));
 
     let not_current_gl_context = Some(unsafe {
@@ -157,7 +161,13 @@ fn main() {
             Takeable::insert(&mut gl_window_takeable, gl_window);
         }
 
-        fn set_swap_interval(&self, interval: glutin::surface::SwapInterval) {
+        fn set_swap_interval(&self, interval: glium::backend::SwapInterval) {
+            let interval = match interval {
+                glium::backend::SwapInterval::DontWait => glutin::surface::SwapInterval::DontWait,
+                glium::backend::SwapInterval::Wait(frames) => {
+                    glutin::surface::SwapInterval::Wait(frames)
+                }
+            };
             let pair = &self.gl_window.borrow();
             let context = &pair.0;
             let window = &pair.1;

@@ -565,10 +565,10 @@ fn build_texture<W: Write>(dest: &mut W, ty: TextureType, dimensions: TextureDim
         dest,
         "
                 impl GlObject for {} {{
-                    type Id = gl::types::GLuint;
+                    type Id = glow::Texture;
 
                     #[inline]
-                    fn get_id(&self) -> gl::types::GLuint {{
+                    fn get_id(&self) -> glow::Texture {{
                         self.0.get_id()
                     }}
                 }}
@@ -1092,7 +1092,7 @@ fn build_texture<W: Write>(dest: &mut W, ty: TextureType, dimensions: TextureDim
                 /// after this reference's lifetime has ended.
                 pub unsafe fn from_id<F: Facade + ?Sized>(facade: &F,
                                                  format: {format},
-                                                 id: gl::types::GLuint,
+                                                 id: glow::Texture,
                                                  owned: bool,
                                                  mipmap: MipmapsOption,
                                                  ty: Dimensions)
@@ -1102,24 +1102,6 @@ fn build_texture<W: Write>(dest: &mut W, ty: TextureType, dimensions: TextureDim
                     {name}(any::from_id(facade, format, id, owned, mipmap, ty))
                 }}
         ", format = relevant_format, name = name)).unwrap();
-
-    // writing the 'new_from_fd' function
-    (writeln!(dest, r#"
-                /// Builds a new texture reference from an existing texture, externally created by a foreign
-                /// API like Vulkan. The texture is imported via an opaque file descriptor. You must make
-                /// sure all of the texture parameters match those used to create the texture in Vulkan.
-                #[cfg(target_os = "linux")]
-                pub unsafe fn new_from_fd<F: Facade + ?Sized>(facade: &F,
-                                                 format: {format},
-                                                 mipmaps: MipmapsOption,
-                                                 ty: Dimensions,
-                                                 params: crate::texture::ImportParameters,
-                                                 fd: std::fs::File)
-                                                 -> Result<{name}, crate::texture::TextureImportError> {{
-                    let format = format.to_texture_format();
-                    Ok({name}(any::new_from_fd(facade, format, mipmaps, ty, params, fd)?))
-                }}
-        "#, format = relevant_format, name = name)).unwrap();
 
     // dimensions getters
     write_dimensions_getters(dest, dimensions, "self.0", true);

@@ -1,6 +1,4 @@
-use crate::gl;
 use std::cmp::Ordering;
-use std::ffi::CStr;
 
 /// Describes a version.
 ///
@@ -33,53 +31,31 @@ impl PartialOrd for Version {
     }
 }
 
-/// Obtains the OpenGL version of the current context using the loaded functions.
+/// Returns true if the crate is compiled for WebGL (`wasm32` without Emscripten).
 ///
-/// # Unsafe
+/// WebGL 2 is reported as OpenGL ES 3.0, but it lacks or rejects several things that native
+/// OpenGL ES 3.0 has (buffer mapping, blocking fence waits, `PRIMITIVE_RESTART_FIXED_INDEX`,
+/// ...), and the table of extra entry points (`gl::Extra`) is never loaded.
+#[inline]
+pub(crate) const fn is_webgl() -> bool {
+    cfg!(all(target_family = "wasm", not(target_os = "emscripten")))
+}
+
+/// Obtains the OpenGL version of a `glow` context.
 ///
-/// You must ensure that the functions belong to the current context, otherwise you will get
-/// an undefined behavior.
-pub unsafe fn get_gl_version(gl: &gl::Gl) -> Version {
-    let version = gl.GetString(gl::VERSION);
-    let version =
-        String::from_utf8(CStr::from_ptr(version as *const _).to_bytes().to_vec()).unwrap();
+/// WebGL 2 is reported by glow as OpenGL ES 3.0.
+pub fn get_gl_version(gl: &glow::Context) -> Version {
+    use glow::HasContext;
 
-    // for the moment we mock WebGL as OpenGL ES 2.0
-    // TODO: handle the differences between WebGL and OpenGL ES
-    if version.starts_with("WebGL ") {
-        return Version(Api::GlEs, 2, 0);
-    }
-
-    let (version, api) = if version.starts_with("OpenGL ES ") {
-        (&version[10..], Api::GlEs)
-    } else if version.starts_with("OpenGL ES-") {
-        (&version[13..], Api::GlEs)
+    let version = gl.version();
+    let api = if version.is_embedded {
+        Api::GlEs
     } else {
-        (&version[..], Api::Gl)
+        Api::Gl
     };
+    let clamp = |value: u32| u8::try_from(value).unwrap_or(u8::MAX);
 
-    let version = version.split(' ').next().expect(
-        "glGetString(GL_VERSION) returned an empty \
-                                                    string",
-    );
-
-    let mut iter = version.split('.');
-    let major = iter.next().unwrap();
-    let minor = iter
-        .next()
-        .expect("glGetString(GL_VERSION) did not return a correct version");
-
-    Version(
-        api,
-        major
-            .parse()
-            .ok()
-            .expect("failed to parse GL major version"),
-        minor
-            .parse()
-            .ok()
-            .expect("failed to parse GL minor version"),
-    )
+    Version(api, clamp(version.major), clamp(version.minor))
 }
 
 /// Given an API version, this function returns the GLSL version that the implementation is
