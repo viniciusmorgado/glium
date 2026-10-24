@@ -4,7 +4,7 @@
 [![crates.io page](https://img.shields.io/crates/v/safegl.svg)](https://crates.io/crates/safegl)
 [![Dependency status](https://deps.rs/repo/github/viniciusmorgado/safegl/status.svg)](https://deps.rs/repo/github/viniciusmorgado/safegl)
 
-Elegant and safe OpenGL wrapper.
+Safe OpenGL bindings for Rust.
 
 SafeGL is an intermediate layer between OpenGL and your application. You still need to manage the
 graphics pipeline yourself, but you don't have to deal with OpenGL's old, error-prone API or with
@@ -178,8 +178,9 @@ SafeGL is a good fit when you want to build a renderer with a Rust API that hand
 OpenGL's resource management and state bookkeeping. You still design the rendering pipeline,
 write shaders, and choose how to organize your data and draw calls.
 
-Lower-level bindings such as [`gl`](https://docs.rs/gl/) are a better fit when you need direct
-control over OpenGL calls and are prepared to manage their safety requirements yourself.
+[glow](https://github.com/grovesNL/glow), the bindings SafeGL itself is built on, is a better fit
+when you need direct control over OpenGL calls and are prepared to manage their safety
+requirements yourself. It also targets desktop OpenGL, OpenGL ES and WebGL with a single API.
 
 ### Choose SafeGL when
 
@@ -192,17 +193,17 @@ control over OpenGL calls and are prepared to manage their safety requirements y
  - You want validation that catches many invalid resource combinations and draw configurations
    before they reach OpenGL, reducing the amount of unsafe code in your application.
 
- - You want the library to handle supported differences between OpenGL and OpenGL ES, including
-   capability checks and fallback paths where available. Individual features still depend on
-   your context, hardware, and driver.
+ - You want one API across desktop OpenGL, OpenGL ES and WebGL 2, with a feature tier that
+   decides at compile time which APIs are available, plus capability checks and fallback paths
+   within that tier. Individual features still depend on your context, hardware, and driver.
 
  - You want to focus on rendering techniques and application behavior while relying on an
    existing abstraction for common OpenGL operations.
 
 ### Choose lower-level bindings when
 
- - You need OpenGL features or extensions that SafeGL does not expose, using bindings that
-   include those entry points.
+ - You need OpenGL features or extensions outside SafeGL's feature tiers. You can call them
+   through glow directly, or alongside SafeGL through `Context::glow_context`.
 
  - You are building your own graphics abstraction and need to define its resource ownership,
    state tracking, synchronization, and error-handling rules.
@@ -226,10 +227,12 @@ SafeGL caches state and uses optimized OpenGL paths where supported. Raw calls g
 control, but performance depends on how you use that control. Measure your workload on the
 hardware you intend to support before choosing lower-level bindings for performance reasons.
 
-Mixing SafeGL with raw calls requires care: SafeGL tracks OpenGL state internally. When using
-`exec_in_context`, any OpenGL state changed by your code must be restored before the closure
-returns. For integrations that require frequent direct state manipulation, owning the OpenGL
-layer yourself may be simpler.
+Mixing SafeGL with raw calls requires care: SafeGL tracks OpenGL state internally. SafeGL
+re-exports glow as `safegl::glow`, and `Context::glow_context` returns the `glow::Context` it uses,
+so libraries built on glow (such as `egui_glow`) can share the same context. Issue those calls
+inside `exec_in_context`, and restore any OpenGL state your code changes before SafeGL is used
+again. For integrations that require frequent direct state manipulation, using glow on its own
+may be simpler.
 
 Limitations:
 
@@ -239,7 +242,3 @@ Limitations:
  - SafeGL gives you access to all the tools but doesn't prevent you from doing horribly slow
    things. Some knowledge of modern techniques is required if you want to reach maximum
    performances.
-
- - SafeGL pushes the Rust compiler to its limits. Stack overflows (inside the compiler),
-   internal compiler errors, one-hour compile time, etc. happen more often than in smaller
-   libraries.
