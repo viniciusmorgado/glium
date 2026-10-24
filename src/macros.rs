@@ -1,6 +1,6 @@
-//! Defines useful macros for glium usage.
+//! Defines useful macros for SafeGL usage.
 
-/// Calls the `assert_no_error` method on a `glium::Display` instance
+/// Calls the `assert_no_error` method on a `safegl::Display` instance
 /// with file and line number information.
 ///
 /// Aside from the first argument which must be the display,
@@ -39,7 +39,7 @@ macro_rules! assert_no_gl_error {
 /// ## Example
 ///
 /// ```rust
-/// # use glium::uniform;
+/// # use safegl::uniform;
 /// # fn main() {
 /// let uniforms = uniform! {
 ///     color: [1.0, 1.0, 0.0, 1.0],
@@ -77,8 +77,8 @@ macro_rules! uniform {
 /// ## Example
 ///
 /// ```rust
-/// # #[macro_use] extern crate glium;
-/// # use glium::uniform;
+/// # #[macro_use] extern crate safegl;
+/// # use safegl::uniform;
 /// # fn main(){
 ///     let mut uniforms = dynamic_uniform!{
 ///         color: &[1.0, 1.0, 0.0, 1.0],
@@ -107,7 +107,7 @@ macro_rules! dynamic_uniform{
     };
 }
 
-/// Implements the `glium::vertex::Vertex` trait for the given type.
+/// Implements the `safegl::vertex::Vertex` trait for the given type.
 ///
 /// The parameters must be the name of the struct and the names of its fields.
 ///
@@ -118,7 +118,7 @@ macro_rules! dynamic_uniform{
 /// ## Example
 ///
 /// ```
-/// # use glium::implement_vertex;
+/// # use safegl::implement_vertex;
 /// # fn main() {
 /// #[derive(Copy, Clone)]
 /// struct Vertex {
@@ -145,7 +145,7 @@ macro_rules! dynamic_uniform{
 /// #     position: [f32; 2],
 /// #     tex_coords: [f32; 2],
 /// # }
-/// # use glium::implement_vertex;
+/// # use safegl::implement_vertex;
 /// # fn main() {
 /// implement_vertex!(Vertex, position normalize(false), tex_coords normalize(false));
 /// # }
@@ -159,7 +159,7 @@ macro_rules! dynamic_uniform{
 /// #     position: [f32; 2],
 /// #     tex_coords: [f32; 2],
 /// # }
-/// # use glium::implement_vertex;
+/// # use safegl::implement_vertex;
 /// # fn main() {
 /// implement_vertex!(Vertex, position location(0), tex_coords location(1));
 /// # }
@@ -172,7 +172,7 @@ macro_rules! implement_vertex {
                 $(
                     (
                         std::borrow::Cow::Borrowed(stringify!($field_name)),
-                        $crate::__glium_offset_of!($struct_name, $field_name),
+                        $crate::__safegl_offset_of!($struct_name, $field_name),
                         -1,
                         {
                             const fn attr_type_of_val<T: $crate::vertex::Attribute>(_: Option<&T>)
@@ -206,7 +206,7 @@ macro_rules! implement_vertex {
                 $(
                     (
                         std::borrow::Cow::Borrowed(stringify!($field_name)),
-                        $crate::__glium_offset_of!($struct_name, $field_name),
+                        $crate::__safegl_offset_of!($struct_name, $field_name),
                         -1,
                         {
                             const fn attr_type_of_val<T: $crate::vertex::Attribute>(_: Option<&T>)
@@ -241,7 +241,7 @@ macro_rules! implement_vertex {
                 $(
                     (
                         std::borrow::Cow::Borrowed(stringify!($field_name)),
-                        $crate::__glium_offset_of!($struct_name, $field_name),
+                        $crate::__safegl_offset_of!($struct_name, $field_name),
                         {
                             $location
                         },
@@ -276,7 +276,7 @@ macro_rules! implement_vertex {
     );
 }
 
-/// Implements the `glium::buffer::Content` trait for the given type.
+/// Implements the `safegl::buffer::Content` trait for the given type.
 ///
 /// Contrary to the other similar macros, this one doesn't require you pass the list of parameters.
 ///
@@ -285,7 +285,7 @@ macro_rules! implement_vertex {
 /// ## Example
 ///
 /// ```
-/// # use glium::implement_buffer_content;
+/// # use safegl::implement_buffer_content;
 /// # fn main() {
 /// struct Data {
 ///     data: [u32]
@@ -388,14 +388,14 @@ macro_rules! implement_buffer_content {
     );
 }
 
-/// Implements the `glium::uniforms::UniformBlock` trait for the given type.
+/// Implements the `safegl::uniforms::UniformBlock` trait for the given type.
 ///
 /// The parameters must be the name of the struct and the names of its fields.
 ///
 /// ## Example
 ///
 /// ```
-/// # use glium::implement_uniform_block;
+/// # use safegl::implement_uniform_block;
 /// # fn main() {
 /// #[derive(Copy, Clone)]
 /// struct Vertex {
@@ -487,7 +487,7 @@ macro_rules! implement_uniform_block {
                                 (
                                     stringify!($field_name).to_owned(),
                                     {
-                                        let offset = $crate::__glium_offset_of!($struct_name, $field_name);
+                                        let offset = $crate::__safegl_offset_of!($struct_name, $field_name);
                                         let field_option = None::<&$struct_name>.map(|v| &v.$field_name);
                                         layout_from_ty(field_option, offset + base_offset)
                                     }
@@ -517,14 +517,14 @@ macro_rules! implement_uniform_block {
 ///
 /// This is implemented with successive calls to `is_glsl_version_supported()`.
 ///
-/// Returns a `glium::program::ProgramChooserCreationError`.
+/// Returns a `safegl::program::ProgramChooserCreationError`.
 ///
 /// ## Example
 ///
 /// ```no_run
-/// use glium::program;
+/// use safegl::program;
 /// # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-/// # fn example<T>(display: glium::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
+/// # fn example<T>(display: safegl::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
 /// let program = program!(&display,
 ///     300 => {
 ///         vertex: r#"
@@ -641,7 +641,7 @@ macro_rules! program {
     );
 
     (_inner, $context:ident, $vers:ident, {$($ty:ident:$src:expr),+,}$($rest:tt)*) => (
-        $crate::program!(_inner, $context, $vers, {$($ty:$src),+} $($rest)*);
+        $crate::program!(_inner, $context, $vers, {$($ty:$src),+} $($rest)*)
     );
 
     (_program_ty vertex, $src:expr, $vs:ident, $tcs:ident, $tes:ident, $gs:ident, $fs:ident, $srgb:ident, $ps:ident) => (

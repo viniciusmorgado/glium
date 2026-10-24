@@ -1,8 +1,8 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::index::PrimitiveType;
-use glium::Surface;
+use safegl::index::PrimitiveType;
+use safegl::Surface;
 
 mod support;
 
@@ -10,7 +10,7 @@ mod support;
 fn color_mask() {
     let display = support::build_display();
 
-    let params = glium::DrawParameters {
+    let params = safegl::DrawParameters {
         color_mask: (false, true, true, true),
         ..Default::default()
     };
@@ -21,7 +21,7 @@ fn color_mask() {
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
     texture
         .as_surface()
-        .draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params)
+        .draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params)
         .unwrap();
 
     let data: Vec<Vec<(u8, u8, u8, u8)>> = texture.read();
@@ -38,8 +38,8 @@ fn color_mask() {
 fn viewport_too_large() {
     let display = support::build_display();
 
-    let params = glium::DrawParameters {
-        viewport: Some(glium::Rect {
+    let params = safegl::DrawParameters {
+        viewport: Some(safegl::Rect {
             left: 0,
             bottom: 0,
             width: 4294967295,
@@ -51,8 +51,8 @@ fn viewport_too_large() {
     let (vb, ib, program) = support::build_fullscreen_red_pipeline(&display);
 
     let mut frame = display.draw();
-    match frame.draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params) {
-        Err(glium::DrawError::ViewportTooLarge) => (),
+    match frame.draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params) {
+        Err(safegl::DrawError::ViewportTooLarge) => (),
         a => panic!("{:?}", a),
     };
     frame.finish().unwrap();
@@ -64,8 +64,8 @@ fn viewport_too_large() {
 fn wrong_depth_range() {
     let display = support::build_display();
 
-    let params = glium::DrawParameters {
-        depth: glium::Depth {
+    let params = safegl::DrawParameters {
+        depth: safegl::Depth {
             range: (-0.1, 1.0),
             ..Default::default()
         },
@@ -75,8 +75,8 @@ fn wrong_depth_range() {
     let (vb, ib, program) = support::build_fullscreen_red_pipeline(&display);
 
     let mut frame = display.draw();
-    match frame.draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params) {
-        Err(glium::DrawError::InvalidDepthRange) => (),
+    match frame.draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params) {
+        Err(safegl::DrawError::InvalidDepthRange) => (),
         a => panic!("{:?}", a),
     };
     frame.finish().unwrap();
@@ -88,8 +88,8 @@ fn wrong_depth_range() {
 fn scissor() {
     let display = support::build_display();
 
-    let params = glium::DrawParameters {
-        scissor: Some(glium::Rect {
+    let params = safegl::DrawParameters {
+        scissor: Some(safegl::Rect {
             left: 0,
             bottom: 0,
             width: 1,
@@ -104,7 +104,7 @@ fn scissor() {
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
     texture
         .as_surface()
-        .draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params)
+        .draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params)
         .unwrap();
 
     let data: Vec<Vec<(u8, u8, u8, u8)>> = texture.read();
@@ -127,8 +127,8 @@ fn scissor() {
 fn scissor_followed_by_clear() {
     let display = support::build_display();
 
-    let params = glium::DrawParameters {
-        scissor: Some(glium::Rect {
+    let params = safegl::DrawParameters {
+        scissor: Some(safegl::Rect {
             left: 2,
             bottom: 2,
             width: 2,
@@ -143,7 +143,7 @@ fn scissor_followed_by_clear() {
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
     texture
         .as_surface()
-        .draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params)
+        .draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params)
         .unwrap();
     texture.as_surface().clear_color(1.0, 0.0, 1.0, 1.0);
 
@@ -161,8 +161,8 @@ fn scissor_followed_by_clear() {
 fn viewport_followed_by_clear() {
     let display = support::build_display();
 
-    let params = glium::DrawParameters {
-        viewport: Some(glium::Rect {
+    let params = safegl::DrawParameters {
+        viewport: Some(safegl::Rect {
             left: 2,
             bottom: 2,
             width: 2,
@@ -177,7 +177,7 @@ fn viewport_followed_by_clear() {
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
     texture
         .as_surface()
-        .draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params)
+        .draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params)
         .unwrap();
     texture.as_surface().clear_color(1.0, 0.0, 1.0, 1.0);
 
@@ -195,8 +195,8 @@ fn viewport_followed_by_clear() {
 fn viewport() {
     let display = support::build_display();
 
-    let params = glium::DrawParameters {
-        viewport: Some(glium::Rect {
+    let params = safegl::DrawParameters {
+        viewport: Some(safegl::Rect {
             left: 0,
             bottom: 0,
             width: 1,
@@ -211,7 +211,7 @@ fn viewport() {
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
     texture
         .as_surface()
-        .draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params)
+        .draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params)
         .unwrap();
 
     let data: Vec<Vec<(u8, u8, u8, u8)>> = texture.read();
@@ -234,7 +234,7 @@ fn viewport() {
 fn dont_draw_primitives() {
     let display = support::build_display();
 
-    let params = glium::DrawParameters {
+    let params = safegl::DrawParameters {
         draw_primitives: false,
         ..Default::default()
     };
@@ -245,10 +245,10 @@ fn dont_draw_primitives() {
     texture.as_surface().clear_color(0.0, 1.0, 0.0, 0.0);
     match texture
         .as_surface()
-        .draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params)
+        .draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params)
     {
         Ok(_) => (),
-        Err(glium::DrawError::RasterizerDiscardNotSupported) => return,
+        Err(safegl::DrawError::RasterizerDiscardNotSupported) => return,
         e => e.unwrap(),
     }
 
@@ -266,7 +266,7 @@ fn dont_draw_primitives() {
 fn dont_draw_primitives_then_draw() {
     let display = support::build_display();
 
-    let params = glium::DrawParameters {
+    let params = safegl::DrawParameters {
         draw_primitives: false,
         ..Default::default()
     };
@@ -277,10 +277,10 @@ fn dont_draw_primitives_then_draw() {
     texture.as_surface().clear_color(0.0, 1.0, 0.0, 0.0);
     match texture
         .as_surface()
-        .draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params)
+        .draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params)
     {
         Ok(_) => (),
-        Err(glium::DrawError::RasterizerDiscardNotSupported) => return,
+        Err(safegl::DrawError::RasterizerDiscardNotSupported) => return,
         e => e.unwrap(),
     }
     texture
@@ -289,7 +289,7 @@ fn dont_draw_primitives_then_draw() {
             &vb,
             &ib,
             &program,
-            &glium::uniforms::EmptyUniforms,
+            &safegl::uniforms::EmptyUniforms,
             &Default::default(),
         )
         .unwrap();
@@ -316,7 +316,7 @@ fn cull_clockwise() {
 
         implement_vertex!(Vertex, position);
 
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             &display,
             &[
                 Vertex {
@@ -338,7 +338,7 @@ fn cull_clockwise() {
 
     // first triangle covers the top-left side of the screen and is clockwise
     // second triangle covers the bottom-right side of the screen and is ccw
-    let index_buffer = glium::IndexBuffer::new(
+    let index_buffer = safegl::IndexBuffer::new(
         &display,
         PrimitiveType::TrianglesList,
         &[0u16, 1, 2, 1, 2, 3],
@@ -412,9 +412,9 @@ fn cull_clockwise() {
             &vertex_buffer,
             &index_buffer,
             &program,
-            &glium::uniforms::EmptyUniforms,
-            &glium::DrawParameters {
-                backface_culling: glium::BackfaceCullingMode::CullClockwise,
+            &safegl::uniforms::EmptyUniforms,
+            &safegl::DrawParameters {
+                backface_culling: safegl::BackfaceCullingMode::CullClockwise,
                 ..Default::default()
             },
         )
@@ -439,7 +439,7 @@ fn cull_counterclockwise() {
 
         implement_vertex!(Vertex, position);
 
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             &display,
             &[
                 Vertex {
@@ -461,7 +461,7 @@ fn cull_counterclockwise() {
 
     // first triangle covers the top-left side of the screen and is clockwise
     // second triangle covers the bottom-right side of the screen and is ccw
-    let index_buffer = glium::IndexBuffer::new(
+    let index_buffer = safegl::IndexBuffer::new(
         &display,
         PrimitiveType::TrianglesList,
         &[0u16, 1, 2, 1, 2, 3],
@@ -535,9 +535,9 @@ fn cull_counterclockwise() {
             &vertex_buffer,
             &index_buffer,
             &program,
-            &glium::uniforms::EmptyUniforms,
-            &glium::DrawParameters {
-                backface_culling: glium::BackfaceCullingMode::CullCounterClockwise,
+            &safegl::uniforms::EmptyUniforms,
+            &safegl::DrawParameters {
+                backface_culling: safegl::BackfaceCullingMode::CullCounterClockwise,
                 ..Default::default()
             },
         )
@@ -562,7 +562,7 @@ fn cull_clockwise_trianglestrip() {
 
         implement_vertex!(Vertex, position);
 
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             &display,
             &[
                 Vertex {
@@ -584,7 +584,7 @@ fn cull_clockwise_trianglestrip() {
 
     // both triangles are clockwise
     let index_buffer =
-        glium::IndexBuffer::new(&display, PrimitiveType::TriangleStrip, &[0u16, 1, 2, 3]).unwrap();
+        safegl::IndexBuffer::new(&display, PrimitiveType::TriangleStrip, &[0u16, 1, 2, 3]).unwrap();
 
     let program = program!(&display,
         140 => {
@@ -653,9 +653,9 @@ fn cull_clockwise_trianglestrip() {
             &vertex_buffer,
             &index_buffer,
             &program,
-            &glium::uniforms::EmptyUniforms,
-            &glium::DrawParameters {
-                backface_culling: glium::BackfaceCullingMode::CullClockwise,
+            &safegl::uniforms::EmptyUniforms,
+            &safegl::DrawParameters {
+                backface_culling: safegl::BackfaceCullingMode::CullClockwise,
                 ..Default::default()
             },
         )
@@ -680,7 +680,7 @@ fn cull_counterclockwise_trianglestrip() {
 
         implement_vertex!(Vertex, position);
 
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             &display,
             &[
                 Vertex {
@@ -702,7 +702,7 @@ fn cull_counterclockwise_trianglestrip() {
 
     // both triangles are clockwise
     let index_buffer =
-        glium::IndexBuffer::new(&display, PrimitiveType::TriangleStrip, &[0u16, 1, 2, 3]).unwrap();
+        safegl::IndexBuffer::new(&display, PrimitiveType::TriangleStrip, &[0u16, 1, 2, 3]).unwrap();
 
     let program = program!(&display,
         140 => {
@@ -771,9 +771,9 @@ fn cull_counterclockwise_trianglestrip() {
             &vertex_buffer,
             &index_buffer,
             &program,
-            &glium::uniforms::EmptyUniforms,
-            &glium::DrawParameters {
-                backface_culling: glium::BackfaceCullingMode::CullCounterClockwise,
+            &safegl::uniforms::EmptyUniforms,
+            &safegl::DrawParameters {
+                backface_culling: safegl::BackfaceCullingMode::CullCounterClockwise,
                 ..Default::default()
             },
         )
@@ -792,8 +792,8 @@ macro_rules! blending_test {
         fn $name() {
             let display = support::build_display();
 
-            let params = glium::DrawParameters {
-                blend: glium::Blend {
+            let params = safegl::DrawParameters {
+                blend: safegl::Blend {
                     color: $func,
                     alpha: $func,
                     constant_value: (1.0, 1.0, 1.0, 1.0)
@@ -880,7 +880,7 @@ macro_rules! blending_test {
 
 blending_test!(
     min_blending,
-    glium::BlendingFunction::Min,
+    safegl::BlendingFunction::Min,
     (0.0, 0.2, 0.3, 0.0),
     (1.0, 0.0, 0.0, 1.0),
     (0, 0, 0, 0)
@@ -888,7 +888,7 @@ blending_test!(
 
 blending_test!(
     max_blending,
-    glium::BlendingFunction::Max,
+    safegl::BlendingFunction::Max,
     (0.4, 1.0, 1.0, 0.2),
     (1.0, 0.0, 0.0, 1.0),
     (255, 255, 255, 255)
@@ -896,9 +896,9 @@ blending_test!(
 
 blending_test!(
     one_plus_one,
-    glium::BlendingFunction::Addition {
-        source: glium::LinearBlendingFactor::One,
-        destination: glium::LinearBlendingFactor::One,
+    safegl::BlendingFunction::Addition {
+        source: safegl::LinearBlendingFactor::One,
+        destination: safegl::LinearBlendingFactor::One,
     },
     (0.0, 1.0, 1.0, 0.0),
     (1.0, 0.0, 0.0, 1.0),
@@ -917,7 +917,7 @@ fn provoking_vertex_last() {
 
         implement_vertex!(Vertex, value);
 
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             &display,
             &[
                 Vertex { value: (-1.0, 1.0) },
@@ -930,7 +930,7 @@ fn provoking_vertex_last() {
         .unwrap()
     };
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 100
@@ -965,11 +965,11 @@ fn provoking_vertex_last() {
         .as_surface()
         .draw(
             &vertex_buffer,
-            &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
+            &safegl::index::NoIndices(safegl::index::PrimitiveType::TrianglesList),
             &program,
-            &glium::uniforms::EmptyUniforms,
-            &glium::DrawParameters {
-                provoking_vertex: glium::draw_parameters::ProvokingVertex::LastVertex,
+            &safegl::uniforms::EmptyUniforms,
+            &safegl::DrawParameters {
+                provoking_vertex: safegl::draw_parameters::ProvokingVertex::LastVertex,
                 ..Default::default()
             },
         )
@@ -999,7 +999,7 @@ fn provoking_vertex_first() {
 
         implement_vertex!(Vertex, value);
 
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             &display,
             &[
                 Vertex { value: (-1.0, 1.0) },
@@ -1012,7 +1012,7 @@ fn provoking_vertex_first() {
         .unwrap()
     };
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 100
@@ -1045,18 +1045,18 @@ fn provoking_vertex_first() {
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
     let res = texture.as_surface().draw(
         &vertex_buffer,
-        &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
+        &safegl::index::NoIndices(safegl::index::PrimitiveType::TrianglesList),
         &program,
-        &glium::uniforms::EmptyUniforms,
-        &glium::DrawParameters {
-            provoking_vertex: glium::draw_parameters::ProvokingVertex::FirstVertex,
+        &safegl::uniforms::EmptyUniforms,
+        &safegl::DrawParameters {
+            provoking_vertex: safegl::draw_parameters::ProvokingVertex::FirstVertex,
             ..Default::default()
         },
     );
 
     match res {
         Ok(_) => (),
-        Err(glium::DrawError::ProvokingVertexNotSupported) => {
+        Err(safegl::DrawError::ProvokingVertexNotSupported) => {
             display.assert_no_error(None);
             return;
         }
@@ -1087,7 +1087,7 @@ fn depth_clamp_all() {
 
         implement_vertex!(Vertex, position);
 
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             &display,
             &[
                 Vertex {
@@ -1170,12 +1170,12 @@ fn depth_clamp_all() {
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
     let res = texture.as_surface().draw(
         &vertex_buffer,
-        &glium::index::NoIndices(glium::index::PrimitiveType::TriangleStrip),
+        &safegl::index::NoIndices(safegl::index::PrimitiveType::TriangleStrip),
         &program,
-        &glium::uniforms::EmptyUniforms,
-        &glium::DrawParameters {
-            depth: glium::Depth {
-                clamp: glium::draw_parameters::DepthClamp::Clamp,
+        &safegl::uniforms::EmptyUniforms,
+        &safegl::DrawParameters {
+            depth: safegl::Depth {
+                clamp: safegl::draw_parameters::DepthClamp::Clamp,
                 ..Default::default()
             },
             ..Default::default()
@@ -1184,7 +1184,7 @@ fn depth_clamp_all() {
 
     match res {
         Ok(_) => (),
-        Err(glium::DrawError::DepthClampNotSupported) => {
+        Err(safegl::DrawError::DepthClampNotSupported) => {
             display.assert_no_error(None);
             return;
         }
@@ -1214,7 +1214,7 @@ fn depth_clamp_near() {
 
         implement_vertex!(Vertex, position);
 
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             &display,
             &[
                 Vertex {
@@ -1297,12 +1297,12 @@ fn depth_clamp_near() {
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
     let res = texture.as_surface().draw(
         &vertex_buffer,
-        &glium::index::NoIndices(glium::index::PrimitiveType::TriangleStrip),
+        &safegl::index::NoIndices(safegl::index::PrimitiveType::TriangleStrip),
         &program,
-        &glium::uniforms::EmptyUniforms,
-        &glium::DrawParameters {
-            depth: glium::Depth {
-                clamp: glium::draw_parameters::DepthClamp::ClampNear,
+        &safegl::uniforms::EmptyUniforms,
+        &safegl::DrawParameters {
+            depth: safegl::Depth {
+                clamp: safegl::draw_parameters::DepthClamp::ClampNear,
                 ..Default::default()
             },
             ..Default::default()
@@ -1311,7 +1311,7 @@ fn depth_clamp_near() {
 
     match res {
         Ok(_) => (),
-        Err(glium::DrawError::DepthClampNotSupported) => {
+        Err(safegl::DrawError::DepthClampNotSupported) => {
             display.assert_no_error(None);
             return;
         }
@@ -1349,7 +1349,7 @@ fn depth_clamp_far() {
 
         implement_vertex!(Vertex, position);
 
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             &display,
             &[
                 Vertex {
@@ -1432,12 +1432,12 @@ fn depth_clamp_far() {
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
     let res = texture.as_surface().draw(
         &vertex_buffer,
-        &glium::index::NoIndices(glium::index::PrimitiveType::TriangleStrip),
+        &safegl::index::NoIndices(safegl::index::PrimitiveType::TriangleStrip),
         &program,
-        &glium::uniforms::EmptyUniforms,
-        &glium::DrawParameters {
-            depth: glium::Depth {
-                clamp: glium::draw_parameters::DepthClamp::ClampFar,
+        &safegl::uniforms::EmptyUniforms,
+        &safegl::DrawParameters {
+            depth: safegl::Depth {
+                clamp: safegl::draw_parameters::DepthClamp::ClampFar,
                 ..Default::default()
             },
             ..Default::default()
@@ -1446,7 +1446,7 @@ fn depth_clamp_far() {
 
     match res {
         Ok(_) => (),
-        Err(glium::DrawError::DepthClampNotSupported) => {
+        Err(safegl::DrawError::DepthClampNotSupported) => {
             display.assert_no_error(None);
             return;
         }
@@ -1476,7 +1476,7 @@ fn depth_clamp_far() {
 fn primitive_bounding_box() {
     let display = support::build_display();
 
-    let params = glium::DrawParameters {
+    let params = safegl::DrawParameters {
         primitive_bounding_box: (0.0..1.0, -0.2..0.3, 0.0..1.0, -1.0..1.0),
         ..Default::default()
     };
@@ -1486,7 +1486,7 @@ fn primitive_bounding_box() {
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
     texture
         .as_surface()
-        .draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params)
+        .draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params)
         .unwrap();
 
     display.assert_no_error(None);
@@ -1508,7 +1508,7 @@ fn primitive_restart_index() {
 
         implement_vertex!(Vertex, position);
 
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             &display,
             &[
                 // lower line
@@ -1530,9 +1530,9 @@ fn primitive_restart_index() {
         .unwrap()
     };
 
-    let index_buffer = glium::IndexBuffer::<u8>::new(
+    let index_buffer = safegl::IndexBuffer::<u8>::new(
         &display,
-        glium::index::PrimitiveType::LineStrip,
+        safegl::index::PrimitiveType::LineStrip,
         &[0, 1, 255, 2, 3],
     )
     .unwrap();
@@ -1598,7 +1598,7 @@ fn primitive_restart_index() {
     let texture = support::build_renderable_texture(&display);
     texture.as_surface().clear_color(1.0, 1.0, 1.0, 1.0);
 
-    let options = glium::DrawParameters {
+    let options = safegl::DrawParameters {
         primitive_restart_index: true,
         ..Default::default()
     };
@@ -1607,13 +1607,13 @@ fn primitive_restart_index() {
         &vertex_buffer,
         &index_buffer,
         &program,
-        &glium::uniforms::EmptyUniforms,
+        &safegl::uniforms::EmptyUniforms,
         &options,
     );
 
     match res {
         Ok(_) => (),
-        Err(glium::DrawError::DepthClampNotSupported) => {
+        Err(safegl::DrawError::DepthClampNotSupported) => {
             display.assert_no_error(None);
             return;
         }

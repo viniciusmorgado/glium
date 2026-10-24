@@ -1,8 +1,8 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::index::PrimitiveType;
-use glium::Surface;
+use safegl::index::PrimitiveType;
+use safegl::Surface;
 
 mod support;
 
@@ -18,7 +18,7 @@ fn multiple_buffers_source() {
 
         implement_vertex!(Vertex, position);
 
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             &display,
             &[
                 Vertex {
@@ -46,7 +46,7 @@ fn multiple_buffers_source() {
 
         implement_vertex!(Vertex, color);
 
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             &display,
             &[
                 Vertex {
@@ -67,7 +67,7 @@ fn multiple_buffers_source() {
     };
 
     let index_buffer =
-        glium::IndexBuffer::new(&display, PrimitiveType::TriangleStrip, &[0u16, 1, 2, 3]).unwrap();
+        safegl::IndexBuffer::new(&display, PrimitiveType::TriangleStrip, &[0u16, 1, 2, 3]).unwrap();
 
     let program = program!(&display,
     110 => {
@@ -190,7 +190,7 @@ fn slice_draw_indices() {
     })
     .unwrap();
 
-    let vb = glium::VertexBuffer::new(
+    let vb = safegl::VertexBuffer::new(
         &display,
         &[
             Vertex {
@@ -210,7 +210,7 @@ fn slice_draw_indices() {
     .unwrap();
 
     let indices =
-        glium::IndexBuffer::new(&display, PrimitiveType::TrianglesList, &[0u16, 1, 2]).unwrap();
+        safegl::IndexBuffer::new(&display, PrimitiveType::TrianglesList, &[0u16, 1, 2]).unwrap();
 
     let texture = support::build_renderable_texture(&display);
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
@@ -220,7 +220,7 @@ fn slice_draw_indices() {
             vb.slice(1..4).unwrap(),
             &indices,
             &program,
-            &glium::uniforms::EmptyUniforms,
+            &safegl::uniforms::EmptyUniforms,
             &Default::default(),
         )
         .unwrap();
@@ -281,7 +281,7 @@ fn slice_draw_noindices() {
     })
     .unwrap();
 
-    let vb = glium::VertexBuffer::new(
+    let vb = safegl::VertexBuffer::new(
         &display,
         &[
             Vertex {
@@ -300,7 +300,7 @@ fn slice_draw_noindices() {
     )
     .unwrap();
 
-    let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+    let indices = safegl::index::NoIndices(safegl::index::PrimitiveType::TrianglesList);
 
     let texture = support::build_renderable_texture(&display);
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
@@ -310,7 +310,7 @@ fn slice_draw_noindices() {
             vb.slice(1..4).unwrap(),
             &indices,
             &program,
-            &glium::uniforms::EmptyUniforms,
+            &safegl::uniforms::EmptyUniforms,
             &Default::default(),
         )
         .unwrap();
@@ -390,7 +390,7 @@ fn slice_draw_multiple() {
     .unwrap();
 
     // the 3 last elements will be drawn
-    let vb1 = glium::VertexBuffer::new(
+    let vb1 = safegl::VertexBuffer::new(
         &display,
         &[
             Vertex {
@@ -416,7 +416,7 @@ fn slice_draw_multiple() {
     .unwrap();
 
     // the 3 last elements will be drawn
-    let vb2 = glium::VertexBuffer::new(
+    let vb2 = safegl::VertexBuffer::new(
         &display,
         &[
             Vertex2 {
@@ -448,7 +448,7 @@ fn slice_draw_multiple() {
     .unwrap();
 
     let indices =
-        glium::IndexBuffer::new(&display, PrimitiveType::TrianglesList, &[2u16, 3, 4]).unwrap();
+        safegl::IndexBuffer::new(&display, PrimitiveType::TrianglesList, &[2u16, 3, 4]).unwrap();
 
     let texture = support::build_renderable_texture(&display);
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
@@ -458,7 +458,7 @@ fn slice_draw_multiple() {
             (vb1.slice(1..4).unwrap(), vb2.slice(3..6).unwrap()),
             &indices,
             &program,
-            &glium::uniforms::EmptyUniforms,
+            &safegl::uniforms::EmptyUniforms,
             &Default::default(),
         )
         .unwrap();
@@ -474,7 +474,7 @@ fn slice_draw_multiple() {
 fn attributes_marker() {
     let display = support::build_display();
 
-    let program = match glium::Program::from_source(
+    let program = match safegl::Program::from_source(
         &display,
         "
             #version 140
@@ -511,8 +511,8 @@ fn attributes_marker() {
     texture
         .as_surface()
         .draw(
-            glium::vertex::EmptyVertexAttributes { len: 4 },
-            &glium::index::NoIndices(glium::index::PrimitiveType::TriangleStrip),
+            safegl::vertex::EmptyVertexAttributes { len: 4 },
+            &safegl::index::NoIndices(safegl::index::PrimitiveType::TriangleStrip),
             &program,
             &uniform! {},
             &Default::default(),
@@ -533,7 +533,7 @@ fn attributes_marker() {
 fn attributes_marker_indices() {
     let display = support::build_display();
 
-    let program = match glium::Program::from_source(
+    let program = match safegl::Program::from_source(
         &display,
         "
             #version 140
@@ -566,7 +566,7 @@ fn attributes_marker_indices() {
     };
 
     let indices =
-        glium::index::IndexBuffer::new(&display, PrimitiveType::TriangleStrip, &[0u16, 1, 2, 3])
+        safegl::index::IndexBuffer::new(&display, PrimitiveType::TriangleStrip, &[0u16, 1, 2, 3])
             .unwrap();
 
     let texture = support::build_renderable_texture(&display);
@@ -574,7 +574,7 @@ fn attributes_marker_indices() {
     texture
         .as_surface()
         .draw(
-            glium::vertex::EmptyVertexAttributes { len: 4 },
+            safegl::vertex::EmptyVertexAttributes { len: 4 },
             &indices,
             &program,
             &uniform! {},
@@ -604,7 +604,7 @@ fn instancing() {
 
         implement_vertex!(Vertex, position);
 
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             &display,
             &[
                 Vertex {
@@ -632,7 +632,7 @@ fn instancing() {
 
         implement_vertex!(Vertex, color);
 
-        glium::vertex::VertexBuffer::new(
+        safegl::vertex::VertexBuffer::new(
             &display,
             &[
                 Vertex {
@@ -658,9 +658,9 @@ fn instancing() {
     };
 
     let index_buffer =
-        glium::IndexBuffer::new(&display, PrimitiveType::TriangleStrip, &[0u16, 1, 2, 3]).unwrap();
+        safegl::IndexBuffer::new(&display, PrimitiveType::TriangleStrip, &[0u16, 1, 2, 3]).unwrap();
 
-    let program = match glium::Program::from_source(
+    let program = match safegl::Program::from_source(
         &display,
         "
             #version 330
@@ -731,7 +731,7 @@ fn per_instance_length_mismatch() {
 
         implement_vertex!(Vertex, position);
 
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             &display,
             &[
                 Vertex {
@@ -759,7 +759,7 @@ fn per_instance_length_mismatch() {
 
         implement_vertex!(Vertex, color);
 
-        glium::vertex::VertexBuffer::new(
+        safegl::vertex::VertexBuffer::new(
             &display,
             &[
                 Vertex {
@@ -792,7 +792,7 @@ fn per_instance_length_mismatch() {
 
         implement_vertex!(Vertex, color);
 
-        glium::vertex::VertexBuffer::new(
+        safegl::vertex::VertexBuffer::new(
             &display,
             &[
                 Vertex {
@@ -815,7 +815,7 @@ fn per_instance_length_mismatch() {
     };
 
     let index_buffer =
-        glium::IndexBuffer::new(&display, PrimitiveType::TriangleStrip, &[0u16, 1, 2, 3]).unwrap();
+        safegl::IndexBuffer::new(&display, PrimitiveType::TriangleStrip, &[0u16, 1, 2, 3]).unwrap();
 
     let program = program!(&display,
     110 => {
@@ -860,7 +860,7 @@ fn per_instance_length_mismatch() {
         &uniform! {},
         &Default::default(),
     ) {
-        Err(glium::DrawError::InstancesCountMismatch) => (),
+        Err(safegl::DrawError::InstancesCountMismatch) => (),
         a => panic!("{:?}", a),
     }
 
@@ -880,7 +880,7 @@ fn normalized_vertex() {
 
         implement_vertex!(Vertex, position);
 
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             &display,
             &[
                 Vertex {
@@ -908,7 +908,7 @@ fn normalized_vertex() {
 
         implement_vertex!(Vertex, color normalize(true));
 
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             &display,
             &[
                 Vertex { color: [0, 0, 0] },
@@ -921,7 +921,7 @@ fn normalized_vertex() {
     };
 
     let index_buffer =
-        glium::IndexBuffer::new(&display, PrimitiveType::TriangleStrip, &[0u16, 1, 2, 3]).unwrap();
+        safegl::IndexBuffer::new(&display, PrimitiveType::TriangleStrip, &[0u16, 1, 2, 3]).unwrap();
 
     let program = program!(&display,
     110 => {

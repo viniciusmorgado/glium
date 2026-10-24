@@ -1,5 +1,4 @@
 use crate::gl;
-use crate::Handle;
 use smallvec::SmallVec;
 
 /// Represents the current OpenGL state.
@@ -52,6 +51,8 @@ pub struct GlState {
     pub enabled_polygon_offset_point: bool,
 
     /// Whether GL_PRIMITIVE_RESTART_FIXED_INDEX is enabled
+    ///
+    /// Always true on WebGL 2, which can't disable it.
     pub enabled_primitive_fixed_restart: bool,
 
     /// Whether GL_RASTERIZER_DISCARD is enabled
@@ -82,10 +83,10 @@ pub struct GlState {
     pub enabled_clip_planes: gl::types::GLuint,
 
     /// The latest value passed to `glUseProgram`.
-    pub program: Handle,
+    pub program: Option<glow::Program>,
 
     /// The latest value passed to `glBindVertexArray`.
-    pub vertex_array: gl::types::GLuint,
+    pub vertex_array: Option<glow::VertexArray>,
 
     /// The latest value passed to `glClearColor`.
     pub clear_color: (
@@ -110,65 +111,68 @@ pub struct GlState {
     ),
 
     /// The latest buffer bound to `GL_ARRAY_BUFFER`.
-    pub array_buffer_binding: gl::types::GLuint,
+    pub array_buffer_binding: Option<glow::Buffer>,
 
     /// The latest buffer bound to `GL_PIXEL_PACK_BUFFER`.
-    pub pixel_pack_buffer_binding: gl::types::GLuint,
+    pub pixel_pack_buffer_binding: Option<glow::Buffer>,
 
     /// The latest buffer bound to `GL_PIXEL_UNPACK_BUFFER`.
-    pub pixel_unpack_buffer_binding: gl::types::GLuint,
+    pub pixel_unpack_buffer_binding: Option<glow::Buffer>,
 
     /// The latest buffer bound to `GL_UNIFORM_BUFFER`.
-    pub uniform_buffer_binding: gl::types::GLuint,
+    pub uniform_buffer_binding: Option<glow::Buffer>,
 
     /// List of buffers bound to the indexed `GL_UNIFORM_BUFFER`.
     pub indexed_uniform_buffer_bindings: SmallVec<[IndexedBufferState; 8]>,
 
     /// The latest buffer bound to `GL_COPY_READ_BUFFER`.
-    pub copy_read_buffer_binding: gl::types::GLuint,
+    pub copy_read_buffer_binding: Option<glow::Buffer>,
 
     /// The latest buffer bound to `GL_COPY_WRITE_BUFFER`.
-    pub copy_write_buffer_binding: gl::types::GLuint,
+    pub copy_write_buffer_binding: Option<glow::Buffer>,
 
     /// The latest buffer bound to `GL_DISPATCH_INDIRECT_BUFFER`.
-    pub dispatch_indirect_buffer_binding: gl::types::GLuint,
+    pub dispatch_indirect_buffer_binding: Option<glow::Buffer>,
 
     /// The latest buffer bound to `GL_DRAW_INDIRECT_BUFFER`.
-    pub draw_indirect_buffer_binding: gl::types::GLuint,
+    pub draw_indirect_buffer_binding: Option<glow::Buffer>,
 
     /// The latest buffer bound to `GL_QUERY_BUFFER`.
-    pub query_buffer_binding: gl::types::GLuint,
+    pub query_buffer_binding: Option<glow::Buffer>,
 
     /// The latest buffer bound to `GL_TEXTURE_BUFFER`.
-    pub texture_buffer_binding: gl::types::GLuint,
+    pub texture_buffer_binding: Option<glow::Buffer>,
 
     /// The latest buffer bound to `GL_ATOMIC_COUNTER_BUFFER`.
-    pub atomic_counter_buffer_binding: gl::types::GLuint,
+    pub atomic_counter_buffer_binding: Option<glow::Buffer>,
 
     /// List of buffers bound to the indexed `GL_ATOMIC_COUNTER_BUFFER`.
     pub indexed_atomic_counter_buffer_bindings: SmallVec<[IndexedBufferState; 8]>,
 
     /// The latest buffer bound to `GL_SHADER_STORAGE_BUFFER`.
-    pub shader_storage_buffer_binding: gl::types::GLuint,
+    pub shader_storage_buffer_binding: Option<glow::Buffer>,
 
     /// List of buffers bound to the indexed `GL_SHADER_STORAGE_BUFFER`.
     pub indexed_shader_storage_buffer_bindings: SmallVec<[IndexedBufferState; 8]>,
+
+    /// The latest buffer bound to the generic `GL_TRANSFORM_FEEDBACK_BUFFER`.
+    pub transform_feedback_buffer_binding: Option<glow::Buffer>,
 
     /// List of buffers bound to the indexed `GL_TRANSFORM_FEEDBACK_BUFFER`.
     pub indexed_transform_feedback_buffer_bindings: SmallVec<[IndexedBufferState; 4]>,
 
     /// The latest buffer bound to `GL_READ_FRAMEBUFFER`.
-    pub read_framebuffer: gl::types::GLuint,
+    pub read_framebuffer: Option<glow::Framebuffer>,
 
     /// The latest buffer bound to `GL_DRAW_FRAMEBUFFER`.
-    pub draw_framebuffer: gl::types::GLuint,
+    pub draw_framebuffer: Option<glow::Framebuffer>,
 
     /// The latest values passed to `glReadBuffer` with the default framebuffer.
     /// `None` means "unknown".
     pub default_framebuffer_read: Option<gl::types::GLenum>,
 
     /// The latest render buffer bound with `glBindRenderbuffer`.
-    pub renderbuffer: gl::types::GLuint,
+    pub renderbuffer: Option<glow::Renderbuffer>,
 
     /// The latest values passed to `glBlendEquation`.
     pub blend_equation: (gl::types::GLenum, gl::types::GLenum),
@@ -277,25 +281,25 @@ pub struct GlState {
     pub texture_units: SmallVec<[TextureUnitState; 32]>,
 
     /// Current query being used for GL_SAMPLES_PASSED​.
-    pub samples_passed_query: gl::types::GLuint,
+    pub samples_passed_query: Option<glow::Query>,
 
     /// Current query being used for GL_ANY_SAMPLES_PASSED​.
-    pub any_samples_passed_query: gl::types::GLuint,
+    pub any_samples_passed_query: Option<glow::Query>,
 
     /// Current query being used for GL_ANY_SAMPLES_PASSED​_CONSERVATIVE.
-    pub any_samples_passed_conservative_query: gl::types::GLuint,
+    pub any_samples_passed_conservative_query: Option<glow::Query>,
 
     /// Current query being used for GL_PRIMITIVES_GENERATED​.
-    pub primitives_generated_query: gl::types::GLuint,
+    pub primitives_generated_query: Option<glow::Query>,
 
     /// Current query being used for GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN​.
-    pub transform_feedback_primitives_written_query: gl::types::GLuint,
+    pub transform_feedback_primitives_written_query: Option<glow::Query>,
 
     /// Current query being used for GL_TIME_ELAPSED​.
-    pub time_elapsed_query: gl::types::GLuint,
+    pub time_elapsed_query: Option<glow::Query>,
 
     /// Latest value passed to `glBeginConditionalRender​`.
-    pub conditional_render: Option<(gl::types::GLuint, gl::types::GLenum)>,
+    pub conditional_render: Option<(glow::Query, gl::types::GLenum)>,
 
     /// If `glBeginTransformFeedback​` has been called, the current primitive types. Otherwise None.
     // TODO: move this inside transform feedback objects
@@ -373,17 +377,17 @@ pub struct GlState {
 #[derive(Copy, Clone, Debug)]
 pub struct TextureUnitState {
     /// Id of the texture.
-    pub texture: gl::types::GLuint,
+    pub texture: Option<glow::Texture>,
 
     /// Id of the sampler.
-    pub sampler: gl::types::GLuint,
+    pub sampler: Option<glow::Sampler>,
 }
 
 /// State of an indexed buffer target (`glBindBufferRange`/`glBindBufferBase`).
 #[derive(Copy, Clone, Debug)]
 pub struct IndexedBufferState {
     /// Id of the buffer.
-    pub buffer: gl::types::GLuint,
+    pub buffer: Option<glow::Buffer>,
 
     /// Starting offset in bytes.
     pub offset: gl::types::GLintptr,
@@ -428,36 +432,37 @@ impl Default for GlState {
             enabled_stencil_test: false,
             enabled_line_smooth: false,
             enabled_polygon_smooth: false,
-            enabled_primitive_fixed_restart: false,
+            enabled_primitive_fixed_restart: crate::version::is_webgl(),
             enabled_program_point_size: false,
             enabled_clip_planes: 0,
 
-            program: Handle::Id(0),
-            vertex_array: 0,
+            program: None,
+            vertex_array: None,
             clear_color: (0.0, 0.0, 0.0, 0.0),
             clear_depth: 1.0,
             clear_stencil: 0,
             color_mask: (1, 1, 1, 1),
-            array_buffer_binding: 0,
-            pixel_pack_buffer_binding: 0,
-            pixel_unpack_buffer_binding: 0,
-            uniform_buffer_binding: 0,
+            array_buffer_binding: None,
+            pixel_pack_buffer_binding: None,
+            pixel_unpack_buffer_binding: None,
+            uniform_buffer_binding: None,
             indexed_uniform_buffer_bindings: small_vec_one(),
-            copy_read_buffer_binding: 0,
-            copy_write_buffer_binding: 0,
-            dispatch_indirect_buffer_binding: 0,
-            draw_indirect_buffer_binding: 0,
-            query_buffer_binding: 0,
-            texture_buffer_binding: 0,
-            atomic_counter_buffer_binding: 0,
+            copy_read_buffer_binding: None,
+            copy_write_buffer_binding: None,
+            dispatch_indirect_buffer_binding: None,
+            draw_indirect_buffer_binding: None,
+            query_buffer_binding: None,
+            texture_buffer_binding: None,
+            atomic_counter_buffer_binding: None,
             indexed_atomic_counter_buffer_bindings: small_vec_one(),
-            shader_storage_buffer_binding: 0,
+            shader_storage_buffer_binding: None,
             indexed_shader_storage_buffer_bindings: small_vec_one(),
+            transform_feedback_buffer_binding: None,
             indexed_transform_feedback_buffer_bindings: small_vec_one(),
-            read_framebuffer: 0,
-            draw_framebuffer: 0,
+            read_framebuffer: None,
+            draw_framebuffer: None,
             default_framebuffer_read: None,
-            renderbuffer: 0,
+            renderbuffer: None,
             depth_func: gl::LESS,
             depth_mask: true,
             depth_range: (0.0, 1.0),
@@ -484,12 +489,12 @@ impl Default for GlState {
             patch_patch_vertices: 3,
             active_texture: 0,
             texture_units: small_vec_one(),
-            samples_passed_query: 0,
-            any_samples_passed_query: 0,
-            any_samples_passed_conservative_query: 0,
-            primitives_generated_query: 0,
-            transform_feedback_primitives_written_query: 0,
-            time_elapsed_query: 0,
+            samples_passed_query: None,
+            any_samples_passed_query: None,
+            any_samples_passed_conservative_query: None,
+            primitives_generated_query: None,
+            transform_feedback_primitives_written_query: None,
+            time_elapsed_query: None,
             conditional_render: None,
             transform_feedback_enabled: None,
             transform_feedback_paused: false,
@@ -520,8 +525,8 @@ impl Default for TextureUnitState {
     #[inline]
     fn default() -> TextureUnitState {
         TextureUnitState {
-            texture: 0,
-            sampler: 0,
+            texture: None,
+            sampler: None,
         }
     }
 }
@@ -530,7 +535,7 @@ impl Default for IndexedBufferState {
     #[inline]
     fn default() -> IndexedBufferState {
         IndexedBufferState {
-            buffer: 0,
+            buffer: None,
             offset: 0,
             size: 0,
         }

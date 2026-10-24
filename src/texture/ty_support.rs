@@ -10,7 +10,7 @@ pub fn is_texture_1d_supported<C: ?Sized>(context: &C) -> bool
 where
     C: CapabilitiesSource,
 {
-    context.get_version() >= &Version(Api::Gl, 1, 1)
+    context.get_version().0 == Api::Gl
 }
 
 /// Returns true is two-dimensional textures are supported.
@@ -26,15 +26,14 @@ where
 }
 
 /// Returns true is three-dimensional textures are supported.
+///
+/// Always returns true, as 3d textures are core in all supported OpenGL and OpenGL ES versions.
 #[inline]
-pub fn is_texture_3d_supported<C: ?Sized>(context: &C) -> bool
+pub fn is_texture_3d_supported<C: ?Sized>(_: &C) -> bool
 where
     C: CapabilitiesSource,
 {
-    context.get_version() >= &Version(Api::Gl, 1, 2) ||
-    context.get_version() >= &Version(Api::GlEs, 3, 0) ||
-    context.get_extensions().gl_ext_texture3d ||        // FIXME: functions have an EXT suffix, this isn't handled by glium
-    context.get_extensions().gl_oes_texture_3d // FIXME: functions have an OES suffix, this isn't handled by glium
+    true
 }
 
 /// Returns true is one-dimensional texture arrays are supported.
@@ -43,20 +42,19 @@ pub fn is_texture_1d_array_supported<C: ?Sized>(context: &C) -> bool
 where
     C: CapabilitiesSource,
 {
-    context.get_version() >= &Version(Api::Gl, 3, 0)
-        || context.get_extensions().gl_ext_texture_array
+    context.get_version().0 == Api::Gl
 }
 
 /// Returns true is two-dimensional texture arrays are supported.
+///
+/// Always returns true, as 2d texture arrays are core in all supported OpenGL and OpenGL ES
+/// versions.
 #[inline]
-pub fn is_texture_2d_array_supported<C: ?Sized>(context: &C) -> bool
+pub fn is_texture_2d_array_supported<C: ?Sized>(_: &C) -> bool
 where
     C: CapabilitiesSource,
 {
-    context.get_version() >= &Version(Api::Gl, 3, 0)
-        || context.get_version() >= &Version(Api::GlEs, 3, 0)
-        || context.get_extensions().gl_ext_texture_array
-        || context.get_extensions().gl_nv_texture_array // FIXME: functions have an NV suffix, this isn't handled by glium
+    true
 }
 
 /// Returns true is two-dimensional multisample textures are supported.
@@ -65,9 +63,7 @@ pub fn is_texture_2d_multisample_supported<C: ?Sized>(context: &C) -> bool
 where
     C: CapabilitiesSource,
 {
-    context.get_version() >= &Version(Api::Gl, 3, 2)
-        || context.get_version() >= &Version(Api::GlEs, 3, 1)
-        || context.get_extensions().gl_arb_texture_multisample
+    context.get_version().0 == Api::Gl || context.get_version() >= &Version(Api::GlEs, 3, 1)
     // TODO: no gles extension?
 }
 
@@ -77,23 +73,21 @@ pub fn is_texture_2d_multisample_array_supported<C: ?Sized>(context: &C) -> bool
 where
     C: CapabilitiesSource,
 {
-    context.get_version() >= &Version(Api::Gl, 3, 2)
-        || context.get_extensions().gl_arb_texture_multisample
+    context.get_version().0 == Api::Gl
         || context
             .get_extensions()
-            .gl_oes_texture_storage_multisample_2d_array // FIXME: functions have an OES suffix, this isn't handled by glium
+            .gl_oes_texture_storage_multisample_2d_array // FIXME: functions have an OES suffix, this isn't handled by SafeGL
 }
 
 /// Returns true is cubemaps are supported.
+///
+/// Always returns true, as cubemaps are core in all supported OpenGL and OpenGL ES versions.
 #[inline]
-pub fn is_cubemaps_supported<C: ?Sized>(context: &C) -> bool
+pub fn is_cubemaps_supported<C: ?Sized>(_: &C) -> bool
 where
     C: CapabilitiesSource,
 {
-    context.get_version() >= &Version(Api::Gl, 1, 3)
-        || context.get_version() >= &Version(Api::GlEs, 2, 0)
-        || context.get_extensions().gl_ext_texture_cube_map
-        || context.get_extensions().gl_arb_texture_cube_map
+    true
 }
 
 /// Returns true is cubemap arrays are supported.
@@ -102,8 +96,7 @@ pub fn is_cubemap_arrays_supported<C: ?Sized>(context: &C) -> bool
 where
     C: CapabilitiesSource,
 {
-    context.get_version() >= &Version(Api::Gl, 4, 0)
-        || context.get_extensions().gl_arb_texture_cube_map_array
+    context.get_version().0 == Api::Gl
         || context.get_extensions().gl_ext_texture_cube_map_array
         || context.get_extensions().gl_oes_texture_cube_map_array
 }

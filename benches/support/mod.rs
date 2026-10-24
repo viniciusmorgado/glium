@@ -1,18 +1,18 @@
-extern crate glium;
+extern crate safegl;
 extern crate libc;
 
 use std::ptr;
 use std::rc::Rc;
 
 /// Builds a context with dummy OpenGL functions.
-pub fn build_context() -> Rc<glium::backend::Context> {
-    unsafe { glium::backend::Context::new::<_>(DummyBackend, false, Default::default()).unwrap() }
+pub fn build_context() -> Rc<safegl::backend::Context> {
+    unsafe { safegl::backend::Context::new::<_>(DummyBackend, false, Default::default()).unwrap() }
 }
 
 struct DummyBackend;
 
-unsafe impl glium::backend::Backend for DummyBackend {
-    fn swap_buffers(&self) -> Result<(), glium::SwapBuffersError> {
+unsafe impl safegl::backend::Backend for DummyBackend {
+    fn swap_buffers(&self) -> Result<(), safegl::SwapBuffersError> {
         Ok(())
     }
 

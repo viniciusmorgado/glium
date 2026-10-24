@@ -1,7 +1,7 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::Surface;
+use safegl::Surface;
 
 mod support;
 
@@ -9,7 +9,7 @@ mod support;
 fn query_sequence() {
     let display = support::build_display();
 
-    let query = match glium::draw_parameters::SamplesPassedQuery::new(&display) {
+    let query = match safegl::draw_parameters::SamplesPassedQuery::new(&display) {
         Err(_) => return,
         Ok(q) => q,
     };
@@ -20,14 +20,14 @@ fn query_sequence() {
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
 
     for _ in 0..3 {
-        let params = glium::DrawParameters {
+        let params = safegl::DrawParameters {
             samples_passed_query: Some((&query).into()),
             ..Default::default()
         };
 
         texture
             .as_surface()
-            .draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params)
+            .draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params)
             .unwrap();
     }
 
@@ -41,7 +41,7 @@ fn query_sequence() {
 fn samples_passed() {
     let display = support::build_display();
 
-    let query = match glium::draw_parameters::SamplesPassedQuery::new(&display) {
+    let query = match safegl::draw_parameters::SamplesPassedQuery::new(&display) {
         Err(_) => return,
         Ok(q) => q,
     };
@@ -52,14 +52,14 @@ fn samples_passed() {
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
 
     {
-        let params = glium::DrawParameters {
+        let params = safegl::DrawParameters {
             samples_passed_query: Some((&query).into()),
             ..Default::default()
         };
 
         texture
             .as_surface()
-            .draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params)
+            .draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params)
             .unwrap();
     }
 
@@ -73,7 +73,7 @@ fn samples_passed() {
 fn any_samples_passed() {
     let display = support::build_display();
 
-    let query = match glium::draw_parameters::AnySamplesPassedQuery::new(&display, false) {
+    let query = match safegl::draw_parameters::AnySamplesPassedQuery::new(&display, false) {
         Err(_) => return,
         Ok(q) => q,
     };
@@ -84,20 +84,20 @@ fn any_samples_passed() {
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
 
     {
-        let params = glium::DrawParameters {
+        let params = safegl::DrawParameters {
             samples_passed_query: Some((&query).into()),
             ..Default::default()
         };
 
         texture
             .as_surface()
-            .draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params)
+            .draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params)
             .unwrap();
     }
 
     assert!(query.get());
 
-    let query2 = glium::draw_parameters::AnySamplesPassedQuery::new(&display, false).unwrap();
+    let query2 = safegl::draw_parameters::AnySamplesPassedQuery::new(&display, false).unwrap();
     assert!(!query2.get());
 
     display.assert_no_error(None);
@@ -107,7 +107,7 @@ fn any_samples_passed() {
 fn any_samples_passed_conservative() {
     let display = support::build_display();
 
-    let query = match glium::draw_parameters::AnySamplesPassedQuery::new(&display, true) {
+    let query = match safegl::draw_parameters::AnySamplesPassedQuery::new(&display, true) {
         Err(_) => return,
         Ok(q) => q,
     };
@@ -118,20 +118,20 @@ fn any_samples_passed_conservative() {
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
 
     {
-        let params = glium::DrawParameters {
+        let params = safegl::DrawParameters {
             samples_passed_query: Some((&query).into()),
             ..Default::default()
         };
 
         texture
             .as_surface()
-            .draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params)
+            .draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params)
             .unwrap();
     }
 
     assert!(query.get());
 
-    let query2 = glium::draw_parameters::AnySamplesPassedQuery::new(&display, true).unwrap();
+    let query2 = safegl::draw_parameters::AnySamplesPassedQuery::new(&display, true).unwrap();
     assert!(!query2.get());
 
     display.assert_no_error(None);
@@ -141,7 +141,7 @@ fn any_samples_passed_conservative() {
 fn time_elapsed() {
     let display = support::build_display();
 
-    let query = match glium::draw_parameters::TimeElapsedQuery::new(&display) {
+    let query = match safegl::draw_parameters::TimeElapsedQuery::new(&display) {
         Err(_) => return,
         Ok(q) => q,
     };
@@ -152,14 +152,14 @@ fn time_elapsed() {
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
 
     {
-        let params = glium::DrawParameters {
+        let params = safegl::DrawParameters {
             time_elapsed_query: Some(&query),
             ..Default::default()
         };
 
         texture
             .as_surface()
-            .draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params)
+            .draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params)
             .unwrap();
     }
 
@@ -174,7 +174,7 @@ fn time_elapsed() {
 fn primitives_generated() {
     let display = support::build_display();
 
-    let query = match glium::draw_parameters::PrimitivesGeneratedQuery::new(&display) {
+    let query = match safegl::draw_parameters::PrimitivesGeneratedQuery::new(&display) {
         Err(_) => return,
         Ok(q) => q,
     };
@@ -185,14 +185,14 @@ fn primitives_generated() {
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
 
     {
-        let params = glium::DrawParameters {
+        let params = safegl::DrawParameters {
             primitives_generated_query: Some(&query),
             ..Default::default()
         };
 
         texture
             .as_surface()
-            .draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params)
+            .draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params)
             .unwrap();
     }
 
@@ -211,7 +211,7 @@ fn primitives_generated() {
 fn conditional_render_nodraw() {
     let display = support::build_display();
 
-    let query = match glium::draw_parameters::AnySamplesPassedQuery::new(&display, false) {
+    let query = match safegl::draw_parameters::AnySamplesPassedQuery::new(&display, false) {
         Err(_) => return,
         Ok(q) => q,
     };
@@ -222,8 +222,8 @@ fn conditional_render_nodraw() {
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
 
     {
-        let params = glium::DrawParameters {
-            condition: Some(glium::draw_parameters::ConditionalRendering {
+        let params = safegl::DrawParameters {
+            condition: Some(safegl::draw_parameters::ConditionalRendering {
                 query: (&query).into(),
                 wait: true,
                 per_region: false,
@@ -233,7 +233,7 @@ fn conditional_render_nodraw() {
 
         texture
             .as_surface()
-            .draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params)
+            .draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params)
             .unwrap();
     }
 
@@ -256,7 +256,7 @@ fn conditional_render_simultaneous_query() {
 
     let display = support::build_display();
 
-    let query = match glium::draw_parameters::AnySamplesPassedQuery::new(&display, false) {
+    let query = match safegl::draw_parameters::AnySamplesPassedQuery::new(&display, false) {
         Err(_) => return,
         Ok(q) => q,
     };
@@ -266,9 +266,9 @@ fn conditional_render_simultaneous_query() {
     let texture = support::build_renderable_texture(&display);
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
 
-    let params = glium::DrawParameters {
+    let params = safegl::DrawParameters {
         samples_passed_query: Some((&query).into()),
-        condition: Some(glium::draw_parameters::ConditionalRendering {
+        condition: Some(safegl::draw_parameters::ConditionalRendering {
             query: (&query).into(),
             wait: true,
             per_region: false,
@@ -279,21 +279,22 @@ fn conditional_render_simultaneous_query() {
     let res =
         texture
             .as_surface()
-            .draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params);
+            .draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params);
 
     match res {
-        Err(glium::DrawError::WrongQueryOperation) => (),
+        Err(safegl::DrawError::WrongQueryOperation) => (),
         _ => panic!(),
     };
 
     display.assert_no_error(None);
 }
 
+#[cfg(feature = "gl46")]
 #[test]
 fn query_to_buffer() {
     let display = support::build_display();
 
-    let query = match glium::draw_parameters::SamplesPassedQuery::new(&display) {
+    let query = match safegl::draw_parameters::SamplesPassedQuery::new(&display) {
         Err(_) => return,
         Ok(q) => q,
     };
@@ -304,21 +305,21 @@ fn query_to_buffer() {
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
 
     {
-        let params = glium::DrawParameters {
+        let params = safegl::DrawParameters {
             samples_passed_query: Some((&query).into()),
             ..Default::default()
         };
 
         texture
             .as_surface()
-            .draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params)
+            .draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params)
             .unwrap();
     }
 
-    let mut buffer = glium::buffer::BufferView::empty(
+    let mut buffer = safegl::buffer::BufferView::empty(
         &display,
-        glium::buffer::BufferType::ArrayBuffer,
-        glium::buffer::BufferMode::Default,
+        safegl::buffer::BufferType::ArrayBuffer,
+        safegl::buffer::BufferMode::Default,
     )
     .unwrap();
     if query.to_buffer_u32(buffer.as_slice()).is_err() {

@@ -1,38 +1,27 @@
 [package]
-name = "glium"
-version = "0.36.0"
+name = "safegl"
+version = "0.1.0"
 authors = ["Vinicius Donatto Morgado <34577818+viniciusmorgado@users.noreply.github.com>"]
-description = """
-Elegant and safe OpenGL wrapper.
-
-SafeGL is an intermediate layer between OpenGL and your application. You still need to manually handle
-the graphics pipeline, but without having to use OpenGL's old and error-prone API.
-
-This project is a fork of glium, maintained by Oxidian Studios, a video game company, with the intent of using
-it to develop graphical tools for internal use.
-
-Its objectives:
-    - Be safe to use. Many aspects of OpenGL that can trigger a crash if misused are automatically handled by SafeGL.
-    - Provide an API that enforces good practices such as RAII or stateless function calls.
-    - Be compatible with OpenGL 4.6 for modern desktops and OpenGL ES 3.0 for embedded devices.
-    - Avoid all OpenGL errors beforehand.
-    - Produce optimized OpenGL function calls, and allow the user to easily use modern OpenGL techniques.
-"""
+description = "Safe OpenGL bindings for Rust."
 keywords = ["opengl", "gamedev"]
 categories = ["api-bindings", "rendering::graphics-api"]
-documentation = "https://docs.rs/glium"
-repository = "https://github.com/glium/glium"
+documentation = "https://docs.rs/safegl"
+repository = "https://github.com/viniciusmorgado/safegl"
 readme = "README.md"
 license = "Apache-2.0"
 build = "build/main.rs"
-exclude = ["doc"]
+exclude = ["doc", ".idea"]
 edition = "2021"
 
 [features]
-default = ["glutin_backend", "simple_window_builder", "glutin/default", "winit/rwh_06", "winit/x11", "winit/wayland", "winit/wayland-dlopen", "winit/wayland-csd-adwaita-notitle", "glutin-winit/default"]
+default = ["gl46", "glutin_backend", "simple_window_builder", "glutin/default", "winit/rwh_06", "winit/x11", "winit/wayland", "winit/wayland-dlopen", "winit/wayland-csd-adwaita-notitle", "glutin-winit/default"]
+# OpenGL feature tiers. Each tier includes the ones below it.
+gles30 = [] # common subset of OpenGL ES 3.0 and desktop OpenGL 4.1
+gl41 = ["gles30"] # desktop OpenGL 4.1 core, the macOS ceiling
+gl46 = ["gl41"] # desktop OpenGL 4.6 core, not available on macOS
+webgl = ["gles30", "dep:web-sys", "dep:wasm-bindgen"] # WebGL 2 in browsers (wasm32), the gles30 tier
 glutin_backend = ["glutin"]
 unstable = [] # used for benchmarks
-vk_interop = [] # used for texture import from Vulkan
 simple_window_builder = ["glutin", "glutin-winit", "winit", "raw-window-handle"] # used in the tutorial
 
 [dependencies.glutin]
@@ -64,9 +53,7 @@ memoffset = "0.9.1"
 backtrace = "0.3.76"
 smallvec = "1.16.4"
 fnv = "1.0.7"
-
-[build-dependencies]
-gl_generator = "0.14.0"
+glow = "0.18"
 
 [dev-dependencies]
 ouroboros = "0.18.5"
@@ -82,6 +69,7 @@ takeable-option = "0.5.0"
 
 [package.metadata.docs.rs]
 all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [[example]]
 name = "blitting"
@@ -90,6 +78,7 @@ path = "examples/standalone/blitting.rs"
 [[example]]
 name = "compute_image"
 path = "examples/standalone/compute_image.rs"
+required-features = ["gl46"]
 
 [[example]]
 name = "deferred"
@@ -110,6 +99,7 @@ path = "examples/standalone/fxaa.rs"
 [[example]]
 name = "gpgpu"
 path = "examples/standalone/gpgpu.rs"
+required-features = ["gl46"]
 
 [[example]]
 name = "image"
@@ -222,3 +212,8 @@ path = "examples/standalone/tutorial-14.rs"
 [[example]]
 name = "spirv"
 path = "examples/standalone/spirv/main.rs"
+required-features = ["gl46"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = { version = "0.2", optional = true }
+web-sys = { version = "0.3", optional = true, features = ["HtmlCanvasElement", "WebGl2RenderingContext", "WebGlContextAttributes"] }

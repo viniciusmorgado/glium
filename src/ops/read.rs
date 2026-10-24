@@ -1,6 +1,8 @@
 use std::error::Error;
 use std::fmt;
-use std::ptr;
+use std::{mem, slice};
+
+use glow::HasContext;
 
 use crate::image_format::{TextureFormat, TextureFormatRequest};
 use crate::pixel_buffer::PixelBuffer;
@@ -17,7 +19,6 @@ use crate::BufferExt;
 use crate::Rect;
 
 use crate::version::Api;
-use crate::version::Version;
 
 /// A source for reading pixels.
 pub enum Source<'a> {
@@ -136,21 +137,21 @@ where
     // checking that the output format is supported
     // OpenGL supported everything, while OpenGL ES only supports U8U8U8U8 plus an additional
     // implementation-defined format
-    if ctxt.version >= &Version(Api::GlEs, 2, 0) && output_pixel_format != ClientFormat::U8U8U8U8 {
+    if ctxt.version.0 == Api::GlEs && output_pixel_format != ClientFormat::U8U8U8U8 {
         // TODO: GLES is guaranteed to support GL_RGBA and an implementation-defined format
         //       queried with GL_IMPLEMENTATION_COLOR_READ_FORMAT. We only handle GL_RGBA.
         return Err(ReadError::OutputFormatNotSupported);
     }
 
     // handling clamping
-    if ctxt.version >= &Version(Api::Gl, 3, 0) {
+    if ctxt.version.0 == Api::Gl {
         unsafe {
             if clamp && ctxt.state.clamp_color != gl::TRUE as gl::types::GLenum {
-                ctxt.gl
+                ctxt.extra
                     .ClampColor(gl::CLAMP_READ_COLOR, gl::TRUE as gl::types::GLenum);
                 ctxt.state.clamp_color = gl::TRUE as gl::types::GLenum;
             } else if !clamp && ctxt.state.clamp_color != gl::FALSE as gl::types::GLenum {
-                ctxt.gl
+                ctxt.extra
                     .ClampColor(gl::CLAMP_READ_COLOR, gl::FALSE as gl::types::GLenum);
                 ctxt.state.clamp_color = gl::FALSE as gl::types::GLenum;
             }
@@ -207,7 +208,7 @@ where
     };
 
     // OpenGL ES doesn't support reading from depth, stencil or depth-stencil attachments by default
-    if ctxt.version >= &Version(Api::GlEs, 2, 0) {
+    if ctxt.version.0 == Api::GlEs {
         match read_src_type {
             ReadSourceType::Color => (),
             ReadSourceType::Depth => {
@@ -256,23 +257,30 @@ where
                 if (ptr % 8) == 0 {
                 } else if (ptr % 4) == 0 && ctxt.state.pixel_store_pack_alignment != 4 {
                     ctxt.state.pixel_store_pack_alignment = 4;
-                    ctxt.gl.PixelStorei(gl::PACK_ALIGNMENT, 4);
+                    ctxt.glow.pixel_store_i32(glow::PACK_ALIGNMENT, 4);
                 } else if (ptr % 2) == 0 && ctxt.state.pixel_store_pack_alignment > 2 {
                     ctxt.state.pixel_store_pack_alignment = 2;
-                    ctxt.gl.PixelStorei(gl::PACK_ALIGNMENT, 2);
+                    ctxt.glow.pixel_store_i32(glow::PACK_ALIGNMENT, 2);
                 } else if ctxt.state.pixel_store_pack_alignment != 1 {
                     ctxt.state.pixel_store_pack_alignment = 1;
-                    ctxt.gl.PixelStorei(gl::PACK_ALIGNMENT, 1);
+                    ctxt.glow.pixel_store_i32(glow::PACK_ALIGNMENT, 1);
                 }
 
-                ctxt.gl.ReadPixels(
+                // glow takes the destination as a byte slice, so the buffer is zeroed first to
+                // avoid viewing uninitialized memory as `&mut [u8]`
+                std::ptr::write_bytes(buf.as_mut_ptr(), 0, pixels_to_read as usize);
+                let bytes = slice::from_raw_parts_mut(
+                    buf.as_mut_ptr() as *mut u8,
+                    pixels_to_read as usize * mem::size_of::<T>(),
+                );
+                ctxt.glow.read_pixels(
                     rect.left as gl::types::GLint,
                     rect.bottom as gl::types::GLint,
                     rect.width as gl::types::GLsizei,
                     rect.height as gl::types::GLsizei,
                     format,
                     gltype,
-                    buf.as_mut_ptr() as *mut _,
+                    glow::PixelPackData::Slice(Some(bytes)),
                 );
                 buf.set_len(pixels_to_read as usize);
 
@@ -283,14 +291,14 @@ where
                 assert!(pixel_buffer.len() >= pixels_to_read as usize);
 
                 pixel_buffer.prepare_and_bind_for_pixel_pack(&mut ctxt);
-                ctxt.gl.ReadPixels(
+                ctxt.glow.read_pixels(
                     rect.left as gl::types::GLint,
                     rect.bottom as gl::types::GLint,
                     rect.width as gl::types::GLsizei,
                     rect.height as gl::types::GLsizei,
                     format,
                     gltype,
-                    ptr::null_mut(),
+                    glow::PixelPackData::BufferOffset(0),
                 );
 
                 crate::pixel_buffer::store_infos(pixel_buffer, (rect.width, rect.height));

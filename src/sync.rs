@@ -1,7 +1,8 @@
 use crate::context::CommandContext;
 use crate::gl;
-use crate::version::Api;
-use crate::version::Version;
+use crate::handles;
+use crate::version::is_webgl;
+use glow::HasContext;
 
 use crate::backend::Facade;
 use crate::context::Context;
@@ -23,16 +24,16 @@ pub struct SyncNotSupportedError;
 ///
 /// ```no_run
 /// # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-/// # fn example<T>(display: glium::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
+/// # fn example<T>(display: safegl::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
 /// # fn do_something<T>(_: &T) {}
-/// let fence = glium::SyncFence::new(&display).unwrap();
+/// let fence = safegl::SyncFence::new(&display).unwrap();
 /// do_something(&display);
 /// fence.wait();   // blocks until the previous operations have finished
 /// # }
 /// ```
 pub struct SyncFence {
     context: Rc<Context>,
-    id: Option<gl::types::GLsync>,
+    id: Option<glow::Fence>,
 }
 
 impl SyncFence {
@@ -46,7 +47,29 @@ impl SyncFence {
         unsafe { new_linear_sync_fence(&mut ctxt) }.map(|f| f.into_sync_fence(facade))
     }
 
+    /// Returns true if the operations before the fence have finished on the server, without
+    /// blocking.
+    ///
+    /// This flushes the command queue so that the fence eventually gets signaled.
+    ///
+    /// On WebGL the status of a fence is only updated between two tasks of the browser's event
+    /// loop, so polling this function in a loop inside a single frame never sees it change.
+    pub fn is_signaled(&self) -> bool {
+        let sync = match self.id {
+            Some(sync) => sync,
+            None => return true,
+        };
+
+        let ctxt = self.context.make_current();
+        let result = unsafe { ctxt.glow.client_wait_sync(sync, gl::SYNC_FLUSH_COMMANDS_BIT, 0) };
+        matches!(result, gl::ALREADY_SIGNALED | gl::CONDITION_SATISFIED)
+    }
+
     /// Blocks until the operation has finished on the server.
+    ///
+    /// WebGL can't block on a fence: if the fence isn't signaled yet, this calls `glFinish`
+    /// instead, which waits for every command submitted so far, and the fence is treated as
+    /// signaled.
     pub fn wait(mut self) {
         let sync = self.id.take().unwrap();
 
@@ -80,7 +103,7 @@ impl Drop for SyncFence {
 /// the destructor will panic.
 #[must_use]
 pub struct LinearSyncFence {
-    id: Option<gl::types::GLsync>,
+    id: Option<glow::Fence>,
 }
 
 unsafe impl Send for LinearSyncFence {}
@@ -111,23 +134,14 @@ impl Drop for LinearSyncFence {
 pub unsafe fn new_linear_sync_fence(
     ctxt: &mut CommandContext<'_>,
 ) -> Result<LinearSyncFence, SyncNotSupportedError> {
-    if ctxt.version >= &Version(Api::Gl, 3, 2)
-        || ctxt.version >= &Version(Api::GlEs, 3, 0)
-        || ctxt.extensions.gl_arb_sync
-    {
-        Ok(LinearSyncFence {
-            id: Some(ctxt.gl.FenceSync(gl::SYNC_GPU_COMMANDS_COMPLETE, 0)),
-        })
-    } else if ctxt.extensions.gl_apple_sync {
-        Ok(LinearSyncFence {
-            id: Some(
-                ctxt.gl
-                    .FenceSyncAPPLE(gl::SYNC_GPU_COMMANDS_COMPLETE_APPLE, 0),
-            ),
-        })
-    } else {
-        Err(SyncNotSupportedError)
-    }
+    // sync objects are core in OpenGL 3.2 and OpenGL ES 3.0
+    Ok(LinearSyncFence {
+        id: Some(
+            ctxt.glow
+                .fence_sync(glow::SYNC_GPU_COMMANDS_COMPLETE, 0)
+                .expect("glFenceSync failed"),
+        ),
+    })
 }
 
 /// Waits for this fence and destroys it, from within the commands context.
@@ -152,25 +166,16 @@ pub unsafe fn destroy_linear_sync_fence(ctxt: &mut CommandContext<'_>, mut fence
 ///
 /// Tries without flushing first, then with flushing.
 ///
+/// WebGL only accepts a timeout of 0, so there it calls `glFinish` if the fence isn't signaled
+/// yet and reports it as signaled.
+///
 /// # Unsafety
 ///
 /// The fence object must exist.
 ///
-unsafe fn client_wait(
-    ctxt: &mut CommandContext<'_>,
-    fence: gl::types::GLsync,
-) -> gl::types::GLenum {
+unsafe fn client_wait(ctxt: &mut CommandContext<'_>, fence: glow::Fence) -> gl::types::GLenum {
     // trying without flushing first
-    let result = if ctxt.version >= &Version(Api::Gl, 3, 2)
-        || ctxt.version >= &Version(Api::GlEs, 3, 0)
-        || ctxt.extensions.gl_arb_sync
-    {
-        ctxt.gl.ClientWaitSync(fence, 0, 0)
-    } else if ctxt.extensions.gl_apple_sync {
-        ctxt.gl.ClientWaitSyncAPPLE(fence, 0, 0)
-    } else {
-        unreachable!();
-    };
+    let result = ctxt.glow.client_wait_sync(fence, 0, 0);
 
     match result {
         val @ gl::ALREADY_SIGNALED | val @ gl::CONDITION_SATISFIED => return val,
@@ -179,27 +184,20 @@ unsafe fn client_wait(
         _ => unreachable!(),
     };
 
+    if is_webgl() {
+        // `glFinish` waits for every command, including the ones before the fence
+        ctxt.glow.finish();
+        return gl::ALREADY_SIGNALED;
+    }
+
     // waiting with a deadline of one year
     // the reason why the deadline is so long is because if you attach a GL debugger,
     // the wait can be blocked during a breaking point of the debugger
-    if ctxt.version >= &Version(Api::Gl, 3, 2)
-        || ctxt.version >= &Version(Api::GlEs, 3, 0)
-        || ctxt.extensions.gl_arb_sync
-    {
-        ctxt.gl.ClientWaitSync(
-            fence,
-            gl::SYNC_FLUSH_COMMANDS_BIT,
-            365 * 24 * 3600 * 1000 * 1000 * 1000,
-        )
-    } else if ctxt.extensions.gl_apple_sync {
-        ctxt.gl.ClientWaitSyncAPPLE(
-            fence,
-            gl::SYNC_FLUSH_COMMANDS_BIT_APPLE,
-            365 * 24 * 3600 * 1000 * 1000 * 1000,
-        )
-    } else {
-        unreachable!();
-    }
+    ctxt.extra.ClientWaitSync(
+        handles::raw_sync(fence),
+        gl::SYNC_FLUSH_COMMANDS_BIT,
+        365 * 24 * 3600 * 1000 * 1000 * 1000,
+    )
 }
 
 /// Deletes a fence.
@@ -209,15 +207,6 @@ unsafe fn client_wait(
 /// The fence object must exist.
 ///
 #[inline]
-unsafe fn delete_fence(ctxt: &mut CommandContext<'_>, fence: gl::types::GLsync) {
-    if ctxt.version >= &Version(Api::Gl, 3, 2)
-        || ctxt.version >= &Version(Api::GlEs, 3, 0)
-        || ctxt.extensions.gl_arb_sync
-    {
-        ctxt.gl.DeleteSync(fence);
-    } else if ctxt.extensions.gl_apple_sync {
-        ctxt.gl.DeleteSyncAPPLE(fence);
-    } else {
-        unreachable!();
-    };
+unsafe fn delete_fence(ctxt: &mut CommandContext<'_>, fence: glow::Fence) {
+    ctxt.glow.delete_sync(fence);
 }

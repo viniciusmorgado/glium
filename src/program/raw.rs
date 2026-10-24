@@ -1,40 +1,49 @@
 use crate::gl;
 
 use crate::context::CommandContext;
+#[cfg(feature = "gl46")]
 use crate::version::Api;
+#[cfg(feature = "gl46")]
 use crate::version::Version;
 
 use crate::backend::Facade;
 use crate::context::Context;
 use crate::ContextExt;
+#[cfg(feature = "gl46")]
 use crate::UniformsExt;
 
 use std::cell::RefCell;
 use std::collections::hash_map::{self, HashMap};
 use std::hash::BuildHasherDefault;
-use std::os::raw;
 use std::rc::Rc;
-use std::{ffi, fmt};
+use std::fmt;
 
 use fnv::FnvHasher;
+use glow::HasContext;
 
+#[cfg(feature = "gl46")]
 use crate::DrawError;
 use crate::GlObject;
-use crate::Handle;
 use crate::ProgramExt;
 use crate::RawUniformValue;
 
+#[cfg(feature = "gl46")]
 use crate::draw_parameters::TimeElapsedQuery;
+#[cfg(feature = "gl46")]
 use crate::QueryExt;
 
+#[cfg(feature = "gl46")]
 use crate::buffer::BufferSlice;
+#[cfg(feature = "gl46")]
 use crate::BufferExt;
+#[cfg(feature = "gl46")]
 use crate::BufferSliceExt;
 
 use crate::program::uniforms_storage::UniformsStorage;
-use crate::program::{Binary, GetBinaryError, ProgramCreationError};
+use crate::program::{is_binary_supported, Binary, GetBinaryError, ProgramCreationError};
 
-use crate::program::binary_header::{attach_glium_header, process_glium_header};
+use crate::program::binary_header::{attach_safegl_header, process_safegl_header};
+#[cfg(feature = "gl46")]
 use crate::program::compute::ComputeCommand;
 use crate::program::reflection::reflect_subroutine_data;
 use crate::program::reflection::{reflect_attributes, reflect_uniform_blocks, reflect_uniforms};
@@ -45,6 +54,7 @@ use crate::program::reflection::{OutputPrimitives, Uniform, UniformBlock};
 use crate::program::reflection::{ShaderStage, SubroutineData};
 use crate::program::shader::Shader;
 
+#[cfg(feature = "gl46")]
 use crate::uniforms::Uniforms;
 
 use crate::vertex::VertexFormat;
@@ -53,7 +63,7 @@ use crate::vertex_array_object::VertexAttributesSystem;
 /// A combination of shaders linked together.
 pub struct RawProgram {
     context: Rc<Context>,
-    id: Handle,
+    id: glow::Program,
     uniform_values: UniformsStorage,
     uniforms: HashMap<String, Uniform, BuildHasherDefault<FnvHasher>>,
     uniform_blocks: HashMap<String, UniformBlock, BuildHasherDefault<FnvHasher>>,
@@ -92,84 +102,26 @@ impl RawProgram {
             let id = create_program(&mut ctxt);
 
             // attaching shaders
-            for sh in shaders_ids.iter() {
-                match (id, sh) {
-                    (Handle::Id(id), &Handle::Id(sh)) => {
-                        assert!(
-                            ctxt.version >= &Version(Api::Gl, 2, 0)
-                                || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                        );
-                        ctxt.gl.AttachShader(id, sh);
-                    }
-                    (Handle::Handle(id), &Handle::Handle(sh)) => {
-                        assert!(ctxt.extensions.gl_arb_shader_objects);
-                        ctxt.gl.AttachObjectARB(id, sh);
-                    }
-                    _ => unreachable!(),
-                }
+            for &sh in shaders_ids.iter() {
+                ctxt.glow.attach_shader(id, sh);
             }
 
             // transform feedback varyings
             if let Some((names, mode)) = transform_feedback {
-                let id = match id {
-                    Handle::Id(id) => id,
-                    Handle::Handle(id) => unreachable!(), // transf. feedback shouldn't be
-                                                          // available with handles
+                let names = names.iter().map(|name| name.as_str()).collect::<Vec<_>>();
+
+                let mode = match mode {
+                    TransformFeedbackMode::Interleaved => glow::INTERLEAVED_ATTRIBS,
+                    TransformFeedbackMode::Separate => glow::SEPARATE_ATTRIBS,
                 };
 
-                let names = names
-                    .into_iter()
-                    .map(|name| ffi::CString::new(name.into_bytes()).unwrap())
-                    .collect::<Vec<_>>();
-                let names_ptr = names.iter().map(|n| n.as_ptr()).collect::<Vec<_>>();
-
-                if ctxt.version >= &Version(Api::Gl, 3, 0) {
-                    let mode = match mode {
-                        TransformFeedbackMode::Interleaved => gl::INTERLEAVED_ATTRIBS,
-                        TransformFeedbackMode::Separate => gl::SEPARATE_ATTRIBS,
-                    };
-
-                    ctxt.gl.TransformFeedbackVaryings(
-                        id,
-                        names_ptr.len() as gl::types::GLsizei,
-                        names_ptr.as_ptr(),
-                        mode,
-                    );
-                } else if ctxt.extensions.gl_ext_transform_feedback {
-                    let mode = match mode {
-                        TransformFeedbackMode::Interleaved => gl::INTERLEAVED_ATTRIBS_EXT,
-                        TransformFeedbackMode::Separate => gl::SEPARATE_ATTRIBS_EXT,
-                    };
-
-                    ctxt.gl.TransformFeedbackVaryingsEXT(
-                        id,
-                        names_ptr.len() as gl::types::GLsizei,
-                        names_ptr.as_ptr(),
-                        mode,
-                    );
-                } else {
-                    unreachable!(); // has been checked in the frontend
-                }
+                ctxt.glow.transform_feedback_varyings(id, &names, mode);
             }
 
             // linking
             {
                 ctxt.report_debug_output_errors.set(false);
-
-                match id {
-                    Handle::Id(id) => {
-                        assert!(
-                            ctxt.version >= &Version(Api::Gl, 2, 0)
-                                || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                        );
-                        ctxt.gl.LinkProgram(id);
-                    }
-                    Handle::Handle(id) => {
-                        assert!(ctxt.extensions.gl_arb_shader_objects);
-                        ctxt.gl.LinkProgramARB(id);
-                    }
-                }
-
+                ctxt.glow.link_program(id);
                 ctxt.report_debug_output_errors.set(true);
             }
 
@@ -179,7 +131,8 @@ impl RawProgram {
             id
         };
 
-        let (uniforms, atomic_counters) = unsafe { reflect_uniforms(&mut ctxt, id) };
+        let (uniforms, atomic_counters, uniform_locations) =
+            unsafe { reflect_uniforms(&mut ctxt, id) };
         let attributes = unsafe { reflect_attributes(&mut ctxt, id) };
         let blocks = unsafe { reflect_uniform_blocks(&mut ctxt, id) };
         let tf_buffers = unsafe { reflect_transform_feedback(&mut ctxt, id) };
@@ -206,7 +159,7 @@ impl RawProgram {
             context: facade.get_context().clone(),
             id,
             uniforms,
-            uniform_values: UniformsStorage::new(),
+            uniform_values: UniformsStorage::new(uniform_locations),
             uniform_blocks: blocks,
             subroutine_data,
             attributes,
@@ -229,12 +182,16 @@ impl RawProgram {
     where
         F: Facade,
     {
+        if !is_binary_supported(&**facade.get_context()) {
+            return Err(ProgramCreationError::BinaryNotSupported);
+        }
+
         let (
             has_geometry_shader,
             has_tessellation_control_shader,
             has_tessellation_evaluation_shader,
         ) = {
-            match process_glium_header(&binary.content) {
+            match process_safegl_header(&binary.content) {
                 Some(flags) => flags,
                 None => return Err(ProgramCreationError::BinaryHeaderError),
             }
@@ -245,18 +202,13 @@ impl RawProgram {
         let id = unsafe {
             let id = create_program(&mut ctxt);
 
-            match id {
-                Handle::Id(id) => {
-                    assert!(ctxt.version >= &Version(Api::Gl, 2, 0));
-                    ctxt.gl.ProgramBinary(
-                        id,
-                        binary.format,
-                        binary.content[1..].as_ptr() as *const _,
-                        (binary.content.len() - 1) as gl::types::GLsizei,
-                    );
-                }
-                Handle::Handle(id) => unreachable!(),
-            };
+            ctxt.glow.program_binary(
+                id,
+                &glow::ProgramBinary {
+                    buffer: binary.content[1..].to_vec(),
+                    format: binary.format,
+                },
+            );
 
             // checking for errors
             check_program_link_errors(&mut ctxt, id)?;
@@ -264,7 +216,7 @@ impl RawProgram {
             id
         };
 
-        let ((uniforms, atomic_counters), attributes, blocks, tf_buffers, ssbos, subroutine_data) = unsafe {
+        let ((uniforms, atomic_counters, uniform_locations), attributes, blocks, tf_buffers, ssbos, subroutine_data) = unsafe {
             (
                 reflect_uniforms(&mut ctxt, id),
                 reflect_attributes(&mut ctxt, id),
@@ -293,7 +245,7 @@ impl RawProgram {
             context: facade.get_context().clone(),
             id,
             uniforms,
-            uniform_values: UniformsStorage::new(),
+            uniform_values: UniformsStorage::new(uniform_locations),
             uniform_blocks: blocks,
             subroutine_data,
             attributes,
@@ -313,51 +265,40 @@ impl RawProgram {
     /// You can store the result in a file, then reload it later. This avoids having to compile
     /// the source code every time.
     pub fn get_binary(&self) -> Result<Binary, GetBinaryError> {
+        if !is_binary_supported(&*self.context) {
+            return Err(GetBinaryError::NotSupported);
+        }
+
         unsafe {
             let ctxt = self.context.make_current();
 
-            if ctxt.version >= &Version(Api::Gl, 4, 1) || ctxt.extensions.gl_arb_get_programy_binary
-            {
-                let id = match self.id {
-                    Handle::Id(id) => id,
-                    Handle::Handle(_) => unreachable!(),
-                };
-
-                let mut num_supported_formats = 0;
-                ctxt.gl
-                    .GetIntegerv(gl::NUM_PROGRAM_BINARY_FORMATS, &mut num_supported_formats);
-                if num_supported_formats == 0 {
-                    return Err(GetBinaryError::NoFormats);
-                }
-
-                let mut buf_len = 0;
-                ctxt.gl
-                    .GetProgramiv(id, gl::PROGRAM_BINARY_LENGTH, &mut buf_len);
-
-                let mut format = 0;
-                let mut storage: Vec<u8> = Vec::with_capacity(buf_len as usize);
-                ctxt.gl.GetProgramBinary(
-                    id,
-                    buf_len,
-                    &mut buf_len,
-                    &mut format,
-                    storage.as_mut_ptr() as *mut _,
-                );
-                storage.set_len(buf_len as usize);
-                attach_glium_header(&self, &mut storage);
-                Ok(Binary {
-                    format,
-                    content: storage,
-                })
-            } else {
-                Err(GetBinaryError::NotSupported)
+            let num_supported_formats = ctxt
+                .glow
+                .get_parameter_i32(glow::NUM_PROGRAM_BINARY_FORMATS);
+            if num_supported_formats == 0 {
+                return Err(GetBinaryError::NoFormats);
             }
+
+            // glow queries `GL_PROGRAM_BINARY_LENGTH` itself and returns `None` if
+            // `glGetProgramBinary` raised a GL error
+            let glow::ProgramBinary {
+                buffer: mut storage,
+                format,
+            } = match ctxt.glow.get_program_binary(self.id) {
+                Some(binary) => binary,
+                None => return Err(GetBinaryError::NotSupported),
+            };
+            attach_safegl_header(&self, &mut storage);
+            Ok(Binary {
+                format,
+                content: storage,
+            })
         }
     }
 
     /// Returns the *location* of an output fragment, if it exists.
     ///
-    /// The *location* is low-level information that is used internally by glium.
+    /// The *location* is low-level information that is used internally by SafeGL.
     /// You probably don't need to call this function.
     ///
     /// You can declare output fragments in your shaders by writing:
@@ -373,25 +314,9 @@ impl RawProgram {
         }
 
         // querying opengl
-        let name_c = ffi::CString::new(name.as_bytes()).unwrap();
-
         let ctxt = self.context.make_current();
 
-        let value = unsafe {
-            match self.id {
-                Handle::Id(id) => {
-                    assert!(ctxt.version >= &Version(Api::Gl, 2, 0));
-                    ctxt.gl.GetFragDataLocation(
-                        id,
-                        name_c.as_bytes_with_nul().as_ptr() as *const raw::c_char,
-                    )
-                }
-                Handle::Handle(id) => {
-                    // not supported
-                    -1
-                }
-            }
-        };
+        let value = unsafe { ctxt.glow.get_frag_data_location(self.id, name) };
 
         let location = match value {
             -1 => None,
@@ -415,7 +340,7 @@ impl RawProgram {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.uniforms() {
     ///     println!("Name: {} - Type: {:?}", name, uniform.ty);
     /// }
@@ -431,7 +356,7 @@ impl RawProgram {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.get_uniform_blocks() {
     ///     println!("Name: {}", name);
     /// }
@@ -536,7 +461,7 @@ impl RawProgram {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, attribute) in program.attributes() {
     ///     println!("Name: {} - Type: {:?}", name, attribute.ty);
     /// }
@@ -552,7 +477,7 @@ impl RawProgram {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.get_shader_storage_blocks() {
     ///     println!("Name: {}", name);
     /// }
@@ -570,7 +495,7 @@ impl RawProgram {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.get_atomic_counters() {
     ///     println!("Name: {}", name);
     /// }
@@ -595,6 +520,7 @@ impl RawProgram {
     ///
     /// The program *must* contain a compute shader.
     /// TODO: check inside the program if it has a compute shader instead of being unsafe
+    #[cfg(feature = "gl46")]
     pub unsafe fn dispatch_compute<U>(
         &self,
         uniforms: U,
@@ -625,7 +551,7 @@ impl RawProgram {
 
         self.use_program(&mut ctxt);
         uniforms.bind_uniforms(&mut ctxt, self, &mut fences)?;
-        ctxt.gl.DispatchCompute(x, y, z);
+        ctxt.glow.dispatch_compute(x, y, z);
 
         for fence in fences {
             fence.insert(&mut ctxt);
@@ -642,6 +568,7 @@ impl RawProgram {
     ///
     /// The program *must* contain a compute shader.
     /// TODO: check inside the program if it has a compute shader instead of being unsafe
+    #[cfg(feature = "gl46")]
     pub unsafe fn dispatch_compute_indirect<U>(
         &self,
         uniforms: U,
@@ -676,8 +603,7 @@ impl RawProgram {
         let mut fences = Vec::with_capacity(0);
         uniforms.bind_uniforms(&mut ctxt, self, &mut fences)?;
 
-        ctxt.gl
-            .DispatchComputeIndirect(offset as gl::types::GLintptr);
+        ctxt.glow.dispatch_compute_indirect(offset as i32);
 
         for fence in fences {
             fence.insert(&mut ctxt);
@@ -697,10 +623,10 @@ impl fmt::Debug for RawProgram {
 }
 
 impl GlObject for RawProgram {
-    type Id = Handle;
+    type Id = glow::Program;
 
     #[inline]
-    fn get_id(&self) -> Handle {
+    fn get_id(&self) -> glow::Program {
         self.id
     }
 }
@@ -710,12 +636,9 @@ impl ProgramExt for RawProgram {
     fn use_program(&self, ctxt: &mut CommandContext<'_>) {
         unsafe {
             let program_id = self.get_id();
-            if ctxt.state.program != program_id {
-                match program_id {
-                    Handle::Id(id) => ctxt.gl.UseProgram(id),
-                    Handle::Handle(id) => ctxt.gl.UseProgramObjectARB(id),
-                }
-                ctxt.state.program = program_id;
+            if ctxt.state.program != Some(program_id) {
+                ctxt.glow.use_program(Some(program_id));
+                ctxt.state.program = Some(program_id);
                 self.uniform_values.flush_subroutine_uniforms();
             }
         }
@@ -802,87 +725,40 @@ impl Drop for RawProgram {
 
         // sending the destroy command
         unsafe {
-            match self.id {
-                Handle::Id(id) => {
-                    assert!(
-                        ctxt.version >= &Version(Api::Gl, 2, 0)
-                            || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                    );
-
-                    if ctxt.state.program == Handle::Id(id) {
-                        ctxt.gl.UseProgram(0);
-                        ctxt.state.program = Handle::Id(0);
-                        self.uniform_values.flush_subroutine_uniforms();
-                    }
-
-                    ctxt.gl.DeleteProgram(id);
-                }
-                Handle::Handle(id) => {
-                    assert!(ctxt.extensions.gl_arb_shader_objects);
-
-                    if ctxt.state.program == Handle::Handle(id) {
-                        ctxt.gl.UseProgramObjectARB(0 as gl::types::GLhandleARB);
-                        ctxt.state.program = Handle::Handle(0 as gl::types::GLhandleARB);
-                        self.uniform_values.flush_subroutine_uniforms();
-                    }
-
-                    ctxt.gl.DeleteObjectARB(id);
-                }
+            if ctxt.state.program == Some(self.id) {
+                ctxt.glow.use_program(None);
+                ctxt.state.program = None;
+                self.uniform_values.flush_subroutine_uniforms();
             }
+
+            ctxt.glow.delete_program(self.id);
         }
     }
 }
 
 /// Builds an empty program from within the GL context.
-unsafe fn create_program(ctxt: &mut CommandContext<'_>) -> Handle {
-    let id = if ctxt.version >= &Version(Api::Gl, 2, 0) || ctxt.version >= &Version(Api::GlEs, 2, 0)
-    {
-        Handle::Id(ctxt.gl.CreateProgram())
-    } else if ctxt.extensions.gl_arb_shader_objects {
-        Handle::Handle(ctxt.gl.CreateProgramObjectARB())
-    } else {
-        unreachable!()
-    };
-
-    if id == Handle::Id(0) || id == Handle::Handle(0 as gl::types::GLhandleARB) {
-        panic!("glCreateProgram failed");
+unsafe fn create_program(ctxt: &mut CommandContext<'_>) -> glow::Program {
+    match ctxt.glow.create_program() {
+        Ok(id) => id,
+        Err(_) => panic!("glCreateProgram failed"),
     }
-
-    id
 }
 
 unsafe fn check_program_link_errors(
     ctxt: &mut CommandContext<'_>,
-    id: Handle,
+    program: glow::Program,
 ) -> Result<(), ProgramCreationError> {
-    let mut link_success: gl::types::GLint = 0;
-
-    match id {
-        Handle::Id(id) => {
-            assert!(
-                ctxt.version >= &Version(Api::Gl, 2, 0)
-                    || ctxt.version >= &Version(Api::GlEs, 2, 0)
-            );
-            ctxt.gl.GetProgramiv(id, gl::LINK_STATUS, &mut link_success);
-        }
-        Handle::Handle(id) => {
-            assert!(ctxt.extensions.gl_arb_shader_objects);
-            ctxt.gl
-                .GetObjectParameterivARB(id, gl::OBJECT_LINK_STATUS_ARB, &mut link_success);
-        }
-    }
-
-    if link_success == 0 {
+    if !ctxt.glow.get_program_link_status(program) {
         use crate::ProgramCreationError::LinkingError;
 
-        match ctxt.gl.GetError() {
-            gl::NO_ERROR => (),
-            gl::INVALID_VALUE => {
+        match ctxt.glow.get_error() {
+            glow::NO_ERROR => (),
+            glow::INVALID_VALUE => {
                 return Err(LinkingError(
                     "glLinkProgram triggered GL_INVALID_VALUE".to_string(),
                 ));
             }
-            gl::INVALID_OPERATION => {
+            glow::INVALID_OPERATION => {
                 return Err(LinkingError(
                     "glLinkProgram triggered GL_INVALID_OPERATION".to_string(),
                 ));
@@ -894,56 +770,7 @@ unsafe fn check_program_link_errors(
             }
         };
 
-        let mut error_log_size: gl::types::GLint = 0;
-
-        match id {
-            Handle::Id(id) => {
-                assert!(
-                    ctxt.version >= &Version(Api::Gl, 2, 0)
-                        || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                );
-                ctxt.gl
-                    .GetProgramiv(id, gl::INFO_LOG_LENGTH, &mut error_log_size);
-            }
-            Handle::Handle(id) => {
-                assert!(ctxt.extensions.gl_arb_shader_objects);
-                ctxt.gl.GetObjectParameterivARB(
-                    id,
-                    gl::OBJECT_INFO_LOG_LENGTH_ARB,
-                    &mut error_log_size,
-                );
-            }
-        }
-
-        let mut error_log: Vec<u8> = Vec::with_capacity(error_log_size as usize);
-
-        match id {
-            Handle::Id(id) => {
-                assert!(
-                    ctxt.version >= &Version(Api::Gl, 2, 0)
-                        || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                );
-                ctxt.gl.GetProgramInfoLog(
-                    id,
-                    error_log_size,
-                    &mut error_log_size,
-                    error_log.as_mut_ptr() as *mut gl::types::GLchar,
-                );
-            }
-            Handle::Handle(id) => {
-                assert!(ctxt.extensions.gl_arb_shader_objects);
-                ctxt.gl.GetInfoLogARB(
-                    id,
-                    error_log_size,
-                    &mut error_log_size,
-                    error_log.as_mut_ptr() as *mut gl::types::GLchar,
-                );
-            }
-        }
-
-        error_log.set_len(error_log_size as usize);
-
-        let msg = String::from_utf8(error_log).unwrap();
+        let msg = ctxt.glow.get_program_info_log(program);
         return Err(LinkingError(msg));
     }
 

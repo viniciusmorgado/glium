@@ -16,13 +16,13 @@ In order to load the image, we just need to call `image::load`:
 let image = image::load(std::io::Cursor::new(&include_bytes!("/path/to/image.png")),
                         image::ImageFormat::Png).unwrap().to_rgba8();
 let image_dimensions = image.dimensions();
-let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+let image = safegl::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
 ```
 
 And in order to upload the image as a texture, it's as simple as:
 
 ```rust
-let texture = glium::texture::Texture2d::new(&display, image).unwrap();
+let texture = safegl::texture::Texture2d::new(&display, image).unwrap();
 ```
 
 # Using the texture
@@ -107,4 +107,4 @@ And here is the result:
 
 ![The result](resources/tuto-06-texture.png)
 
-**[You can find the entire source code here](https://github.com/glium/glium/blob/master/examples/tutorial-06.rs).**
+**[You can find the entire source code here](https://github.com/viniciusmorgado/safegl/blob/develop/examples/standalone/tutorial-06.rs).**

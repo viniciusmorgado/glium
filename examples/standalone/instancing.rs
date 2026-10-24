@@ -1,8 +1,8 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
 #[allow(unused_imports)]
-use glium::{Display, Frame, Surface};
+use safegl::{Display, Frame, Surface};
 use glutin::surface::WindowSurface;
 use support::{camera::CameraState, ApplicationContext, State};
 
@@ -15,15 +15,15 @@ struct Attr {
 implement_vertex!(Attr, world_position);
 
 struct Application {
-    pub vertex_buffer: glium::vertex::VertexBufferAny,
+    pub vertex_buffer: safegl::vertex::VertexBufferAny,
     pub teapots: Vec<((f32, f32, f32), (f32, f32, f32))>,
-    pub per_instance: glium::VertexBuffer<Attr>,
+    pub per_instance: safegl::VertexBuffer<Attr>,
     pub camera: CameraState,
-    pub program: glium::Program,
+    pub program: safegl::Program,
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE: &'static str = "Glium instancing example";
+    const WINDOW_TITLE: &'static str = "SafeGL instancing example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         // building the vertex and index buffers
@@ -49,10 +49,10 @@ impl ApplicationContext for Application {
                 })
                 .collect::<Vec<_>>();
 
-            glium::vertex::VertexBuffer::dynamic(display, &data).unwrap()
+            safegl::vertex::VertexBuffer::dynamic(display, &data).unwrap()
         };
 
-        let program = glium::Program::from_source(
+        let program = safegl::Program::from_source(
             display,
             "
                 #version 140
@@ -103,12 +103,12 @@ impl ApplicationContext for Application {
 
     fn draw_frame(&mut self, display: &Display<WindowSurface>) {
         let mut frame = display.draw();
-        let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+        let indices = safegl::index::NoIndices(safegl::index::PrimitiveType::TrianglesList);
 
         // drawing a frame
-        let params = glium::DrawParameters {
-            depth: glium::Depth {
-                test: glium::DepthTest::IfLess,
+        let params = safegl::DrawParameters {
+            depth: safegl::Depth {
+                test: safegl::DepthTest::IfLess,
                 write: true,
                 ..Default::default()
             },
@@ -133,8 +133,8 @@ impl ApplicationContext for Application {
 
     fn handle_window_event(
         &mut self,
-        event: &glium::winit::event::WindowEvent,
-        _window: &glium::winit::window::Window,
+        event: &safegl::winit::event::WindowEvent,
+        _window: &safegl::winit::window::Window,
     ) {
         self.camera.process_input(&event);
     }

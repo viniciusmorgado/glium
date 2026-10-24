@@ -1,20 +1,20 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::{Display, Surface};
+use safegl::{Display, Surface};
 use glutin::surface::WindowSurface;
 use support::{ApplicationContext, State};
 
 mod support;
 
 struct Application {
-    pub vertex_buffer: glium::vertex::VertexBufferAny,
-    pub program: glium::Program,
+    pub vertex_buffer: safegl::vertex::VertexBufferAny,
+    pub program: safegl::Program,
     pub camera: support::camera::CameraState,
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE: &'static str = "Glium teapot example";
+    const WINDOW_TITLE: &'static str = "SafeGL teapot example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         let vertex_buffer = support::load_wavefront(&display, include_bytes!("support/teapot.obj"));
@@ -142,9 +142,9 @@ impl ApplicationContext for Application {
         };
 
         // draw parameters
-        let params = glium::DrawParameters {
-            depth: glium::Depth {
-                test: glium::DepthTest::IfLess,
+        let params = safegl::DrawParameters {
+            depth: safegl::Depth {
+                test: safegl::DepthTest::IfLess,
                 write: true,
                 ..Default::default()
             },
@@ -155,7 +155,7 @@ impl ApplicationContext for Application {
         frame
             .draw(
                 &self.vertex_buffer,
-                &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
+                &safegl::index::NoIndices(safegl::index::PrimitiveType::TrianglesList),
                 &self.program,
                 &uniforms,
                 &params,
@@ -166,8 +166,8 @@ impl ApplicationContext for Application {
 
     fn handle_window_event(
         &mut self,
-        event: &glium::winit::event::WindowEvent,
-        _window: &glium::winit::window::Window,
+        event: &safegl::winit::event::WindowEvent,
+        _window: &safegl::winit::window::Window,
     ) {
         self.camera.process_input(&event);
     }

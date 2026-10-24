@@ -1,7 +1,7 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::Surface;
+use safegl::Surface;
 
 mod support;
 
@@ -12,7 +12,7 @@ macro_rules! texture_sample_test {
             let display = support::build_display();
             let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-            let texture = glium::texture::$tex_ty::new(
+            let texture = safegl::texture::$tex_ty::new(
                 &display,
                 vec![
                     vec![(255, 0, 0, 255), (255, 0, 0, 255)],
@@ -21,7 +21,7 @@ macro_rules! texture_sample_test {
             )
             .unwrap();
 
-            let program = glium::Program::from_source(
+            let program = safegl::Program::from_source(
                 &display,
                 "
                     #version 110
@@ -97,12 +97,13 @@ texture_sample_test!(
     ]
 );
 
+#[cfg(feature = "gl46")]
 #[test]
 fn bindless_texture() {
     let display = support::build_display();
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let texture = glium::texture::Texture2d::new(
+    let texture = safegl::texture::Texture2d::new(
         &display,
         vec![
             vec![(255, 0, 0, 255), (255, 0, 0, 255)],
@@ -119,7 +120,7 @@ fn bindless_texture() {
     // if bindless textures are supported, we can call .unwrap() and expect that everything
     // else is supported here as well
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 100
@@ -148,9 +149,9 @@ fn bindless_texture() {
     )
     .unwrap();
 
-    let buffer = glium::uniforms::UniformBuffer::new(
+    let buffer = safegl::uniforms::UniformBuffer::new(
         &display,
-        glium::texture::TextureHandle::new(&texture, &Default::default()),
+        safegl::texture::TextureHandle::new(&texture, &Default::default()),
     )
     .unwrap();
 

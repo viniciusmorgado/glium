@@ -1,6 +1,5 @@
 use crate::buffer::{Buffer, BufferAny, BufferMutSlice, BufferSlice, BufferType};
 use crate::buffer::{BufferCreationError, BufferMode};
-use crate::gl;
 use crate::GlObject;
 
 use crate::backend::Facade;
@@ -294,10 +293,10 @@ impl<T> GlObject for IndexBuffer<T>
 where
     T: Index,
 {
-    type Id = gl::types::GLuint;
+    type Id = glow::Buffer;
 
     #[inline]
-    fn get_id(&self) -> gl::types::GLuint {
+    fn get_id(&self) -> glow::Buffer {
         self.buffer.get_id()
     }
 }

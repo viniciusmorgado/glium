@@ -1,7 +1,7 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::Surface;
+use safegl::Surface;
 
 mod support;
 
@@ -18,7 +18,7 @@ fn transform_feedback() {
 
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let source = glium::program::ProgramCreationInput::SourceCode {
+    let source = safegl::program::ProgramCreationInput::SourceCode {
         tessellation_control_shader: None,
         tessellation_evaluation_shader: None,
         geometry_shader: None,
@@ -49,25 +49,25 @@ fn transform_feedback() {
 
         transform_feedback_varyings: Some((
             vec!["output_val".to_string()],
-            glium::program::TransformFeedbackMode::Separate,
+            safegl::program::TransformFeedbackMode::Separate,
         )),
     };
 
-    let program = match glium::Program::new(&display, source) {
+    let program = match safegl::Program::new(&display, source) {
         Ok(p) => p,
-        Err(glium::program::ProgramCreationError::TransformFeedbackNotSupported) => return,
+        Err(safegl::program::ProgramCreationError::TransformFeedbackNotSupported) => return,
         Err(e) => panic!("{:?}", e),
     };
 
-    let mut out_buffer: glium::VertexBuffer<Vertex> =
-        glium::VertexBuffer::empty(&display, 6).unwrap();
+    let mut out_buffer: safegl::VertexBuffer<Vertex> =
+        safegl::VertexBuffer::empty(&display, 6).unwrap();
 
     {
         let session =
-            glium::vertex::TransformFeedbackSession::new(&display, &program, &mut out_buffer)
+            safegl::vertex::TransformFeedbackSession::new(&display, &program, &mut out_buffer)
                 .unwrap();
 
-        let params = glium::DrawParameters {
+        let params = safegl::DrawParameters {
             transform_feedback: Some(&session),
             ..Default::default()
         };
@@ -81,7 +81,7 @@ fn transform_feedback() {
 
     let result = match out_buffer.read() {
         Ok(r) => r,
-        Err(glium::buffer::ReadError::NotSupported) => return,
+        Err(safegl::buffer::ReadError::NotSupported) => return,
         e => e.unwrap(),
     };
 

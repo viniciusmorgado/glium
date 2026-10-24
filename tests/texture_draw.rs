@@ -1,14 +1,14 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::GlObject;
-use glium::Surface;
+use safegl::GlObject;
+use safegl::Surface;
 
 mod support;
 
 macro_rules! create_program {
     ($display:expr, $glsl_ty:expr, $glsl_value:expr) => {{
-        let program = glium::Program::from_source(
+        let program = safegl::Program::from_source(
             &$display,
             "
                     #version 110
@@ -78,7 +78,7 @@ macro_rules! texture_draw_test {
 
             let program = create_program!(display, $glsl_ty, $glsl_value);
 
-            let texture = glium::texture::$tex_ty::empty(&display, $($dims),+).unwrap();
+            let texture = safegl::texture::$tex_ty::empty(&display, $($dims),+).unwrap();
 
             draw_and_validate!(display, program, texture, vb, ib, $rust_value);
         }
@@ -95,16 +95,16 @@ macro_rules! unowned_draw_test {
 
             let program = create_program!(display, $glsl_ty, $glsl_value);
 
-            let empty_texture = glium::texture::$tex_ty::empty_with_format(&display,
-                                                                           glium::texture::$format_ty::$format_value,
-                                                                           glium::texture::MipmapsOption::NoMipmap,
+            let empty_texture = safegl::texture::$tex_ty::empty_with_format(&display,
+                                                                           safegl::texture::$format_ty::$format_value,
+                                                                           safegl::texture::MipmapsOption::NoMipmap,
                                                                            $($dims),+).unwrap();
             let texture = unsafe {
-                glium::texture::$tex_ty::from_id(&display,
-                                                 glium::texture::$format_ty::$format_value,
+                safegl::texture::$tex_ty::from_id(&display,
+                                                 safegl::texture::$format_ty::$format_value,
                                                  empty_texture.get_id(),
                                                  false,
-                                                 glium::texture::MipmapsOption::NoMipmap,
+                                                 safegl::texture::MipmapsOption::NoMipmap,
                                                  empty_texture.get_texture_type())
             };
 

@@ -58,10 +58,13 @@ use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::{fmt, mem};
 
+use glow::HasContext;
+
 use crate::backend::Facade;
 use crate::context::CommandContext;
 use crate::context::Context;
 use crate::gl;
+use crate::handles::RawName;
 use crate::version::Api;
 use crate::version::Version;
 use crate::ContextExt;
@@ -180,7 +183,7 @@ where
     [T]: BufferContent,
 {
     buffer: Buffer<[T]>,
-    texture: gl::types::GLuint,
+    texture: glow::Texture,
     ty: BufferTextureType,
 }
 
@@ -342,7 +345,7 @@ where
 
         // before starting, we determine the internal format and check that buffer textures are
         // supported
-        let internal_format = if ctxt.version >= &Version(Api::Gl, 3, 0)
+        let internal_format = if ctxt.version.0 == Api::Gl
             || ctxt.extensions.gl_oes_texture_buffer
             || ctxt.extensions.gl_ext_texture_buffer
         {
@@ -387,66 +390,21 @@ where
                 (TextureBufferContentType::F32F32F32F32, BufferTextureType::Float) => gl::RGBA32F,
 
                 (TextureBufferContentType::U32U32U32, BufferTextureType::Unsigned)
-                    if ctxt.version >= &Version(Api::Gl, 4, 0)
-                        || ctxt.extensions.gl_arb_texture_buffer_object_rgb32 =>
+                    if ctxt.version.0 == Api::Gl =>
                 {
                     gl::RGB32UI
                 }
                 (TextureBufferContentType::I32I32I32, BufferTextureType::Integral)
-                    if ctxt.version >= &Version(Api::Gl, 4, 0)
-                        || ctxt.extensions.gl_arb_texture_buffer_object_rgb32 =>
+                    if ctxt.version.0 == Api::Gl =>
                 {
                     gl::RGB32I
                 }
                 (TextureBufferContentType::F32F32F32, BufferTextureType::Float)
-                    if ctxt.version >= &Version(Api::Gl, 4, 0)
-                        || ctxt.extensions.gl_arb_texture_buffer_object_rgb32 =>
+                    if ctxt.version.0 == Api::Gl =>
                 {
                     gl::RGB32F
                 }
 
-                _ => return Err((TextureCreationError::FormatNotSupported, buffer)),
-            }
-        } else if ctxt.extensions.gl_arb_texture_buffer_object
-            || ctxt.extensions.gl_ext_texture_buffer_object
-        {
-            match (T::get_type(), ty) {
-                (TextureBufferContentType::U8U8U8U8, BufferTextureType::Float) => gl::RGBA8,
-                (TextureBufferContentType::U16U16U16U16, BufferTextureType::Float) => gl::RGBA16,
-                (TextureBufferContentType::F16F16F16F16, BufferTextureType::Float) => gl::RGBA16F,
-                (TextureBufferContentType::F32F32F32F32, BufferTextureType::Float) => gl::RGBA32F,
-                (TextureBufferContentType::I8I8I8I8, BufferTextureType::Integral) => gl::RGBA8I,
-                (TextureBufferContentType::I16I16I16I16, BufferTextureType::Integral) => {
-                    gl::RGBA16I
-                }
-                (TextureBufferContentType::I32I32I32I32, BufferTextureType::Integral) => {
-                    gl::RGBA32I
-                }
-                (TextureBufferContentType::U8U8U8U8, BufferTextureType::Unsigned) => gl::RGBA8UI,
-                (TextureBufferContentType::U16U16U16U16, BufferTextureType::Unsigned) => {
-                    gl::RGBA16UI
-                }
-                (TextureBufferContentType::U32U32U32U32, BufferTextureType::Unsigned) => {
-                    gl::RGBA32UI
-                }
-
-                (TextureBufferContentType::U32U32U32, BufferTextureType::Unsigned)
-                    if ctxt.extensions.gl_arb_texture_buffer_object_rgb32 =>
-                {
-                    gl::RGB32UI
-                }
-                (TextureBufferContentType::I32I32I32, BufferTextureType::Integral)
-                    if ctxt.extensions.gl_arb_texture_buffer_object_rgb32 =>
-                {
-                    gl::RGB32I
-                }
-                (TextureBufferContentType::F32F32F32, BufferTextureType::Float)
-                    if ctxt.extensions.gl_arb_texture_buffer_object_rgb32 =>
-                {
-                    gl::RGB32F
-                }
-
-                // TODO: intensity?
                 _ => return Err((TextureCreationError::FormatNotSupported, buffer)),
             }
         } else {
@@ -455,62 +413,47 @@ where
 
         // now the texture creation
         debug_assert_eq!(buffer.get_offset_bytes(), 0);
-        let id = if ctxt.version >= &Version(Api::Gl, 4, 5)
-            || ctxt.extensions.gl_arb_direct_state_access
-        {
+        // reserving the ID
+        let id = unsafe {
+            ctxt.glow
+                .create_texture()
+                .expect("failed to create a texture")
+        };
+
+        // binding the texture
+        unsafe {
+            ctxt.glow.bind_texture(glow::TEXTURE_BUFFER, Some(id));
+            let act = ctxt.state.active_texture as usize;
+            ctxt.state.texture_units[act].texture = Some(id);
+        }
+
+        // binding the buffer
+        if ctxt.version.0 == Api::Gl || ctxt.version >= &Version(Api::GlEs, 3, 2) {
             unsafe {
-                let mut id = 0;
-                ctxt.gl.CreateTextures(gl::TEXTURE_BUFFER, 1, &mut id);
-                ctxt.gl.TextureBuffer(id, internal_format, buffer.get_id());
-                id
+                ctxt.glow
+                    .tex_buffer(glow::TEXTURE_BUFFER, internal_format, Some(buffer.get_id()));
+            }
+        } else if ctxt.extensions.gl_ext_texture_buffer {
+            unsafe {
+                ctxt.extra.TexBufferEXT(
+                    gl::TEXTURE_BUFFER,
+                    internal_format,
+                    buffer.get_id().raw_name(),
+                );
+            }
+        } else if ctxt.extensions.gl_oes_texture_buffer {
+            unsafe {
+                ctxt.extra.TexBufferOES(
+                    gl::TEXTURE_BUFFER,
+                    internal_format,
+                    buffer.get_id().raw_name(),
+                );
             }
         } else {
-            // reserving the ID
-            let id = unsafe {
-                let mut id = 0;
-                ctxt.gl.GenTextures(1, &mut id);
-                id
-            };
-
-            // binding the texture
-            unsafe {
-                ctxt.gl.BindTexture(gl::TEXTURE_BUFFER, id);
-                let act = ctxt.state.active_texture as usize;
-                ctxt.state.texture_units[act].texture = id;
-            }
-
-            // binding the buffer
-            if ctxt.version >= &Version(Api::Gl, 3, 0) || ctxt.version >= &Version(Api::GlEs, 3, 2)
-            {
-                unsafe {
-                    ctxt.gl
-                        .TexBuffer(gl::TEXTURE_BUFFER, internal_format, buffer.get_id());
-                }
-            } else if ctxt.extensions.gl_arb_texture_buffer_object {
-                unsafe {
-                    ctxt.gl
-                        .TexBufferARB(gl::TEXTURE_BUFFER, internal_format, buffer.get_id());
-                }
-            } else if ctxt.extensions.gl_ext_texture_buffer_object
-                || ctxt.extensions.gl_ext_texture_buffer
-            {
-                unsafe {
-                    ctxt.gl
-                        .TexBufferEXT(gl::TEXTURE_BUFFER, internal_format, buffer.get_id());
-                }
-            } else if ctxt.extensions.gl_oes_texture_buffer {
-                unsafe {
-                    ctxt.gl
-                        .TexBufferOES(gl::TEXTURE_BUFFER, internal_format, buffer.get_id());
-                }
-            } else {
-                // handled during the choice for the internal format
-                // note that this panic will leak the texture
-                unreachable!();
-            }
-
-            id
-        };
+            // handled during the choice for the internal format
+            // note that this panic will leak the texture
+            unreachable!();
+        }
 
         Ok(BufferTexture {
             buffer,
@@ -551,13 +494,13 @@ where
 
         // resetting the bindings
         for tex_unit in ctxt.state.texture_units.iter_mut() {
-            if tex_unit.texture == self.texture {
-                tex_unit.texture = 0;
+            if tex_unit.texture == Some(self.texture) {
+                tex_unit.texture = None;
             }
         }
 
         unsafe {
-            ctxt.gl.DeleteTextures(1, [self.texture].as_ptr());
+            ctxt.glow.delete_texture(self.texture);
         }
     }
 }
@@ -602,7 +545,7 @@ where
 /// Holds a reference to a `BufferTexture`.
 #[derive(Copy, Clone)]
 pub struct BufferTextureRef<'a> {
-    texture: gl::types::GLuint,
+    texture: glow::Texture,
     ty: BufferTextureType,
     marker: PhantomData<&'a ()>,
 }
@@ -617,7 +560,7 @@ impl<'a> BufferTextureRef<'a> {
 
 impl<'a> TextureExt for BufferTextureRef<'a> {
     #[inline]
-    fn get_texture_id(&self) -> gl::types::GLuint {
+    fn get_texture_id(&self) -> glow::Texture {
         self.texture
     }
 
@@ -633,8 +576,14 @@ impl<'a> TextureExt for BufferTextureRef<'a> {
 
     #[inline]
     fn bind_to_current(&self, ctxt: &mut CommandContext<'_>) -> gl::types::GLenum {
-        unsafe {
-            ctxt.gl.BindTexture(gl::TEXTURE_BUFFER, self.texture);
+        let texture_unit = ctxt.state.active_texture as usize;
+        let unit = &mut ctxt.state.texture_units[texture_unit];
+        if unit.texture != Some(self.texture) {
+            unsafe {
+                ctxt.glow
+                    .bind_texture(glow::TEXTURE_BUFFER, Some(self.texture));
+            }
+            unit.texture = Some(self.texture);
         }
         gl::TEXTURE_BUFFER
     }

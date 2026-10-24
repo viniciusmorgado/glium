@@ -2,10 +2,10 @@
 #![feature(test)]
 
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 extern crate test;
 
-use glium::Surface;
+use safegl::Surface;
 
 use test::Bencher;
 
@@ -21,7 +21,7 @@ fn clear(b: &mut Bencher) {
     let display = support::build_context();
 
     b.iter(|| {
-        let mut target = glium::Frame::new(display.clone(), (800, 600));
+        let mut target = safegl::Frame::new(display.clone(), (800, 600));
         target.clear_color(0.0, 0.0, 0.0, 1.0);
         target.finish()
     });
@@ -76,7 +76,7 @@ fn draw_triangle(b: &mut Bencher) {
 
         implement_vertex!(Vertex, position, color);
 
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             &display,
             &[
                 Vertex {
@@ -127,12 +127,12 @@ fn draw_triangle(b: &mut Bencher) {
     .unwrap();
 
     b.iter(|| {
-        let mut target = glium::Frame::new(display.clone(), (800, 600));
+        let mut target = safegl::Frame::new(display.clone(), (800, 600));
         target.clear_color(0.0, 0.0, 0.0, 1.0);
         target
             .draw(
                 &vertex_buffer,
-                &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
+                &safegl::index::NoIndices(safegl::index::PrimitiveType::TrianglesList),
                 &program,
                 &uniform! {},
                 &Default::default(),
@@ -155,7 +155,7 @@ fn build_buffer(b: &mut Bencher) {
 
         implement_vertex!(Vertex, position, color);
 
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             &display,
             &[
                 Vertex {

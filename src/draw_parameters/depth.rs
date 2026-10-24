@@ -1,9 +1,9 @@
 use crate::context::CommandContext;
 use crate::version::Api;
-use crate::version::Version;
 
 use crate::gl;
 use crate::DrawError;
+use glow::HasContext;
 
 /// Represents the depth parameters of a draw command.
 #[derive(Debug, Copy, Clone)]
@@ -75,7 +75,7 @@ impl Default for Depth {
 /// The most common value for depth testing is to set `depth_test` to `IfLess`, and `depth_write`
 /// to `true`.
 ///
-/// If you don't have a depth buffer available, you can only pass `Overwrite`. Glium detects if
+/// If you don't have a depth buffer available, you can only pass `Overwrite`. SafeGL detects if
 /// you pass any other value and reports an error.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DepthTest {
@@ -176,11 +176,8 @@ pub fn sync_depth(ctxt: &mut CommandContext<'_>, depth: &Depth) -> Result<(), Dr
             (DepthClamp::Clamp, &mut true, &mut true) => (),
 
             (DepthClamp::NoClamp, near, far) => {
-                if ctxt.version >= &Version(Api::Gl, 3, 0)
-                    || ctxt.extensions.gl_arb_depth_clamp
-                    || ctxt.extensions.gl_nv_depth_clamp
-                {
-                    unsafe { ctxt.gl.Disable(gl::DEPTH_CLAMP) };
+                if ctxt.version.0 == Api::Gl {
+                    unsafe { ctxt.glow.disable(glow::DEPTH_CLAMP) };
                     *near = false;
                     *far = false;
                 } else {
@@ -189,11 +186,8 @@ pub fn sync_depth(ctxt: &mut CommandContext<'_>, depth: &Depth) -> Result<(), Dr
             }
 
             (DepthClamp::Clamp, near, far) => {
-                if ctxt.version >= &Version(Api::Gl, 3, 0)
-                    || ctxt.extensions.gl_arb_depth_clamp
-                    || ctxt.extensions.gl_nv_depth_clamp
-                {
-                    unsafe { ctxt.gl.Enable(gl::DEPTH_CLAMP) };
+                if ctxt.version.0 == Api::Gl {
+                    unsafe { ctxt.glow.enable(glow::DEPTH_CLAMP) };
                     *near = true;
                     *far = true;
                 } else {
@@ -206,7 +200,7 @@ pub fn sync_depth(ctxt: &mut CommandContext<'_>, depth: &Depth) -> Result<(), Dr
 
             (DepthClamp::ClampNear, &mut true, far) => {
                 if ctxt.extensions.gl_amd_depth_clamp_separate {
-                    unsafe { ctxt.gl.Disable(gl::DEPTH_CLAMP_FAR_AMD) };
+                    unsafe { ctxt.glow.disable(gl::DEPTH_CLAMP_FAR_AMD) };
                     *far = false;
                 } else {
                     return Err(DrawError::DepthClampNotSupported);
@@ -215,10 +209,10 @@ pub fn sync_depth(ctxt: &mut CommandContext<'_>, depth: &Depth) -> Result<(), Dr
 
             (DepthClamp::ClampNear, near @ &mut false, far) => {
                 if ctxt.extensions.gl_amd_depth_clamp_separate {
-                    unsafe { ctxt.gl.Enable(gl::DEPTH_CLAMP_NEAR_AMD) };
+                    unsafe { ctxt.glow.enable(gl::DEPTH_CLAMP_NEAR_AMD) };
                     if *far {
                         unsafe {
-                            ctxt.gl.Disable(gl::DEPTH_CLAMP_FAR_AMD);
+                            ctxt.glow.disable(gl::DEPTH_CLAMP_FAR_AMD);
                         }
                     }
                     *near = true;
@@ -230,7 +224,7 @@ pub fn sync_depth(ctxt: &mut CommandContext<'_>, depth: &Depth) -> Result<(), Dr
 
             (DepthClamp::ClampFar, near, &mut true) => {
                 if ctxt.extensions.gl_amd_depth_clamp_separate {
-                    unsafe { ctxt.gl.Disable(gl::DEPTH_CLAMP_NEAR_AMD) };
+                    unsafe { ctxt.glow.disable(gl::DEPTH_CLAMP_NEAR_AMD) };
                     *near = false;
                 } else {
                     return Err(DrawError::DepthClampNotSupported);
@@ -239,10 +233,10 @@ pub fn sync_depth(ctxt: &mut CommandContext<'_>, depth: &Depth) -> Result<(), Dr
 
             (DepthClamp::ClampFar, near, far @ &mut false) => {
                 if ctxt.extensions.gl_amd_depth_clamp_separate {
-                    unsafe { ctxt.gl.Enable(gl::DEPTH_CLAMP_FAR_AMD) };
+                    unsafe { ctxt.glow.enable(gl::DEPTH_CLAMP_FAR_AMD) };
                     if *near {
                         unsafe {
-                            ctxt.gl.Disable(gl::DEPTH_CLAMP_NEAR_AMD);
+                            ctxt.glow.disable(gl::DEPTH_CLAMP_NEAR_AMD);
                         }
                     }
                     *near = false;
@@ -262,8 +256,8 @@ pub fn sync_depth(ctxt: &mut CommandContext<'_>, depth: &Depth) -> Result<(), Dr
     if depth.range != ctxt.state.depth_range {
         // TODO: WebGL requires depth.range.1 > depth.range.0
         unsafe {
-            ctxt.gl
-                .DepthRange(depth.range.0 as f64, depth.range.1 as f64);
+            ctxt.glow
+                .depth_range_f64(depth.range.0 as f64, depth.range.1 as f64);
         }
         ctxt.state.depth_range = depth.range;
     }
@@ -271,12 +265,12 @@ pub fn sync_depth(ctxt: &mut CommandContext<'_>, depth: &Depth) -> Result<(), Dr
     if depth.test == DepthTest::Overwrite && !depth.write {
         // simply disabling GL_DEPTH_TEST
         if ctxt.state.enabled_depth_test {
-            unsafe { ctxt.gl.Disable(gl::DEPTH_TEST) };
+            unsafe { ctxt.glow.disable(glow::DEPTH_TEST) };
             ctxt.state.enabled_depth_test = false;
         }
         return Ok(());
     } else if !ctxt.state.enabled_depth_test {
-        unsafe { ctxt.gl.Enable(gl::DEPTH_TEST) };
+        unsafe { ctxt.glow.enable(glow::DEPTH_TEST) };
         ctxt.state.enabled_depth_test = true;
     }
 
@@ -284,7 +278,7 @@ pub fn sync_depth(ctxt: &mut CommandContext<'_>, depth: &Depth) -> Result<(), Dr
     unsafe {
         let depth_test = depth.test.to_glenum();
         if ctxt.state.depth_func != depth_test {
-            ctxt.gl.DepthFunc(depth_test);
+            ctxt.glow.depth_func(depth_test);
             ctxt.state.depth_func = depth_test;
         }
     }
@@ -292,8 +286,7 @@ pub fn sync_depth(ctxt: &mut CommandContext<'_>, depth: &Depth) -> Result<(), Dr
     // depth mask
     if depth.write != ctxt.state.depth_mask {
         unsafe {
-            ctxt.gl
-                .DepthMask(if depth.write { gl::TRUE } else { gl::FALSE });
+            ctxt.glow.depth_mask(depth.write);
         }
         ctxt.state.depth_mask = depth.write;
     }

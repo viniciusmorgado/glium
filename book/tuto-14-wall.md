@@ -15,7 +15,7 @@ struct Vertex {
 
 implement_vertex!(Vertex, position, normal);
 
-let shape = glium::vertex::VertexBuffer::new(&display, &[
+let shape = safegl::vertex::VertexBuffer::new(&display, &[
         Vertex { position: [-1.0,  1.0, 0.0], normal: [0.0, 0.0, -1.0] },
         Vertex { position: [ 1.0,  1.0, 0.0], normal: [0.0, 0.0, -1.0] },
         Vertex { position: [-1.0, -1.0, 0.0], normal: [0.0, 0.0, -1.0] },
@@ -29,7 +29,7 @@ triangle with vertices 1, 2, and 3. A triangle strip is very useful when drawing
 or rectangular shapes.
 
 ```rust
-target.draw(&shape, glium::index::NoIndices(glium::index::PrimitiveType::TriangleStrip), &program,
+target.draw(&shape, safegl::index::NoIndices(safegl::index::PrimitiveType::TriangleStrip), &program,
             &uniform! { model: model, view: view, perspective: perspective, u_light: light },
             &params).unwrap();
 ```
@@ -53,8 +53,8 @@ Loading the texture is done like we have already done before:
 let image = image::load(Cursor::new(&include_bytes!("../book/tuto-14-diffuse.jpg")),
                         image::JPEG).unwrap().to_rgba8();
 let image_dimensions = image.dimensions();
-let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
-let diffuse_texture = glium::texture::Texture2d::new(&display, image).unwrap();
+let image = safegl::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+let diffuse_texture = safegl::texture::Texture2d::new(&display, image).unwrap();
 ```
 
 Adding the texture coordinates is also very easy:
@@ -79,7 +79,7 @@ uniform sampler2D diffuse_tex;
 And passing it when drawing:
 
 ```rust
-target.draw(&shape, glium::index::NoIndices(glium::index::PrimitiveType::TriangleStrip), &program,
+target.draw(&shape, safegl::index::NoIndices(safegl::index::PrimitiveType::TriangleStrip), &program,
             &uniform! { model: model, view: view, perspective: perspective,
                         u_light: light, diffuse_tex: &diffuse_texture },
             &params).unwrap();
@@ -137,8 +137,8 @@ Let's start with the beginning. We load the normal map into a texture:
 let image = image::load(Cursor::new(&include_bytes!("../book/tuto-14-normal.png")),
                         image::PNG).unwrap().to_rgba8();
 let image_dimensions = image.dimensions();
-let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
-let normal_map = glium::texture::Texture2d::new(&display, image).unwrap();
+let image = safegl::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+let normal_map = safegl::texture::Texture2d::new(&display, image).unwrap();
 ```
 
 And we add a new uniform in our fragment shader:
@@ -200,4 +200,4 @@ And here is the result:
 
 This is much more convincing!
 
-**[You can find the entire source code here](https://github.com/glium/glium/blob/master/examples/tutorial-14.rs).**
+**[You can find the entire source code here](https://github.com/viniciusmorgado/safegl/blob/develop/examples/standalone/tutorial-14.rs).**

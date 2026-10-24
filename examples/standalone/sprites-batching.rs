@@ -1,8 +1,8 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::index::PrimitiveType;
-use glium::{Display, Surface};
+use safegl::index::PrimitiveType;
+use safegl::{Display, Surface};
 use glutin::surface::WindowSurface;
 use support::{ApplicationContext, State};
 
@@ -18,14 +18,14 @@ implement_vertex!(Vertex, i_position, i_tex_id);
 const SPRITES_COUNT: usize = 1024;
 
 struct Application {
-    pub vertex_buffer: glium::VertexBuffer<Vertex>,
-    pub index_buffer: glium::IndexBuffer<u16>,
-    pub texture: glium::texture::Texture2dArray,
-    pub program: glium::Program,
+    pub vertex_buffer: safegl::VertexBuffer<Vertex>,
+    pub index_buffer: safegl::IndexBuffer<u16>,
+    pub texture: safegl::texture::Texture2dArray,
+    pub program: safegl::Program,
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE: &'static str = "Glium sprites-batching example";
+    const WINDOW_TITLE: &'static str = "SafeGL sprites-batching example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         // generating a bunch of unicolor 2D images that will be used for a texture
@@ -39,14 +39,14 @@ impl ApplicationContext for Application {
                 })
                 .collect::<Vec<_>>();
 
-            glium::texture::Texture2dArray::new(display, images).unwrap()
+            safegl::texture::Texture2dArray::new(display, images).unwrap()
         };
 
         // building the vertex buffer and index buffers that will be filled with the data of
         // the sprites
         let (vertex_buffer, index_buffer) = {
-            let mut vb: glium::VertexBuffer<Vertex> =
-                glium::VertexBuffer::empty_dynamic(display, SPRITES_COUNT * 4).unwrap();
+            let mut vb: safegl::VertexBuffer<Vertex> =
+                safegl::VertexBuffer::empty_dynamic(display, SPRITES_COUNT * 4).unwrap();
             let mut ib_data = Vec::with_capacity(SPRITES_COUNT * 6);
 
             // initializing with random data
@@ -80,7 +80,7 @@ impl ApplicationContext for Application {
 
             (
                 vb,
-                glium::index::IndexBuffer::new(display, PrimitiveType::TrianglesList, &ib_data)
+                safegl::index::IndexBuffer::new(display, PrimitiveType::TrianglesList, &ib_data)
                     .unwrap(),
             )
         };

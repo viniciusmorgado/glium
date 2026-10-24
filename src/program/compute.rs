@@ -12,7 +12,6 @@ use fnv::FnvHasher;
 
 use crate::CapabilitiesSource;
 use crate::GlObject;
-use crate::Handle;
 use crate::ProgramExt;
 use crate::RawUniformValue;
 
@@ -141,7 +140,7 @@ impl ComputeShader {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.uniforms() {
     ///     println!("Name: {} - Type: {:?}", name, uniform.ty);
     /// }
@@ -157,7 +156,7 @@ impl ComputeShader {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.get_uniform_blocks() {
     ///     println!("Name: {}", name);
     /// }
@@ -175,7 +174,7 @@ impl ComputeShader {
     /// ## Example
     ///
     /// ```no_run
-    /// fn example(program: glium::Program) {
+    /// fn example(program: safegl::Program) {
     /// for (name, uniform) in program.get_shader_storage_blocks() {
     ///     println!("Name: {}", name);
     /// }
@@ -197,10 +196,10 @@ impl fmt::Debug for ComputeShader {
 }
 
 impl GlObject for ComputeShader {
-    type Id = Handle;
+    type Id = glow::Program;
 
     #[inline]
-    fn get_id(&self) -> Handle {
+    fn get_id(&self) -> glow::Program {
         self.raw.get_id()
     }
 }

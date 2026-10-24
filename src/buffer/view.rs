@@ -47,10 +47,10 @@ impl<T: ?Sized> GlObject for Buffer<T>
 where
     T: Content,
 {
-    type Id = gl::types::GLuint;
+    type Id = glow::Buffer;
 
     #[inline]
-    fn get_id(&self) -> gl::types::GLuint {
+    fn get_id(&self) -> glow::Buffer {
         self.alloc.as_ref().unwrap().get_id()
     }
 }
@@ -270,8 +270,8 @@ where
     ///     value2: u16,
     /// }
     ///
-    /// # fn example(buffer: glium::buffer::Buffer<BufferContent>) {
-    /// let slice = unsafe { buffer.slice_custom(glium::field!(BufferContent, value2)) };
+    /// # fn example(buffer: safegl::buffer::Buffer<BufferContent>) {
+    /// let slice = unsafe { buffer.slice_custom(safegl::field!(BufferContent, value2)) };
     /// # }
     /// ```
     #[inline]
@@ -500,12 +500,14 @@ where
         Alloc::unbind_pixel_unpack(ctxt)
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn prepare_and_bind_for_query(&self, ctxt: &mut CommandContext<'_>) {
         let alloc = self.alloc.as_ref().unwrap();
         alloc.prepare_and_bind_for_query(ctxt);
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn unbind_query(ctxt: &mut CommandContext<'_>) {
         Alloc::unbind_query(ctxt)
@@ -517,6 +519,7 @@ where
         alloc.prepare_and_bind_for_draw_indirect(ctxt);
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn prepare_and_bind_for_dispatch_indirect(&self, ctxt: &mut CommandContext<'_>) {
         let alloc = self.alloc.as_ref().unwrap();
@@ -533,6 +536,7 @@ where
         alloc.prepare_and_bind_for_uniform(ctxt, index, 0..alloc.get_size());
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn prepare_and_bind_for_shared_storage(
         &self,
@@ -543,6 +547,7 @@ where
         alloc.prepare_and_bind_for_shared_storage(ctxt, index, 0..alloc.get_size());
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn prepare_and_bind_for_atomic_counter(
         &self,
@@ -682,8 +687,8 @@ where
     ///     value2: u16,
     /// }
     ///
-    /// # fn example(buffer: glium::buffer::Buffer<BufferContent>) {
-    /// let slice = unsafe { buffer.slice_custom(glium::field!(BufferContent, value2)) };
+    /// # fn example(buffer: safegl::buffer::Buffer<BufferContent>) {
+    /// let slice = unsafe { buffer.slice_custom(safegl::field!(BufferContent, value2)) };
     /// # }
     /// ```
     #[inline]
@@ -874,11 +879,13 @@ where
         Alloc::unbind_pixel_unpack(ctxt)
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn prepare_and_bind_for_query(&self, ctxt: &mut CommandContext<'_>) {
         self.alloc.prepare_and_bind_for_query(ctxt);
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn unbind_query(ctxt: &mut CommandContext<'_>) {
         Alloc::unbind_query(ctxt)
@@ -889,6 +896,7 @@ where
         self.alloc.prepare_and_bind_for_draw_indirect(ctxt);
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn prepare_and_bind_for_dispatch_indirect(&self, ctxt: &mut CommandContext<'_>) {
         self.alloc.prepare_and_bind_for_dispatch_indirect(ctxt);
@@ -904,6 +912,7 @@ where
             .prepare_and_bind_for_uniform(ctxt, index, 0..self.alloc.get_size());
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn prepare_and_bind_for_shared_storage(
         &self,
@@ -914,6 +923,7 @@ where
             .prepare_and_bind_for_shared_storage(ctxt, index, 0..self.alloc.get_size());
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn prepare_and_bind_for_atomic_counter(
         &self,
@@ -1098,9 +1108,9 @@ where
     ///     value1: u16,
     ///     value2: u16,
     /// }
-    /// # let buffer: glium::buffer::BufferSlice<BufferContent> =
+    /// # let buffer: safegl::buffer::BufferSlice<BufferContent> =
     /// #                                                   unsafe { std::mem::zeroed() };
-    /// let slice = unsafe { buffer.slice_custom(glium::field!(BufferContent, value2)) };
+    /// let slice = unsafe { buffer.slice_custom(safegl::field!(BufferContent, value2)) };
     /// ```
     #[inline]
     pub unsafe fn slice_custom<R>(self, f: Field<R>) -> BufferMutSlice<'a, R>
@@ -1401,11 +1411,13 @@ impl BufferExt for BufferAny {
         Alloc::unbind_pixel_unpack(ctxt)
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn prepare_and_bind_for_query(&self, ctxt: &mut CommandContext<'_>) {
         self.alloc.prepare_and_bind_for_query(ctxt);
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn unbind_query(ctxt: &mut CommandContext<'_>) {
         Alloc::unbind_query(ctxt)
@@ -1416,6 +1428,7 @@ impl BufferExt for BufferAny {
         self.alloc.prepare_and_bind_for_draw_indirect(ctxt);
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn prepare_and_bind_for_dispatch_indirect(&self, ctxt: &mut CommandContext<'_>) {
         self.alloc.prepare_and_bind_for_dispatch_indirect(ctxt);
@@ -1431,6 +1444,7 @@ impl BufferExt for BufferAny {
             .prepare_and_bind_for_uniform(ctxt, index, 0..self.alloc.get_size());
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn prepare_and_bind_for_shared_storage(
         &self,
@@ -1441,6 +1455,7 @@ impl BufferExt for BufferAny {
             .prepare_and_bind_for_shared_storage(ctxt, index, 0..self.alloc.get_size());
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn prepare_and_bind_for_atomic_counter(
         &self,
@@ -1469,10 +1484,10 @@ pub struct BufferAnySlice<'a> {
 }
 
 impl<'a> GlObject for BufferAnySlice<'a> {
-    type Id = gl::types::GLuint;
+    type Id = glow::Buffer;
 
     #[inline]
-    fn get_id(&self) -> gl::types::GLuint {
+    fn get_id(&self) -> glow::Buffer {
         self.alloc.get_id()
     }
 }
@@ -1573,11 +1588,13 @@ impl<'a> BufferExt for BufferAnySlice<'a> {
         Alloc::unbind_pixel_unpack(ctxt)
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn prepare_and_bind_for_query(&self, ctxt: &mut CommandContext<'_>) {
         self.alloc.prepare_and_bind_for_query(ctxt);
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn unbind_query(ctxt: &mut CommandContext<'_>) {
         Alloc::unbind_query(ctxt)
@@ -1588,6 +1605,7 @@ impl<'a> BufferExt for BufferAnySlice<'a> {
         self.alloc.prepare_and_bind_for_draw_indirect(ctxt);
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn prepare_and_bind_for_dispatch_indirect(&self, ctxt: &mut CommandContext<'_>) {
         self.alloc.prepare_and_bind_for_dispatch_indirect(ctxt);
@@ -1603,6 +1621,7 @@ impl<'a> BufferExt for BufferAnySlice<'a> {
             .prepare_and_bind_for_uniform(ctxt, index, 0..self.alloc.get_size());
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn prepare_and_bind_for_shared_storage(
         &self,
@@ -1613,6 +1632,7 @@ impl<'a> BufferExt for BufferAnySlice<'a> {
             .prepare_and_bind_for_shared_storage(ctxt, index, 0..self.alloc.get_size());
     }
 
+    #[cfg(feature = "gl46")]
     #[inline]
     fn prepare_and_bind_for_atomic_counter(
         &self,

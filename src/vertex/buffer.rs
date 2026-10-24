@@ -10,12 +10,9 @@ use crate::buffer::{
 use crate::vertex::format::VertexFormat;
 use crate::vertex::{PerInstance, Vertex, VerticesSource};
 
-use crate::gl;
 use crate::GlObject;
 
 use crate::backend::Facade;
-use crate::version::{Api, Version};
-use crate::CapabilitiesSource;
 
 /// Error that can happen when creating a vertex buffer.
 #[derive(Copy, Clone, Debug)]
@@ -58,10 +55,10 @@ impl Error for CreationError {
 }
 
 impl<T: Copy> GlObject for VertexBuffer<T> {
-    type Id = gl::types::GLuint;
+    type Id = glow::Buffer;
 
     #[inline]
-    fn get_id(&self) -> gl::types::GLuint {
+    fn get_id(&self) -> glow::Buffer {
         self.buffer.get_id()
     }
 }
@@ -89,7 +86,7 @@ impl<'b, T: 'b> VertexBufferSlice<'b, T>
 where
     T: Copy + Content,
 {
-    /// Creates a marker that instructs glium to use multiple instances.
+    /// Creates a marker that instructs SafeGL to use multiple instances.
     ///
     /// Instead of calling `surface.draw(&vertex_buffer.slice(...).unwrap(), ...)`
     /// you can call `surface.draw(vertex_buffer.slice(...).unwrap().per_instance(), ...)`.
@@ -98,14 +95,7 @@ where
     /// for each different instance.
     #[inline]
     pub fn per_instance(&'b self) -> Result<PerInstance<'b>, InstancingNotSupported> {
-        // TODO: don't check this here
-        if !(self.get_context().get_version() >= &Version(Api::Gl, 3, 3))
-            && !(self.get_context().get_version() >= &Version(Api::GlEs, 3, 0))
-            && !self.get_context().get_extensions().gl_arb_instanced_arrays
-        {
-            return Err(InstancingNotSupported);
-        }
-
+        // instancing is core in OpenGL 3.3 and OpenGL ES 3.0
         Ok(PerInstance(self.buffer.as_slice_any(), self.bindings))
     }
 }
@@ -123,7 +113,7 @@ where
     ///
     /// ```no_run
     /// # #[macro_use]
-    /// # extern crate glium;
+    /// # extern crate safegl;
     /// # fn main() {
     /// #[derive(Copy, Clone)]
     /// struct Vertex {
@@ -133,8 +123,8 @@ where
     ///
     /// implement_vertex!(Vertex, position, texcoords);
     /// # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-    /// # fn example<T>(display: glium::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
-    /// let vertex_buffer = glium::VertexBuffer::new(&display, &[
+    /// # fn example<T>(display: safegl::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
+    /// let vertex_buffer = safegl::VertexBuffer::new(&display, &[
     ///     Vertex { position: [0.0,  0.0, 0.0], texcoords: [0.0, 1.0] },
     ///     Vertex { position: [5.0, -3.0, 2.0], texcoords: [1.0, 0.0] },
     /// ]);
@@ -277,16 +267,16 @@ where
     ///
     /// ```no_run
     /// # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-    /// # fn example<T>(display: glium::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
+    /// # fn example<T>(display: safegl::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
     /// use std::borrow::Cow;
     ///
-    /// const BINDINGS: glium::vertex::VertexFormat = &[(
+    /// const BINDINGS: safegl::vertex::VertexFormat = &[(
     ///         Cow::Borrowed("position"), 0, -1,
-    ///         glium::vertex::AttributeType::F32F32,
+    ///         safegl::vertex::AttributeType::F32F32,
     ///         false,
     ///     ), (
     ///         Cow::Borrowed("color"), 2 * ::std::mem::size_of::<f32>(), -1,
-    ///         glium::vertex::AttributeType::F32,
+    ///         safegl::vertex::AttributeType::F32,
     ///         false,
     ///     ),
     /// ];
@@ -297,7 +287,7 @@ where
     /// ];
     ///
     /// let vertex_buffer = unsafe {
-    ///     glium::VertexBuffer::new_raw(&display, &data, BINDINGS, 3 * ::std::mem::size_of::<f32>())
+    ///     safegl::VertexBuffer::new_raw(&display, &data, BINDINGS, 3 * ::std::mem::size_of::<f32>())
     /// };
     /// # }
     /// ```
@@ -361,7 +351,7 @@ where
         &self.bindings
     }
 
-    /// Creates a marker that instructs glium to use multiple instances.
+    /// Creates a marker that instructs SafeGL to use multiple instances.
     ///
     /// Instead of calling `surface.draw(&vertex_buffer, ...)` you can call
     /// `surface.draw(vertex_buffer.per_instance(), ...)`. This will draw one instance of the
@@ -369,18 +359,7 @@ where
     /// vertex shader, but each entry is passed for each different instance.
     #[inline]
     pub fn per_instance(&self) -> Result<PerInstance<'_>, InstancingNotSupported> {
-        // TODO: don't check this here
-        if !(self.buffer.get_context().get_version() >= &Version(Api::Gl, 3, 3))
-            && !(self.get_context().get_version() >= &Version(Api::GlEs, 3, 0))
-            && !self
-                .buffer
-                .get_context()
-                .get_extensions()
-                .gl_arb_instanced_arrays
-        {
-            return Err(InstancingNotSupported);
-        }
-
+        // instancing is core in OpenGL 3.3 and OpenGL ES 3.0
         Ok(PerInstance(self.buffer.as_slice_any(), self.bindings))
     }
 }
@@ -552,7 +531,7 @@ impl VertexBufferAny {
         unimplemented!();
     }
 
-    /// Creates a marker that instructs glium to use multiple instances.
+    /// Creates a marker that instructs SafeGL to use multiple instances.
     ///
     /// Instead of calling `surface.draw(&vertex_buffer, ...)` you can call
     /// `surface.draw(vertex_buffer.per_instance(), ...)`. This will draw one instance of the
@@ -560,18 +539,7 @@ impl VertexBufferAny {
     /// vertex shader, but each entry is passed for each different instance.
     #[inline]
     pub fn per_instance(&self) -> Result<PerInstance<'_>, InstancingNotSupported> {
-        // TODO: don't check this here
-        if !(self.buffer.get_context().get_version() >= &Version(Api::Gl, 3, 3))
-            && !(self.get_context().get_version() >= &Version(Api::GlEs, 3, 0))
-            && !self
-                .buffer
-                .get_context()
-                .get_extensions()
-                .gl_arb_instanced_arrays
-        {
-            return Err(InstancingNotSupported);
-        }
-
+        // instancing is core in OpenGL 3.3 and OpenGL ES 3.0
         Ok(PerInstance(self.buffer.as_slice_any(), self.bindings))
     }
 }

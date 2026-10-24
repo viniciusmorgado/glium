@@ -1,7 +1,7 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::Surface;
+use safegl::Surface;
 
 mod support;
 
@@ -60,10 +60,10 @@ fn magnify_nearest_filtering() {
     .unwrap();
 
     let texture_data = vec![vec![(0u8, 0, 0), (255, 255, 255)]];
-    let texture = glium::texture::Texture2d::new(&display, texture_data).unwrap();
+    let texture = safegl::texture::Texture2d::new(&display, texture_data).unwrap();
 
     let uniforms = uniform! {
-        texture: texture.sampled().magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
+        texture: texture.sampled().magnify_filter(safegl::uniforms::MagnifySamplerFilter::Nearest)
     };
 
     let output = support::build_renderable_texture(&display);
@@ -74,7 +74,7 @@ fn magnify_nearest_filtering() {
         .draw(&vb, &ib, &program, &uniforms, &Default::default())
     {
         Ok(_) => (),
-        Err(glium::DrawError::SamplersNotSupported) => return,
+        Err(safegl::DrawError::SamplersNotSupported) => return,
         Err(e) => panic!("{:?}", e),
     };
 

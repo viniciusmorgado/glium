@@ -1,13 +1,12 @@
 use crate::gl;
+use crate::handles::{RawName, UniformLocations};
 
-use std::cmp;
 use std::collections::HashMap;
-use std::ffi;
 use std::hash::BuildHasherDefault;
-use std::os::raw;
 use std::ptr;
 
 use fnv::FnvHasher;
+use glow::HasContext;
 
 use crate::context::CommandContext;
 use crate::version::Api;
@@ -16,8 +15,6 @@ use crate::version::Version;
 use crate::program;
 use crate::uniforms::UniformType;
 use crate::vertex::AttributeType;
-
-use crate::Handle;
 
 /// Information about a uniform (except its name).
 #[derive(Debug, Copy, Clone)]
@@ -179,34 +176,16 @@ pub enum OutputPrimitives {
 /// Returns a list of uniforms and a list of atomic counters of a program.
 pub unsafe fn reflect_uniforms(
     ctxt: &mut CommandContext<'_>,
-    program: Handle,
+    program: glow::Program,
 ) -> (
     HashMap<String, Uniform, BuildHasherDefault<FnvHasher>>,
     HashMap<String, UniformBlock, BuildHasherDefault<FnvHasher>>,
+    UniformLocations,
 ) {
     // number of active uniforms
-    let active_uniforms = {
-        let mut active_uniforms: gl::types::GLint = 0;
-        match program {
-            Handle::Id(program) => {
-                assert!(
-                    ctxt.version >= &Version(Api::Gl, 2, 0)
-                        || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                );
-                ctxt.gl
-                    .GetProgramiv(program, gl::ACTIVE_UNIFORMS, &mut active_uniforms);
-            }
-            Handle::Handle(program) => {
-                assert!(ctxt.extensions.gl_arb_shader_objects);
-                ctxt.gl.GetObjectParameterivARB(
-                    program,
-                    gl::OBJECT_ACTIVE_UNIFORMS_ARB,
-                    &mut active_uniforms,
-                );
-            }
-        };
-        active_uniforms
-    };
+    let active_uniforms = ctxt
+        .glow
+        .get_program_parameter_i32(program, glow::ACTIVE_UNIFORMS);
 
     let query_atomic_counters = ctxt.version >= &Version(Api::Gl, 4, 2)
         || ctxt.version >= &Version(Api::GlEs, 3, 1)
@@ -214,14 +193,12 @@ pub unsafe fn reflect_uniforms(
             && ctxt.extensions.gl_arb_shader_atomic_counters);
     let mut active_atomic_counters: gl::types::GLint = 0;
     if query_atomic_counters {
-        let program = if let Handle::Id(program) = program {
-            ctxt.gl.GetProgramiv(
-                program,
-                gl::ACTIVE_ATOMIC_COUNTER_BUFFERS,
-                &mut active_atomic_counters,
-            );
-        };
+        active_atomic_counters = ctxt
+            .glow
+            .get_program_parameter_i32(program, glow::ACTIVE_ATOMIC_COUNTER_BUFFERS);
     }
+
+    let mut locations = UniformLocations::default();
 
     // the result of this function
     let mut uniforms = HashMap::with_hasher(BuildHasherDefault::<FnvHasher>::default());
@@ -231,92 +208,31 @@ pub unsafe fn reflect_uniforms(
     atomic_counters.reserve(active_atomic_counters as usize);
 
     for uniform_id in 0..active_uniforms {
-        let mut uniform_name_tmp: Vec<u8> = Vec::with_capacity(64);
-        let mut uniform_name_tmp_len = 63;
+        let glow::ActiveUniform {
+            size: data_size,
+            utype: data_type,
+            name: uniform_name,
+        } = ctxt
+            .glow
+            .get_active_uniform(program, uniform_id as gl::types::GLuint)
+            .expect("glGetActiveUniform failed");
 
-        let mut data_type: gl::types::GLenum = 0;
-        let mut data_size: gl::types::GLint = 0;
-
-        match program {
-            Handle::Id(program) => {
-                assert!(
-                    ctxt.version >= &Version(Api::Gl, 2, 0)
-                        || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                );
-                ctxt.gl.GetActiveUniform(
-                    program,
-                    uniform_id as gl::types::GLuint,
-                    uniform_name_tmp_len,
-                    &mut uniform_name_tmp_len,
-                    &mut data_size,
-                    &mut data_type,
-                    uniform_name_tmp.as_mut_ptr() as *mut gl::types::GLchar,
-                );
-            }
-            Handle::Handle(program) => {
-                assert!(ctxt.extensions.gl_arb_shader_objects);
-                ctxt.gl.GetActiveUniformARB(
-                    program,
-                    uniform_id as gl::types::GLuint,
-                    uniform_name_tmp_len,
-                    &mut uniform_name_tmp_len,
-                    &mut data_size,
-                    &mut data_type,
-                    uniform_name_tmp.as_mut_ptr() as *mut gl::types::GLchar,
-                );
-            }
-        };
-        uniform_name_tmp.set_len(uniform_name_tmp_len as usize);
-
-        let uniform_name = String::from_utf8(uniform_name_tmp).unwrap();
-        let location = match program {
-            Handle::Id(program) => {
-                assert!(
-                    ctxt.version >= &Version(Api::Gl, 2, 0)
-                        || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                );
-                ctxt.gl.GetUniformLocation(
-                    program,
-                    ffi::CString::new(uniform_name.as_bytes())
-                        .unwrap()
-                        .as_bytes_with_nul()
-                        .as_ptr() as *const raw::c_char,
-                )
-            }
-            Handle::Handle(program) => {
-                assert!(ctxt.extensions.gl_arb_shader_objects);
-                ctxt.gl.GetUniformLocationARB(
-                    program,
-                    ffi::CString::new(uniform_name.as_bytes())
-                        .unwrap()
-                        .as_bytes_with_nul()
-                        .as_ptr() as *const raw::c_char,
-                )
-            }
-        };
+        let location = locations.register(ctxt.glow.get_uniform_location(program, &uniform_name));
 
         if data_type == gl::UNSIGNED_INT_ATOMIC_COUNTER {
             assert!(query_atomic_counters);
-            let mut atomic_counter_id: gl::types::GLint = 0;
             let mut atomic_counter_buffer_bind_point: gl::types::GLint = 0;
-            match program {
-                Handle::Id(program) => {
-                    ctxt.gl.GetActiveUniformsiv(
-                        program,
-                        1,
-                        &(uniform_id as gl::types::GLuint),
-                        gl::UNIFORM_ATOMIC_COUNTER_BUFFER_INDEX,
-                        &mut atomic_counter_id,
-                    );
-                    ctxt.gl.GetActiveAtomicCounterBufferiv(
-                        program,
-                        atomic_counter_id as gl::types::GLuint,
-                        gl::ATOMIC_COUNTER_BUFFER_BINDING,
-                        &mut atomic_counter_buffer_bind_point,
-                    );
-                }
-                Handle::Handle(_) => unreachable!(),
-            }
+            let atomic_counter_id = ctxt.glow.get_active_uniforms_parameter(
+                program,
+                &[uniform_id as gl::types::GLuint],
+                glow::UNIFORM_ATOMIC_COUNTER_BUFFER_INDEX,
+            )[0];
+            ctxt.extra.GetActiveAtomicCounterBufferiv(
+                program.raw_name(),
+                atomic_counter_id as gl::types::GLuint,
+                gl::ATOMIC_COUNTER_BUFFER_BINDING,
+                &mut atomic_counter_buffer_bind_point,
+            );
             atomic_counters.insert(
                 uniform_name,
                 UniformBlock {
@@ -370,95 +286,33 @@ pub unsafe fn reflect_uniforms(
         }
     }
 
-    (uniforms_flattened, atomic_counters)
+    (uniforms_flattened, atomic_counters, locations)
 }
 
 pub unsafe fn reflect_attributes(
     ctxt: &mut CommandContext<'_>,
-    program: Handle,
+    program: glow::Program,
 ) -> HashMap<String, Attribute, BuildHasherDefault<FnvHasher>> {
-    // number of active attributes, and the max length of the attribute names
-    let (active_attributes, attr_name_len_max) = {
-        let mut active_attributes: gl::types::GLint = 0;
-        let mut attr_name_len_max: gl::types::GLint = 0;
-        match program {
-            Handle::Id(program) => {
-                assert!(
-                    ctxt.version >= &Version(Api::Gl, 2, 0)
-                        || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                );
-                ctxt.gl
-                    .GetProgramiv(program, gl::ACTIVE_ATTRIBUTES, &mut active_attributes);
-                ctxt.gl.GetProgramiv(
-                    program,
-                    gl::ACTIVE_ATTRIBUTE_MAX_LENGTH,
-                    &mut attr_name_len_max,
-                );
-            }
-            Handle::Handle(program) => {
-                assert!(ctxt.extensions.gl_arb_vertex_shader);
-                ctxt.gl.GetObjectParameterivARB(
-                    program,
-                    gl::OBJECT_ACTIVE_ATTRIBUTES_ARB,
-                    &mut active_attributes,
-                );
-                ctxt.gl.GetObjectParameterivARB(
-                    program,
-                    gl::OBJECT_ACTIVE_ATTRIBUTE_MAX_LENGTH_ARB,
-                    &mut attr_name_len_max,
-                );
-            }
-        };
-        // let's not trust the driver too much, and clamp the max_len to [63, 2047]
-        attr_name_len_max = cmp::min(cmp::max(attr_name_len_max, 63), 2047);
-
-        (active_attributes, attr_name_len_max)
-    };
+    // number of active attributes
+    // (glow sizes the name buffer itself from `GL_ACTIVE_ATTRIBUTE_MAX_LENGTH`)
+    let active_attributes = ctxt
+        .glow
+        .get_program_parameter_i32(program, glow::ACTIVE_ATTRIBUTES);
 
     // the result of this function
     let mut attributes = HashMap::with_hasher(Default::default());
     attributes.reserve(active_attributes as usize);
 
     for attribute_id in 0..active_attributes {
-        let mut attr_name_tmp: Vec<u8> = Vec::with_capacity((attr_name_len_max + 1) as usize); //+1 for the nul-byte
-        let mut attr_name_len = 0;
+        let glow::ActiveAttribute {
+            size: data_size,
+            atype: data_type,
+            name: attr_name,
+        } = ctxt
+            .glow
+            .get_active_attribute(program, attribute_id as gl::types::GLuint)
+            .expect("glGetActiveAttrib failed");
 
-        let mut data_type: gl::types::GLenum = 0;
-        let mut data_size: gl::types::GLint = 0;
-
-        match program {
-            Handle::Id(program) => {
-                assert!(
-                    ctxt.version >= &Version(Api::Gl, 2, 0)
-                        || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                );
-                ctxt.gl.GetActiveAttrib(
-                    program,
-                    attribute_id as gl::types::GLuint,
-                    attr_name_len_max,
-                    &mut attr_name_len,
-                    &mut data_size,
-                    &mut data_type,
-                    attr_name_tmp.as_mut_ptr() as *mut gl::types::GLchar,
-                );
-            }
-            Handle::Handle(program) => {
-                assert!(ctxt.extensions.gl_arb_vertex_shader);
-                ctxt.gl.GetActiveAttribARB(
-                    program,
-                    attribute_id as gl::types::GLuint,
-                    attr_name_len_max,
-                    &mut attr_name_len,
-                    &mut data_size,
-                    &mut data_type,
-                    attr_name_tmp.as_mut_ptr() as *mut gl::types::GLchar,
-                );
-            }
-        };
-
-        attr_name_tmp.set_len(attr_name_len as usize);
-
-        let attr_name = String::from_utf8(attr_name_tmp).unwrap();
         if attr_name.starts_with("gl_") {
             // ignoring everything built-in
             continue;
@@ -472,31 +326,10 @@ pub unsafe fn reflect_attributes(
             continue;
         }
 
-        let location = match program {
-            Handle::Id(program) => {
-                assert!(
-                    ctxt.version >= &Version(Api::Gl, 2, 0)
-                        || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                );
-                ctxt.gl.GetAttribLocation(
-                    program,
-                    ffi::CString::new(attr_name.as_bytes())
-                        .unwrap()
-                        .as_bytes_with_nul()
-                        .as_ptr() as *const raw::c_char,
-                )
-            }
-            Handle::Handle(program) => {
-                assert!(ctxt.extensions.gl_arb_vertex_shader);
-                ctxt.gl.GetAttribLocationARB(
-                    program,
-                    ffi::CString::new(attr_name.as_bytes())
-                        .unwrap()
-                        .as_bytes_with_nul()
-                        .as_ptr() as *const raw::c_char,
-                )
-            }
-        };
+        let location = ctxt
+            .glow
+            .get_attrib_location(program, &attr_name)
+            .map_or(-1, |location| location as gl::types::GLint);
 
         attributes.insert(
             attr_name,
@@ -513,140 +346,85 @@ pub unsafe fn reflect_attributes(
 
 pub unsafe fn reflect_uniform_blocks(
     ctxt: &mut CommandContext<'_>,
-    program: Handle,
+    program: glow::Program,
 ) -> HashMap<String, UniformBlock, BuildHasherDefault<FnvHasher>> {
-    // uniform blocks are not supported, so there's none
-    if !(ctxt.version >= &Version(Api::Gl, 3, 1) || ctxt.version >= &Version(Api::GlEs, 3, 0)) {
-        return HashMap::with_hasher(Default::default());
-    }
+    let active_blocks = ctxt
+        .glow
+        .get_program_parameter_i32(program, glow::ACTIVE_UNIFORM_BLOCKS);
 
-    let program = match program {
-        Handle::Id(id) => id,
-        _ => unreachable!(),
-    };
-
-    let mut active_blocks: gl::types::GLint = 0;
-    ctxt.gl
-        .GetProgramiv(program, gl::ACTIVE_UNIFORM_BLOCKS, &mut active_blocks);
-
-    // WORK-AROUND: AMD OpenGL ES drivers don't accept `GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH`
-    //              even though they report OpenGL ES 3.1. So we return early on if possible.
-    // TODO: find a better work-around ^
+    // no need to request other things if there are no blocks
     if active_blocks == 0 {
         return HashMap::with_hasher(Default::default());
     }
-
-    let mut active_blocks_max_name_len: gl::types::GLint = 0;
-    ctxt.gl.GetProgramiv(
-        program,
-        gl::ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH,
-        &mut active_blocks_max_name_len,
-    );
 
     let mut blocks = HashMap::with_hasher(Default::default());
     blocks.reserve(active_blocks as usize);
 
     for block_id in 0..active_blocks {
         // getting the name of the block
-        let name = {
-            let mut name_tmp: Vec<u8> = Vec::with_capacity(1 + active_blocks_max_name_len as usize);
-            let mut name_tmp_len = active_blocks_max_name_len;
-
-            ctxt.gl.GetActiveUniformBlockName(
-                program,
-                block_id as gl::types::GLuint,
-                name_tmp_len,
-                &mut name_tmp_len,
-                name_tmp.as_mut_ptr() as *mut gl::types::GLchar,
-            );
-            name_tmp.set_len(name_tmp_len as usize);
-            String::from_utf8(name_tmp).unwrap()
-        };
+        // (glow sizes the buffer from `GL_UNIFORM_BLOCK_NAME_LENGTH`, falling back to 256 bytes)
+        let name = ctxt
+            .glow
+            .get_active_uniform_block_name(program, block_id as gl::types::GLuint);
 
         // binding point for this block
-        let mut binding: gl::types::GLint = 0;
-        ctxt.gl.GetActiveUniformBlockiv(
+        let binding = ctxt.glow.get_active_uniform_block_parameter_i32(
             program,
             block_id as gl::types::GLuint,
-            gl::UNIFORM_BLOCK_BINDING,
-            &mut binding,
+            glow::UNIFORM_BLOCK_BINDING,
         );
 
         // number of bytes
-        let mut block_size: gl::types::GLint = 0;
-        ctxt.gl.GetActiveUniformBlockiv(
+        let block_size = ctxt.glow.get_active_uniform_block_parameter_i32(
             program,
             block_id as gl::types::GLuint,
-            gl::UNIFORM_BLOCK_DATA_SIZE,
-            &mut block_size,
+            glow::UNIFORM_BLOCK_DATA_SIZE,
         );
 
         // number of members
-        let mut num_members: gl::types::GLint = 0;
-        ctxt.gl.GetActiveUniformBlockiv(
+        let num_members = ctxt.glow.get_active_uniform_block_parameter_i32(
             program,
             block_id as gl::types::GLuint,
-            gl::UNIFORM_BLOCK_ACTIVE_UNIFORMS,
-            &mut num_members,
+            glow::UNIFORM_BLOCK_ACTIVE_UNIFORMS,
         );
 
         // indices of the members
         let mut members_indices = ::std::iter::repeat(0)
             .take(num_members as usize)
-            .collect::<Vec<gl::types::GLuint>>();
-        ctxt.gl.GetActiveUniformBlockiv(
+            .collect::<Vec<gl::types::GLint>>();
+        ctxt.glow.get_active_uniform_block_parameter_i32_slice(
             program,
             block_id as gl::types::GLuint,
-            gl::UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES,
-            members_indices.as_mut_ptr() as *mut gl::types::GLint,
+            glow::UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES,
+            &mut members_indices,
         );
+        let members_indices = members_indices
+            .into_iter()
+            .map(|index| index as gl::types::GLuint)
+            .collect::<Vec<_>>();
 
         // getting the offsets of the members
-        let mut member_offsets = ::std::iter::repeat(0)
-            .take(num_members as usize)
-            .collect::<Vec<gl::types::GLint>>();
-        ctxt.gl.GetActiveUniformsiv(
+        let member_offsets = ctxt.glow.get_active_uniforms_parameter(
             program,
-            num_members,
-            members_indices.as_ptr(),
-            gl::UNIFORM_OFFSET,
-            member_offsets.as_mut_ptr(),
+            &members_indices,
+            glow::UNIFORM_OFFSET,
         );
 
         // getting the types of the members
-        let mut member_types = ::std::iter::repeat(0)
-            .take(num_members as usize)
-            .collect::<Vec<gl::types::GLint>>();
-        ctxt.gl.GetActiveUniformsiv(
-            program,
-            num_members,
-            members_indices.as_ptr(),
-            gl::UNIFORM_TYPE,
-            member_types.as_mut_ptr(),
-        );
+        let member_types =
+            ctxt.glow
+                .get_active_uniforms_parameter(program, &members_indices, glow::UNIFORM_TYPE);
 
         // getting the array sizes of the members
-        let mut member_size = ::std::iter::repeat(0)
-            .take(num_members as usize)
-            .collect::<Vec<gl::types::GLint>>();
-        ctxt.gl.GetActiveUniformsiv(
-            program,
-            num_members,
-            members_indices.as_ptr(),
-            gl::UNIFORM_SIZE,
-            member_size.as_mut_ptr(),
-        );
+        let member_size =
+            ctxt.glow
+                .get_active_uniforms_parameter(program, &members_indices, glow::UNIFORM_SIZE);
 
         // getting the length of the names of the members
-        let mut member_name_len = ::std::iter::repeat(0)
-            .take(num_members as usize)
-            .collect::<Vec<gl::types::GLint>>();
-        ctxt.gl.GetActiveUniformsiv(
+        let member_name_len = ctxt.glow.get_active_uniforms_parameter(
             program,
-            num_members,
-            members_indices.as_ptr(),
-            gl::UNIFORM_NAME_LENGTH,
-            member_name_len.as_mut_ptr(),
+            &members_indices,
+            glow::UNIFORM_NAME_LENGTH,
         );
 
         // getting the names of the members
@@ -655,10 +433,20 @@ pub unsafe fn reflect_uniform_blocks(
                 .iter()
                 .zip(members_indices.iter())
                 .map(|(&name_len, &index)| {
+                    // `glGetActiveUniformName` only exists on desktop OpenGL; `glGetActiveUniform`
+                    // returns the same name on OpenGL ES and WebGL
+                    if ctxt.version.0 != Api::Gl {
+                        return ctxt
+                            .glow
+                            .get_active_uniform(program, index)
+                            .map(|uniform| uniform.name)
+                            .unwrap_or_default();
+                    }
+
                     let mut name_tmp: Vec<u8> = Vec::with_capacity(1 + name_len as usize);
                     let mut name_len_tmp = name_len;
-                    ctxt.gl.GetActiveUniformName(
-                        program,
+                    ctxt.extra.GetActiveUniformName(
+                        program.raw_name(),
                         index,
                         name_len,
                         &mut name_len_tmp,
@@ -697,38 +485,12 @@ pub unsafe fn reflect_uniform_blocks(
 
 pub unsafe fn reflect_transform_feedback(
     ctxt: &mut CommandContext<'_>,
-    program: Handle,
+    program: glow::Program,
 ) -> Vec<TransformFeedbackBuffer> {
-    let program = match program {
-        // transform feedback not supported
-        Handle::Handle(_) => return Vec::with_capacity(0),
-        Handle::Id(id) => id,
-    };
-
-    // transform feedback not supported
-    if !(ctxt.version >= &Version(Api::Gl, 3, 0)) && !ctxt.extensions.gl_ext_transform_feedback {
-        return Vec::with_capacity(0);
-    }
-
     // querying the number of varying
-    let num_varyings = {
-        let mut num_varyings: gl::types::GLint = 0;
-
-        if ctxt.version >= &Version(Api::Gl, 3, 0) {
-            ctxt.gl
-                .GetProgramiv(program, gl::TRANSFORM_FEEDBACK_VARYINGS, &mut num_varyings);
-        } else if ctxt.extensions.gl_ext_transform_feedback {
-            ctxt.gl.GetProgramiv(
-                program,
-                gl::TRANSFORM_FEEDBACK_VARYINGS_EXT,
-                &mut num_varyings,
-            );
-        } else {
-            unreachable!();
-        }
-
-        num_varyings
-    };
+    let num_varyings = ctxt
+        .glow
+        .get_program_parameter_i32(program, glow::TRANSFORM_FEEDBACK_VARYINGS);
 
     // no need to request other things if there are no varying
     if num_varyings == 0 {
@@ -737,80 +499,24 @@ pub unsafe fn reflect_transform_feedback(
 
     // querying "interleaved" or "separate"
     let buffer_mode = {
-        let mut buffer_mode: gl::types::GLint = 0;
-
-        if ctxt.version >= &Version(Api::Gl, 3, 0) {
-            ctxt.gl.GetProgramiv(
-                program,
-                gl::TRANSFORM_FEEDBACK_BUFFER_MODE,
-                &mut buffer_mode,
-            );
-        } else if ctxt.extensions.gl_ext_transform_feedback {
-            ctxt.gl.GetProgramiv(
-                program,
-                gl::TRANSFORM_FEEDBACK_BUFFER_MODE_EXT,
-                &mut buffer_mode,
-            );
-        } else {
-            unreachable!();
-        }
-
+        let buffer_mode = ctxt
+            .glow
+            .get_program_parameter_i32(program, glow::TRANSFORM_FEEDBACK_BUFFER_MODE);
         glenum_to_transform_feedback_mode(buffer_mode as gl::types::GLenum)
     };
-
-    // the max length includes the null terminator
-    let mut max_buffer_len: gl::types::GLint = 0;
-    if ctxt.version >= &Version(Api::Gl, 3, 0) {
-        ctxt.gl.GetProgramiv(
-            program,
-            gl::TRANSFORM_FEEDBACK_VARYING_MAX_LENGTH,
-            &mut max_buffer_len,
-        );
-    } else if ctxt.extensions.gl_ext_transform_feedback {
-        ctxt.gl.GetProgramiv(
-            program,
-            gl::TRANSFORM_FEEDBACK_VARYING_MAX_LENGTH_EXT,
-            &mut max_buffer_len,
-        );
-    } else {
-        unreachable!();
-    }
 
     let mut result = Vec::with_capacity(num_varyings as usize);
 
     for index in 0..num_varyings as gl::types::GLuint {
-        let mut name_tmp: Vec<u8> = Vec::with_capacity(max_buffer_len as usize);
-        let mut name_tmp_len = max_buffer_len;
-
-        let mut size = 0;
-        let mut ty = 0;
-
-        if ctxt.version >= &Version(Api::Gl, 3, 0) {
-            ctxt.gl.GetTransformFeedbackVarying(
-                program,
-                index,
-                name_tmp_len,
-                &mut name_tmp_len,
-                &mut size,
-                &mut ty,
-                name_tmp.as_mut_ptr() as *mut gl::types::GLchar,
-            );
-        } else if ctxt.extensions.gl_ext_transform_feedback {
-            ctxt.gl.GetTransformFeedbackVaryingEXT(
-                program,
-                index,
-                name_tmp_len,
-                &mut name_tmp_len,
-                &mut size,
-                &mut ty,
-                name_tmp.as_mut_ptr() as *mut gl::types::GLchar,
-            );
-        } else {
-            unreachable!();
-        }
-
-        name_tmp.set_len(name_tmp_len as usize);
-        let name = String::from_utf8(name_tmp).unwrap();
+        // (glow uses a fixed 256-byte name buffer)
+        let glow::ActiveTransformFeedback {
+            size,
+            tftype: ty,
+            name,
+        } = ctxt
+            .glow
+            .get_transform_feedback_varying(program, index)
+            .expect("glGetTransformFeedbackVarying failed");
 
         if buffer_mode == TransformFeedbackMode::Interleaved {
             if result.len() == 0 {
@@ -861,25 +567,11 @@ pub unsafe fn reflect_transform_feedback(
 /// - The program **must** contain a geometry shader.
 pub unsafe fn reflect_geometry_output_type(
     ctxt: &mut CommandContext<'_>,
-    program: Handle,
+    program: glow::Program,
 ) -> OutputPrimitives {
-    let mut value = 0;
-
-    match program {
-        Handle::Id(program) => {
-            assert!(
-                ctxt.version >= &Version(Api::Gl, 2, 0)
-                    || ctxt.version >= &Version(Api::GlEs, 2, 0)
-            );
-            ctxt.gl
-                .GetProgramiv(program, gl::GEOMETRY_OUTPUT_TYPE, &mut value);
-        }
-        Handle::Handle(program) => {
-            assert!(ctxt.extensions.gl_arb_vertex_shader);
-            ctxt.gl
-                .GetObjectParameterivARB(program, gl::GEOMETRY_OUTPUT_TYPE, &mut value);
-        }
-    };
+    let value = ctxt
+        .glow
+        .get_program_parameter_i32(program, glow::GEOMETRY_OUTPUT_TYPE);
 
     match value as gl::types::GLenum {
         gl::POINTS => OutputPrimitives::Points,
@@ -897,24 +589,11 @@ pub unsafe fn reflect_geometry_output_type(
 /// - The program **must** contain a tessellation evaluation shader.
 pub unsafe fn reflect_tess_eval_output_type(
     ctxt: &mut CommandContext<'_>,
-    program: Handle,
+    program: glow::Program,
 ) -> OutputPrimitives {
-    let mut value = 0;
-
-    match program {
-        Handle::Id(program) => {
-            assert!(
-                ctxt.version >= &Version(Api::Gl, 2, 0)
-                    || ctxt.version >= &Version(Api::GlEs, 2, 0)
-            );
-            ctxt.gl.GetProgramiv(program, gl::TESS_GEN_MODE, &mut value);
-        }
-        Handle::Handle(program) => {
-            assert!(ctxt.extensions.gl_arb_vertex_shader);
-            ctxt.gl
-                .GetObjectParameterivARB(program, gl::TESS_GEN_MODE, &mut value);
-        }
-    };
+    let value = ctxt
+        .glow
+        .get_program_parameter_i32(program, glow::TESS_GEN_MODE);
 
     match value as gl::types::GLenum {
         gl::TRIANGLES => OutputPrimitives::Triangles,
@@ -927,7 +606,7 @@ pub unsafe fn reflect_tess_eval_output_type(
 /// Returns the list of shader storage blocks of a program.
 pub unsafe fn reflect_shader_storage_blocks(
     ctxt: &mut CommandContext<'_>,
-    program: Handle,
+    program: glow::Program,
 ) -> HashMap<String, UniformBlock, BuildHasherDefault<FnvHasher>> {
     if !(ctxt.version >= &Version(Api::Gl, 4, 3)
         || ctxt.version >= &Version(Api::GlEs, 3, 1)
@@ -938,16 +617,11 @@ pub unsafe fn reflect_shader_storage_blocks(
         return HashMap::with_hasher(Default::default());
     }
 
-    let program = match program {
-        Handle::Id(program) => program,
-        Handle::Handle(program) => return HashMap::with_hasher(Default::default()),
-    };
-
     // number of active SSBOs
     let active_blocks = {
         let mut active_blocks: gl::types::GLint = 0;
-        ctxt.gl.GetProgramInterfaceiv(
-            program,
+        ctxt.extra.GetProgramInterfaceiv(
+            program.raw_name(),
             gl::SHADER_STORAGE_BLOCK,
             gl::ACTIVE_RESOURCES,
             &mut active_blocks,
@@ -963,8 +637,8 @@ pub unsafe fn reflect_shader_storage_blocks(
         // getting basic infos
         let (name_len, num_variables, binding, total_size) = {
             let mut output: [gl::types::GLint; 4] = [0; 4];
-            ctxt.gl.GetProgramResourceiv(
-                program,
+            ctxt.extra.GetProgramResourceiv(
+                program.raw_name(),
                 gl::SHADER_STORAGE_BLOCK,
                 block_id,
                 4,
@@ -992,8 +666,8 @@ pub unsafe fn reflect_shader_storage_blocks(
             let mut name_tmp: Vec<u8> = Vec::with_capacity(1 + name_len);
             let mut name_tmp_len = name_len as gl::types::GLsizei;
 
-            ctxt.gl.GetProgramResourceName(
-                program,
+            ctxt.extra.GetProgramResourceName(
+                program.raw_name(),
                 gl::SHADER_STORAGE_BLOCK,
                 block_id,
                 name_tmp_len,
@@ -1007,8 +681,8 @@ pub unsafe fn reflect_shader_storage_blocks(
         // indices of the active variables
         let active_variables: Vec<gl::types::GLint> = {
             let mut variables = Vec::with_capacity(num_variables);
-            ctxt.gl.GetProgramResourceiv(
-                program,
+            ctxt.extra.GetProgramResourceiv(
+                program.raw_name(),
                 gl::SHADER_STORAGE_BLOCK,
                 block_id,
                 1,
@@ -1025,8 +699,8 @@ pub unsafe fn reflect_shader_storage_blocks(
         let members = active_variables.into_iter().map(|variable| {
             let (ty, array_size, offset, _array_stride, name_len, top_level_array_size) = {
                 let mut output: [gl::types::GLint; 6] = [0; 6];
-                ctxt.gl.GetProgramResourceiv(
-                    program,
+                ctxt.extra.GetProgramResourceiv(
+                    program.raw_name(),
                     gl::BUFFER_VARIABLE,
                     variable as gl::types::GLuint,
                     6,
@@ -1057,8 +731,8 @@ pub unsafe fn reflect_shader_storage_blocks(
                 let mut name_tmp: Vec<u8> = Vec::with_capacity(1 + name_len);
                 let mut name_tmp_len = name_len as gl::types::GLsizei;
 
-                ctxt.gl.GetProgramResourceName(
-                    program,
+                ctxt.extra.GetProgramResourceName(
+                    program.raw_name(),
                     gl::BUFFER_VARIABLE,
                     variable as gl::types::GLuint,
                     name_tmp_len,
@@ -1491,7 +1165,7 @@ fn get_shader_stages(
 /// Returns the data associated with a programs subroutines.
 pub unsafe fn reflect_subroutine_data(
     ctxt: &mut CommandContext<'_>,
-    program: Handle,
+    program: glow::Program,
     has_geometry_shader: bool,
     has_tessellation_control_shader: bool,
     has_tessellation_evaluation_shader: bool,
@@ -1500,16 +1174,10 @@ pub unsafe fn reflect_subroutine_data(
         return Default::default();
     }
 
-    let program = match program {
-        // subroutines not supported.
-        Handle::Handle(_) => return Default::default(),
-        Handle::Id(id) => id,
-    };
-
     // Compute shader programs are not handled: #1718
-    let mut shader_count = 0;
-    ctxt.gl
-        .GetProgramiv(program, gl::ATTACHED_SHADERS, &mut shader_count);
+    let shader_count = ctxt
+        .glow
+        .get_program_parameter_i32(program, glow::ATTACHED_SHADERS);
     if shader_count < 2 {
         return Default::default();
     }
@@ -1523,16 +1191,16 @@ pub unsafe fn reflect_subroutine_data(
     let mut location_counts = HashMap::with_hasher(Default::default());
     for stage in shader_stages.iter() {
         let mut location_count: gl::types::GLint = 0;
-        ctxt.gl.GetProgramStageiv(
-            program,
+        ctxt.extra.GetProgramStageiv(
+            program.raw_name(),
             stage.to_gl_enum(),
             gl::ACTIVE_SUBROUTINE_UNIFORM_LOCATIONS,
             &mut location_count,
         );
         location_counts.insert(*stage, location_count as usize);
         let mut subroutine_count: gl::types::GLint = 0;
-        ctxt.gl.GetProgramStageiv(
-            program,
+        ctxt.extra.GetProgramStageiv(
+            program.raw_name(),
             stage.to_gl_enum(),
             gl::ACTIVE_SUBROUTINE_UNIFORMS,
             &mut subroutine_count,
@@ -1541,8 +1209,8 @@ pub unsafe fn reflect_subroutine_data(
             // Get the name of the uniform
             let mut uniform_name_tmp: Vec<u8> = vec![0; 64];
             let mut name_len: gl::types::GLsizei = 0;
-            ctxt.gl.GetActiveSubroutineUniformName(
-                program,
+            ctxt.extra.GetActiveSubroutineUniformName(
+                program.raw_name(),
                 stage.to_gl_enum(),
                 i as gl::types::GLuint,
                 (uniform_name_tmp.len() - 1) as gl::types::GLint,
@@ -1550,8 +1218,8 @@ pub unsafe fn reflect_subroutine_data(
                 uniform_name_tmp.as_mut_ptr() as *mut gl::types::GLchar,
             );
 
-            let location = ctxt.gl.GetSubroutineUniformLocation(
-                program,
+            let location = ctxt.extra.GetSubroutineUniformLocation(
+                program.raw_name(),
                 stage.to_gl_enum(),
                 uniform_name_tmp.as_ptr() as *const gl::types::GLchar,
             );
@@ -1560,8 +1228,8 @@ pub unsafe fn reflect_subroutine_data(
             let uniform_name = String::from_utf8(uniform_name_tmp).unwrap();
 
             let mut size: gl::types::GLint = 0;
-            ctxt.gl.GetActiveSubroutineUniformiv(
-                program,
+            ctxt.extra.GetActiveSubroutineUniformiv(
+                program.raw_name(),
                 stage.to_gl_enum(),
                 i as u32,
                 gl::UNIFORM_SIZE,
@@ -1571,8 +1239,8 @@ pub unsafe fn reflect_subroutine_data(
 
             // Get the number of compatible subroutines.
             let mut compatible_count: gl::types::GLint = 0;
-            ctxt.gl.GetActiveSubroutineUniformiv(
-                program,
+            ctxt.extra.GetActiveSubroutineUniformiv(
+                program.raw_name(),
                 stage.to_gl_enum(),
                 i as u32,
                 gl::NUM_COMPATIBLE_SUBROUTINES,
@@ -1582,8 +1250,8 @@ pub unsafe fn reflect_subroutine_data(
             // Get the indices of compatible subroutines.
             let mut compatible_sr_indices: Vec<gl::types::GLuint> =
                 Vec::with_capacity(compatible_count as usize);
-            ctxt.gl.GetActiveSubroutineUniformiv(
-                program,
+            ctxt.extra.GetActiveSubroutineUniformiv(
+                program.raw_name(),
                 stage.to_gl_enum(),
                 i as gl::types::GLuint,
                 gl::COMPATIBLE_SUBROUTINES,
@@ -1595,8 +1263,8 @@ pub unsafe fn reflect_subroutine_data(
                 // Get the names of compatible subroutines.
                 let mut subroutine_name_tmp: Vec<u8> = vec![0; 64];
                 let mut name_len: gl::types::GLsizei = 0;
-                ctxt.gl.GetActiveSubroutineName(
-                    program,
+                ctxt.extra.GetActiveSubroutineName(
+                    program.raw_name(),
                     stage.to_gl_enum(),
                     compatible_sr_indices[j as usize],
                     subroutine_name_tmp.len() as gl::types::GLint,

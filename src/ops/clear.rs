@@ -1,3 +1,5 @@
+use glow::HasContext;
+
 use crate::fbo::{self, ValidatedAttachments};
 
 use crate::context::Context;
@@ -8,7 +10,6 @@ use crate::draw_parameters::TimeElapsedQuery;
 use crate::QueryExt;
 
 use crate::gl;
-use crate::version::Version;
 use crate::Api;
 
 pub fn clear(
@@ -28,25 +29,21 @@ pub fn clear(
         fbo::bind_framebuffer(&mut ctxt, fbo_id, true, false);
 
         if ctxt.state.enabled_rasterizer_discard {
-            ctxt.gl.Disable(gl::RASTERIZER_DISCARD);
+            ctxt.glow.disable(glow::RASTERIZER_DISCARD);
             ctxt.state.enabled_rasterizer_discard = false;
         }
 
         if ctxt.state.color_mask != (1, 1, 1, 1) {
             ctxt.state.color_mask = (1, 1, 1, 1);
-            ctxt.gl.ColorMask(1, 1, 1, 1);
+            ctxt.glow.color_mask(true, true, true, true);
         }
 
-        if ctxt.version >= &Version(Api::Gl, 3, 0)
-            || ctxt.extensions.gl_arb_framebuffer_srgb
-            || ctxt.extensions.gl_ext_framebuffer_srgb
-            || ctxt.extensions.gl_ext_srgb_write_control
-        {
+        if ctxt.version.0 == Api::Gl || ctxt.extensions.gl_ext_srgb_write_control {
             if !color_srgb && !ctxt.state.enabled_framebuffer_srgb {
-                ctxt.gl.Enable(gl::FRAMEBUFFER_SRGB);
+                ctxt.glow.enable(glow::FRAMEBUFFER_SRGB);
                 ctxt.state.enabled_framebuffer_srgb = true;
             } else if color_srgb && ctxt.state.enabled_framebuffer_srgb {
-                ctxt.gl.Disable(gl::FRAMEBUFFER_SRGB);
+                ctxt.glow.disable(glow::FRAMEBUFFER_SRGB);
                 ctxt.state.enabled_framebuffer_srgb = false;
             }
         }
@@ -62,16 +59,16 @@ pub fn clear(
             );
 
             if ctxt.state.scissor != Some(rect) {
-                ctxt.gl.Scissor(rect.0, rect.1, rect.2, rect.3);
+                ctxt.glow.scissor(rect.0, rect.1, rect.2, rect.3);
                 ctxt.state.scissor = Some(rect);
             }
 
             if !ctxt.state.enabled_scissor_test {
-                ctxt.gl.Enable(gl::SCISSOR_TEST);
+                ctxt.glow.enable(glow::SCISSOR_TEST);
                 ctxt.state.enabled_scissor_test = true;
             }
         } else if ctxt.state.enabled_scissor_test {
-            ctxt.gl.Disable(gl::SCISSOR_TEST);
+            ctxt.glow.disable(glow::SCISSOR_TEST);
             ctxt.state.enabled_scissor_test = false;
         }
 
@@ -88,7 +85,7 @@ pub fn clear(
             flags |= gl::COLOR_BUFFER_BIT;
 
             if ctxt.state.clear_color != color {
-                ctxt.gl.ClearColor(color.0, color.1, color.2, color.3);
+                ctxt.glow.clear_color(color.0, color.1, color.2, color.3);
                 ctxt.state.clear_color = color;
             }
         }
@@ -99,19 +96,17 @@ pub fn clear(
             flags |= gl::DEPTH_BUFFER_BIT;
 
             if ctxt.state.clear_depth != depth {
-                if ctxt.version >= &Version(Api::Gl, 1, 0) {
-                    ctxt.gl.ClearDepth(depth as gl::types::GLclampd);
-                } else if ctxt.version >= &Version(Api::GlEs, 2, 0) {
-                    ctxt.gl.ClearDepthf(depth);
+                if ctxt.version.0 == Api::Gl {
+                    ctxt.glow.clear_depth_f64(depth as gl::types::GLclampd);
                 } else {
-                    unreachable!();
+                    ctxt.glow.clear_depth_f32(depth);
                 }
 
                 ctxt.state.clear_depth = depth;
             }
 
             if !ctxt.state.depth_mask {
-                ctxt.gl.DepthMask(gl::TRUE);
+                ctxt.glow.depth_mask(true);
                 ctxt.state.depth_mask = true;
             }
         }
@@ -122,11 +117,11 @@ pub fn clear(
             flags |= gl::STENCIL_BUFFER_BIT;
 
             if ctxt.state.clear_stencil != stencil {
-                ctxt.gl.ClearStencil(stencil);
+                ctxt.glow.clear_stencil(stencil);
                 ctxt.state.clear_stencil = stencil;
             }
         }
 
-        ctxt.gl.Clear(flags);
+        ctxt.glow.clear(flags);
     }
 }

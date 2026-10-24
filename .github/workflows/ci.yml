@@ -1,64 +1,95 @@
 name: ci
 
-on: [ push, pull_request ]
+# Only changes to code or to the pipeline run CI. Docs, README, LICENSE, .gitignore, etc. don't.
+on:
+  push:
+    branches: [ develop, main ]
+    paths:
+      - "src/**"
+      - "build/**"
+      - "tests/**"
+      - "examples/**"
+      - "benches/**"
+      - "Cargo.toml"
+      - "release-plz.toml"
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - "src/**"
+      - "build/**"
+      - "tests/**"
+      - "examples/**"
+      - "benches/**"
+      - "Cargo.toml"
+      - "release-plz.toml"
+      - ".github/workflows/**"
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
 
 jobs:
-  build:
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ windows-latest, ubuntu-latest ]
-        toolchain: [ stable, beta, nightly ]
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - uses: actions/checkout@master
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.toolchain }}
-          override: true
-
-      - name: Install cargo audit
-        run: |
-          cargo install cargo-audit
-
-      - name: Run cargo audit
-        run: |
-          cargo audit
-
-      - name: Run cargo check --all
-        env:
-          RUSTFLAGS: -D warnings
-        run: |
-          cargo check --all --all-targets
-
-      - name: Compile the tests
-        env:
-          RUSTFLAGS: -D warnings
-        run: |
-          cargo test --all --all-targets --no-run
-      - name: Run cargo doc
-        env:
-          RUSTFLAGS: -D warnings
-        run: |
-          cargo doc --all --all-features
-  book:
+  linux:
+    name: Linux x86_64
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
-      - name: Install mdbook
-        run: |
-          sudo snap install mdbook
-      - name: Run mdbook
-        run: |
-          cd book && mdbook build
-          mkdir gh-pages && mv book gh-pages
-      - name: Deploy to gh pages
-        uses: JamesIves/github-pages-deploy-action@v4.2.3
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          branch: gh-pages
-          folder: book/gh-pages
-        if: github.event_name == 'push'
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Audit dependencies
+        run: |
+          cargo install cargo-audit --locked
+          cargo audit
+
+      - name: Check
+        run: cargo check --all --all-targets
+
+      - name: Compile the tests
+        run: cargo test --all --all-targets --no-run
+
+      - name: Build the docs
+        run: cargo doc --all --all-features --no-deps
+
+      # WebGL 2 tier and the browser example
+      - name: Check the webgl tier
+        run: cargo check --target wasm32-unknown-unknown --no-default-features --features webgl
+
+      - name: Build the WebGL example
+        run: cargo build --manifest-path examples/web/Cargo.toml --target wasm32-unknown-unknown
+
+  windows:
+    name: Windows x86_64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check
+        run: cargo check --all --all-targets
+
+      - name: Compile the tests
+        run: cargo test --all --all-targets --no-run
+
+  macos:
+    name: macOS arm64
+    runs-on: macos-latest
+    env:
+      # macOS stops at OpenGL 4.1
+      FEATURES: gl41,glutin_backend,simple_window_builder,glutin/default,winit/rwh_06,glutin-winit/default
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      # The test harness runs the event loop off the main thread, which macOS doesn't allow,
+      # so only the library and the examples are checked here.
+      - name: Check
+        run: cargo check --lib --examples --no-default-features --features $FEATURES

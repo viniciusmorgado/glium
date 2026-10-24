@@ -36,7 +36,7 @@ pub fn _hidden_field<T>(offs: usize, _: Option<&T>) -> Field<T> {
 macro_rules! field {
     ($struct_name:ident, $field_name:ident) => {{
         let opt = None::<&$struct_name>.map(|v| &v.$field_name);
-        let offs = $crate::__glium_offset_of!($struct_name, $field_name);
+        let offs = $crate::__safegl_offset_of!($struct_name, $field_name);
         $crate::field::_hidden_field(offs, opt)
     }};
 }

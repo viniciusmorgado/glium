@@ -1,7 +1,3 @@
-use crate::gl;
-use crate::version::Api;
-use crate::version::Version;
-use std::ffi::CStr;
 
 macro_rules! extensions {
     ($($string:expr => $field:ident,)+) => {
@@ -25,8 +21,8 @@ macro_rules! extensions {
         /// Can panic if the version number doesn't match the backend, leading to unloaded functions
         /// being called.
         ///
-        pub unsafe fn get_extensions(gl: &gl::Gl, version: &Version) -> ExtensionsList {
-            let strings = get_extensions_strings(gl, version);
+        pub fn get_extensions(gl: &glow::Context) -> ExtensionsList {
+            let strings = glow::HasContext::supported_extensions(gl);
 
             let mut extensions = ExtensionsList {
                 $(
@@ -34,7 +30,7 @@ macro_rules! extensions {
                 )+
             };
 
-            for extension in strings.into_iter() {
+            for extension in strings.iter() {
                 match &extension[..] {
                     $(
                         $string => extensions.$field = true,
@@ -154,6 +150,7 @@ extensions! {
     "GL_EXT_semaphore" => gl_ext_semaphore,
     "GL_EXT_semaphore_fd" => gl_ext_semaphore_fd,
     "GL_EXT_texture_array" => gl_ext_texture_array,
+    "GL_EXT_texture_border_clamp" => gl_ext_texture_border_clamp,
     "GL_EXT_texture_buffer" => gl_ext_texture_buffer,
     "GL_EXT_texture_buffer_object" => gl_ext_texture_buffer_object,
     "GL_EXT_texture_compression_s3tc" => gl_ext_texture_compression_s3tc,
@@ -161,6 +158,7 @@ extensions! {
     "GL_EXT_texture_cube_map_array" => gl_ext_texture_cube_map_array,
     "GL_EXT_texture_filter_anisotropic" => gl_ext_texture_filter_anisotropic,
     "GL_EXT_texture_integer" => gl_ext_texture_integer,
+    "GL_EXT_texture_mirror_clamp_to_edge" => gl_ext_texture_mirror_clamp_to_edge,
     "GL_EXT_texture_shared_exponent" => gl_ext_texture_shared_exponent,
     "GL_EXT_texture_snorm" => gl_ext_texture_snorm,
     "GL_EXT_texture_sRGB" => gl_ext_texture_srgb,
@@ -199,6 +197,7 @@ extensions! {
     "GL_OES_stencil4" => gl_oes_stencil4,
     "GL_OES_tessellation_shader" => gl_oes_tessellation_shader,
     "GL_OES_texture_3D" => gl_oes_texture_3d,
+    "GL_OES_texture_border_clamp" => gl_oes_texture_border_clamp,
     "GL_OES_texture_buffer" => gl_oes_texture_buffer,
     "GL_OES_texture_cube_map_array" => gl_oes_texture_cube_map_array,
     "GL_OES_texture_stencil8" => gl_oes_texture_stencil8,
@@ -206,34 +205,4 @@ extensions! {
     "GL_OES_vertex_array_object" => gl_oes_vertex_array_object,
     "GL_OES_vertex_half_float" => gl_oes_vertex_half_float,
     "GL_OES_vertex_type_10_10_10_2" => gl_oes_vertex_type_10_10_10_2,
-}
-
-/// Returns the list of all extension names supported by the OpenGL implementation.
-///
-/// The version must match the one of the backend.
-///
-/// *Safety*: the OpenGL context corresponding to `gl` must be current in the thread.
-///
-/// ## Panic
-///
-/// Can panic if the version number doesn't match the backend, leading to unloaded functions
-/// being called.
-///
-unsafe fn get_extensions_strings(gl: &gl::Gl, version: &Version) -> Vec<String> {
-    if version >= &Version(Api::Gl, 3, 0) || version >= &Version(Api::GlEs, 3, 0) {
-        let mut num_extensions = 0;
-        gl.GetIntegerv(gl::NUM_EXTENSIONS, &mut num_extensions);
-
-        (0..num_extensions)
-            .map(|num| {
-                let ext = gl.GetStringi(gl::EXTENSIONS, num as gl::types::GLuint);
-                String::from_utf8(CStr::from_ptr(ext as *const _).to_bytes().to_vec()).unwrap()
-            })
-            .collect()
-    } else {
-        let list = gl.GetString(gl::EXTENSIONS);
-        assert!(!list.is_null());
-        let list = String::from_utf8(CStr::from_ptr(list as *const _).to_bytes().to_vec()).unwrap();
-        list.split(' ').map(|e| e.to_owned()).collect()
-    }
 }

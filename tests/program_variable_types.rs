@@ -1,12 +1,12 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
 mod support;
 
 // Tests for support of the cube map array type in programs.
 fn program_support_for_cube_map_array(type_prefix: &str) {
     let display = support::build_display();
-    let _ = glium::Program::from_source(
+    let _ = safegl::Program::from_source(
         &display,
         "
             #version 400

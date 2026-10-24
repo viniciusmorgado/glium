@@ -1,9 +1,9 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::index::PrimitiveType;
-use glium::program::ShaderStage;
-use glium::{Display, Surface};
+use safegl::index::PrimitiveType;
+use safegl::program::ShaderStage;
+use safegl::{Display, Surface};
 use glutin::surface::WindowSurface;
 use support::{ApplicationContext, State};
 
@@ -16,19 +16,19 @@ struct Vertex {
 implement_vertex!(Vertex, position);
 
 struct Application {
-    pub vertex_buffer: glium::VertexBuffer<Vertex>,
-    pub index_buffer: glium::IndexBuffer<u16>,
-    pub program: glium::Program,
+    pub vertex_buffer: safegl::VertexBuffer<Vertex>,
+    pub index_buffer: safegl::IndexBuffer<u16>,
+    pub program: safegl::Program,
     pub i: i32,
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE: &'static str = "Glium subroutines example";
+    const WINDOW_TITLE: &'static str = "SafeGL subroutines example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         // building the vertex buffer, which contains all the vertices that we will draw
         let vertex_buffer = {
-            glium::VertexBuffer::new(
+            safegl::VertexBuffer::new(
                 display,
                 &[
                     Vertex {
@@ -47,7 +47,7 @@ impl ApplicationContext for Application {
 
         // building the index buffer
         let index_buffer =
-            glium::IndexBuffer::new(display, PrimitiveType::TrianglesList, &[0u16, 1, 2]).unwrap();
+            safegl::IndexBuffer::new(display, PrimitiveType::TrianglesList, &[0u16, 1, 2]).unwrap();
 
         // compiling shaders and linking them together
         let program = program!(display,

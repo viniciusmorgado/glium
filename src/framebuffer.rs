@@ -5,11 +5,11 @@ In order to draw on a texture, use a `SimpleFrameBuffer`. This framebuffer is co
 shaders that write to `gl_FragColor`.
 
 ```no_run
-# use glium::texture::Texture2d;
+# use safegl::texture::Texture2d;
 # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-# fn example<T>(display: glium::Display<T>, texture: Texture2d)
+# fn example<T>(display: safegl::Display<T>, texture: Texture2d)
 #     where T: SurfaceTypeTrait + ResizeableSurface {
-let framebuffer = glium::framebuffer::SimpleFrameBuffer::new(&display, &texture);
+let framebuffer = safegl::framebuffer::SimpleFrameBuffer::new(&display, &texture);
 // framebuffer.draw(...);    // draws over `texture`
 # }
 ```
@@ -18,12 +18,12 @@ If, however, your shader wants to write to multiple color buffers at once, you m
 a `MultiOutputFrameBuffer`.
 
 ```no_run
-# use glium::texture::Texture2d;
+# use safegl::texture::Texture2d;
 # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-# fn example<T>(display: glium::Display<T>, texture1: Texture2d, texture2: Texture2d)
+# fn example<T>(display: safegl::Display<T>, texture1: Texture2d, texture2: Texture2d)
 #     where T: SurfaceTypeTrait + ResizeableSurface {
 let output = [ ("output1", &texture1), ("output2", &texture2) ];
-let framebuffer = glium::framebuffer::MultiOutputFrameBuffer::new(&display, output.iter().cloned());
+let framebuffer = safegl::framebuffer::MultiOutputFrameBuffer::new(&display, output.iter().cloned());
 // framebuffer.draw(...);
 
 // example shader:
@@ -56,13 +56,14 @@ Some restrictions apply when you use framebuffers:
    what the hardware supports.
 
  - You will get undefined results if you try to sample to a texture mipmap attached to the
-   framebuffer that you are using. This is not enforced by glium as it depends on your shader's
+   framebuffer that you are using. This is not enforced by safegl as it depends on your shader's
    source code.
 
 # Empty framebuffers
 
-Modern OpenGL implementations support empty framebuffers. This is handled by glium with the
-`EmptyFrameBuffer` struct.
+Modern OpenGL implementations support empty framebuffers. This is handled by SafeGL with the
+`EmptyFrameBuffer` struct. Empty framebuffers are core in OpenGL 4.3, so this struct requires
+the `gl46` Cargo feature.
 
 You can check whether they are supported by calling `EmptyFrameBuffer::is_supported(&display)`.
 
@@ -78,9 +79,13 @@ use crate::texture::TextureAnyImage;
 
 use crate::backend::Facade;
 use crate::context::Context;
+#[cfg(feature = "gl46")]
 use crate::version::Api;
+#[cfg(feature = "gl46")]
 use crate::version::Version;
-use crate::{BlitMask, CapabilitiesSource};
+use crate::BlitMask;
+#[cfg(feature = "gl46")]
+use crate::CapabilitiesSource;
 
 use crate::ops;
 use crate::uniforms;
@@ -904,11 +909,14 @@ impl<'a> FboAttachments for MultiOutputFrameBuffer<'a> {
 /// A framebuffer with no attachment at all.
 ///
 /// Note that this is only supported on recent hardware.
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 pub struct EmptyFrameBuffer {
     context: Rc<Context>,
     attachments: fbo::ValidatedAttachments<'static>,
 }
 
+#[cfg(feature = "gl46")]
 impl<'a> EmptyFrameBuffer {
     /// Returns true if empty framebuffers are supported by the backend.
     pub fn is_supported<C: ?Sized>(context: &C) -> bool
@@ -1015,6 +1023,7 @@ impl<'a> EmptyFrameBuffer {
     }
 }
 
+#[cfg(feature = "gl46")]
 impl Surface for EmptyFrameBuffer {
     #[inline]
     fn clear(
@@ -1164,6 +1173,7 @@ impl Surface for EmptyFrameBuffer {
     }
 }
 
+#[cfg(feature = "gl46")]
 impl FboAttachments for EmptyFrameBuffer {
     #[inline]
     fn get_attachments(&self) -> Option<&fbo::ValidatedAttachments<'_>> {

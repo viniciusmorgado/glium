@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
 mod support;
 
@@ -9,11 +9,11 @@ fn test_read() {
     let display = support::build_display();
 
     let texture =
-        glium::texture::Texture2d::empty(&display, 512, 512).expect("fail when creating texture");
+        safegl::texture::Texture2d::empty(&display, 512, 512).expect("fail when creating texture");
 
     let image = texture.main_level().first_layer().into_image(None).unwrap();
 
-    let rect = glium::Rect {
+    let rect = safegl::Rect {
         left: 0,
         bottom: 4_286_579_200,
         width: 512,
