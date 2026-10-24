@@ -1,27 +1,8 @@
 [package]
 name = "safegl"
-version = "0.36.0"
+version = "0.1.0"
 authors = ["Vinicius Donatto Morgado <34577818+viniciusmorgado@users.noreply.github.com>"]
-description = """
-Elegant and safe OpenGL wrapper.
-
-SafeGL is an intermediate layer between OpenGL and your application. You still need to manage the
-graphics pipeline yourself, but you don't have to deal with OpenGL's old, error-prone API or with
-manual memory management.
-
-This project is a fork of glium, maintained by Oxidian Studios, a video game company, with the intent of using
-it to develop graphical tools for internal use.
-
-Its objectives:
-    - Be safe to use. Misuse of the OpenGL API that could cause crashes or undefined behavior is
-      prevented by the type system or validated before reaching the driver.
-    - Enforce good practices such as RAII and stateless function calls.
-    - Support a small set of well-established OpenGL feature tiers, selected with Cargo features,
-      instead of the whole of OpenGL.
-    - Produce optimized OpenGL function calls, and make modern OpenGL techniques easy to use.
-
-SafeGL validates how you use OpenGL, but it cannot detect or work around bugs in the drivers themselves.
-"""
+description = "Safe OpenGL bindings for Rust."
 keywords = ["opengl", "gamedev"]
 categories = ["api-bindings", "rendering::graphics-api"]
 documentation = "https://docs.rs/safegl"
@@ -29,7 +10,7 @@ repository = "https://github.com/viniciusmorgado/safegl"
 readme = "README.md"
 license = "Apache-2.0"
 build = "build/main.rs"
-exclude = ["doc"]
+exclude = ["doc", ".idea"]
 edition = "2021"
 
 [features]

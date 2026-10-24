@@ -104,14 +104,14 @@ shaders on OpenGL ES 3.0, for example) are checked at runtime in the same way.
 
 ```toml
 [dependencies]
-safegl = "0.36.0"
+safegl = "0.1"
 ```
 
 To select a lower tier, disable the default features:
 
 ```toml
 [dependencies]
-safegl = { version = "0.36.0", default-features = false, features = ["gl41", "glutin_backend", "glutin/default"] }
+safegl = { version = "0.1", default-features = false, features = ["gl41", "glutin_backend", "glutin/default"] }
 ```
 
 For the browser, build for `wasm32-unknown-unknown` with the `webgl` feature and draw through
@@ -119,7 +119,7 @@ For the browser, build for `wasm32-unknown-unknown` with the `webgl` feature and
 
 ```toml
 [dependencies]
-safegl = { version = "0.36.0", default-features = false, features = ["webgl"] }
+safegl = { version = "0.1", default-features = false, features = ["webgl"] }
 ```
 
 ### Platform notes

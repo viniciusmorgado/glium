@@ -1,9 +1,15 @@
 # Changelog
 
-## Unreleased
+All notable changes to this project are documented in this file. Versions follow
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-SafeGL now issues OpenGL calls through [glow](https://github.com/grovesNL/glow) and can run in the
-browser on WebGL 2. Breaking changes:
+## [Unreleased]
+
+## [0.1.0]
+
+First release under the `safegl` name, forked from glium 0.36.0. SafeGL now issues OpenGL calls
+through [glow](https://github.com/grovesNL/glow) and can run in the browser on WebGL 2. Breaking
+changes compared to glium:
 
 - **Crate renamed:** the crate is now published as `safegl` instead of `glium`, so paths become
   `safegl::...` and `#[macro_use] extern crate safegl;`. Other renames: `GliumEventLoop` is now
@@ -51,6 +57,10 @@ Fixes:
 - Uniform names longer than 62 bytes are no longer truncated during program reflection.
 - Copying between buffers no longer overwrites the source binding when the source is already bound
   to `COPY_WRITE_BUFFER`.
+
+---
+
+The releases below were published as `glium`, before the fork.
 
 ## Version 0.36.0 (2024-10-11)
 
