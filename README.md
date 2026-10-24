@@ -1,8 +1,7 @@
 # SafeGL
 
-[![Build Status](https://github.com/glium/glium/actions/workflows/ci.yml/badge.svg)](https://github.com/glium/glium/actions/workflows/ci.yml)
-[![Coverage Status](https://coveralls.io/repos/tomaka/glium/badge.svg?branch=master&service=github)](https://coveralls.io/github/tomaka/glium?branch=master)
-[![crates.io page](https://img.shields.io/crates/v/glium.svg)](https://crates.io/crates/glium)
+[![Build Status](https://github.com/viniciusmorgado/safegl/actions/workflows/ci.yml/badge.svg)](https://github.com/viniciusmorgado/safegl/actions/workflows/ci.yml)
+[![crates.io page](https://img.shields.io/crates/v/safegl.svg)](https://crates.io/crates/safegl)
 [![Dependency status](https://deps.rs/repo/github/viniciusmorgado/safegl/status.svg)](https://deps.rs/repo/github/viniciusmorgado/safegl)
 
 Elegant and safe OpenGL wrapper.
@@ -25,6 +24,26 @@ If you want to understand how we ended up here, check the links below:
 - [Glium post-mortem](https://users.rust-lang.org/t/glium-post-mortem/7063)
 - [Reword "Note to current and future Glium users"? (glium/glium#1912)](https://github.com/glium/glium/issues/1912)
 - [Original glium repo](https://github.com/glium/glium)
+
+## Where SafeGL fits in the Rust graphics ecosystem
+
+Rust crates for the open graphics APIs come in two layers: unsafe bindings that mirror the API,
+and safe layers built on top of them. Renderers and engines are not listed here.
+
+| Layer            | Vulkan                                        | OpenGL                                  |
+|------------------|-----------------------------------------------|-----------------------------------------|
+| Safe layer       | [vulkano](https://github.com/vulkano-rs/vulkano) | **SafeGL**                           |
+| Unsafe bindings  | [ash](https://github.com/ash-rs/ash)          | [glow](https://github.com/grovesNL/glow) |
+
+SafeGL fills the OpenGL slot that vulkano fills for Vulkan, using glow as its binding layer the
+way vulkano uses ash.
+
+### Discontinued
+
+| Crate                                   | Layer           | Last release      |
+|-----------------------------------------|-----------------|-------------------|
+| [glium](https://github.com/glium/glium) | Safe layer      | 0.36.0 (Oct 2024) |
+| [gl](https://github.com/brendanzab/gl-rs) | Unsafe bindings | 0.14.0 (Oct 2019) |
 
 ## Objectives
 
@@ -49,22 +68,58 @@ Cargo features. Each tier includes everything in the tiers below it.
 | `gl46`   | Desktop OpenGL 4.6 core (**default**)         | Windows and Linux with current NVIDIA, AMD, Intel or Mesa drivers; Asahi Linux on Apple M1/M2   |
 | `gl41`   | Desktop OpenGL 4.1 core                       | macOS (Intel and Apple Silicon), older GPUs, most virtual machines and software renderers       |
 | `gles30` | Common subset of OpenGL ES 3.0 and OpenGL 4.1 | Embedded Linux (e.g. Raspberry Pi 4/5) and other OpenGL ES 3.0-class devices                     |
+| `webgl`  | WebGL 2, the `gles30` tier in a browser       | Browsers, through `wasm32-unknown-unknown` (see [examples/web](examples/web))                  |
 
-APIs above the selected tier do not exist in the compiled crate, so using them is a compile error,
-not a runtime failure.
+Selecting a tier above what the target platform supports is a compile error: `gl46` on macOS, or
+anything above `gles30` in the browser.
+
+### APIs that need `gl46`
+
+The `gl41`, `gles30` and `webgl` tiers only expose what OpenGL 4.1 and OpenGL ES 3.0 provide.
+The following APIs exist only when the `gl46` feature is enabled. Other builds don't compile them
+at all, even where a 4.1 driver offers them as an extension:
+
+| Functionality       | Core since                        | Gated items                                                                                                                                  |
+|---------------------|-----------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| Compute shaders     | OpenGL 4.3                        | `program::ComputeShader`, `program::ComputeCommand`, `BufferType::DispatchIndirectBuffer`                                                    |
+| Shader storage      | OpenGL 4.3                        | `BufferType::ShaderStorageBuffer`, `Program::get_shader_storage_blocks`, binding buffers to GLSL `buffer` blocks                             |
+| Atomic counters     | OpenGL 4.2                        | `BufferType::AtomicCounterBuffer`, `Program::get_atomic_counters`, binding buffers to `atomic_uint` uniforms                                 |
+| Image load/store    | OpenGL 4.2                        | `uniforms::{ImageUnit, ImageUnitBehavior, ImageUnitAccess, ImageUnitFormat, ImageUnitError}`, `image_unit()` on textures, `UniformValue::*Image*`, `DrawError::InsufficientImageUnits` |
+| Multidraw indirect  | OpenGL 4.3                        | `index::{DrawCommandsNoIndicesBuffer, DrawCommandsIndicesBuffer, DrawCommandNoIndices, DrawCommandIndices}`, `IndicesSource::Multidraw*`     |
+| Empty framebuffers  | OpenGL 4.3                        | `framebuffer::EmptyFrameBuffer`                                                                                                              |
+| Query buffers       | OpenGL 4.4                        | `to_buffer_u32()` on queries, `draw_parameters::ToBufferError`, `BufferType::QueryBuffer`                                                    |
+| Clip control        | OpenGL 4.5                        | `DrawParameters::{clip_control_origin, clip_control_depth}`, `ClipControlOrigin`, `ClipControlDepth`, `DrawError::ClipControlNotSupported`   |
+| SPIR-V shaders      | OpenGL 4.6                        | `ProgramCreationInput::SpirV`, `program::{SpirvProgram, SpirvEntryPoint}`                                                                    |
+| Bindless textures   | never (`ARB_bindless_texture`)    | `texture::bindless`, `texture::{ResidentTexture, TextureHandle, BindlessTexturesNotSupportedError}`, `resident()` on textures                 |
+
+A `gl46` build still runs on an older driver, so these APIs keep their runtime checks: for example
+`ComputeShader::is_supported` returns `false` and `resident()` returns an error when the driver lacks
+the version or extension. Optional features that every tier exposes (tessellation or geometry
+shaders on OpenGL ES 3.0, for example) are checked at runtime in the same way.
+
+`BufferMode::Persistent` and `BufferMode::Immutable` are available in every tier. They use
+`glBufferStorage` (OpenGL 4.4) when the driver has it and fall back to `glBufferData` otherwise.
 
 `gl46` is enabled by default:
 
 ```toml
 [dependencies]
-safegl = "0.36.0"
+safegl = "0.1"
 ```
 
 To select a lower tier, disable the default features:
 
 ```toml
 [dependencies]
-safegl = { version = "0.36.0", default-features = false, features = ["gl41", "glutin_backend", "glutin/default"] }
+safegl = { version = "0.1", default-features = false, features = ["gl41", "glutin_backend", "glutin/default"] }
+```
+
+For the browser, build for `wasm32-unknown-unknown` with the `webgl` feature and draw through
+`safegl::backend::web::WebDisplay`:
+
+```toml
+[dependencies]
+safegl = { version = "0.1", default-features = false, features = ["webgl"] }
 ```
 
 ### Platform notes
@@ -79,10 +134,15 @@ safegl = { version = "0.36.0", default-features = false, features = ["gl41", "gl
   OpenGL 4.1–4.5; use `gl41`.
 - **Windows without a vendor driver** (Microsoft's basic display driver, some Remote Desktop
   sessions) only provides OpenGL 1.1 and is not supported by any tier.
+- **Browsers** provide WebGL 2, which SafeGL treats as OpenGL ES 3.0. WebGL can't map buffers or
+  block on fences, so buffer mappings are emulated with copies and `SyncFence::wait` returns after
+  `glFinish`. Shaders must start with `#version 300 es` on their very first line.
 
 > [!NOTE]
 > A tier describes which APIs SafeGL compiles in. It does not guarantee that the driver on a given
-> machine actually provides that version.
+> machine actually provides that version. Whatever the tier, SafeGL refuses to create a context
+> below desktop OpenGL 4.1 or OpenGL ES 3.0, and `SimpleWindowBuilder` requests the newest context
+> version of the compiled tier.
 
 ## Why SafeGL matters for Oxidian
 
@@ -183,6 +243,3 @@ Limitations:
  - SafeGL pushes the Rust compiler to its limits. Stack overflows (inside the compiler),
    internal compiler errors, one-hour compile time, etc. happen more often than in smaller
    libraries.
-
- - Macros are yet work-in-progress; see
-  [`glium-derive`](https://github.com/glium/glium_derive) for details.

@@ -63,9 +63,9 @@ buffer handling is done directly by the hardware and not by our shader. Therefor
 tell the backend what it should do amongst a list of possible operations.
 
 ```rust
-let params = glium::DrawParameters {
-    depth: glium::Depth {
-        test: glium::draw_parameters::DepthTest::IfLess,
+let params = safegl::DrawParameters {
+    depth: safegl::Depth {
+        test: safegl::draw_parameters::DepthTest::IfLess,
         write: true,
         .. Default::default()
     },
@@ -94,4 +94,4 @@ represented as shades of gray. Here is our depth buffer after drawing the teapot
 
 ![Depth buffer](resources/tuto-09-depth.png)
 
-**[You can find the entire source code here](https://github.com/glium/glium/blob/master/examples/tutorial-09.rs).**
+**[You can find the entire source code here](https://github.com/viniciusmorgado/safegl/blob/develop/examples/standalone/tutorial-09.rs).**

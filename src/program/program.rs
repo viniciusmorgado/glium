@@ -2,7 +2,6 @@ use crate::gl;
 
 use crate::context::CommandContext;
 use crate::version::Api;
-use crate::version::Version;
 
 use crate::backend::Facade;
 use crate::CapabilitiesSource;
@@ -12,22 +11,25 @@ use std::fmt;
 use std::hash::BuildHasherDefault;
 
 use fnv::FnvHasher;
+use glow::HasContext;
 
 use crate::GlObject;
-use crate::Handle;
 use crate::ProgramExt;
 use crate::RawUniformValue;
 
 use crate::program::GetBinaryError;
+#[cfg(feature = "gl46")]
+use crate::program::SpirvProgram;
 use crate::program::{
-    Binary, ProgramCreationError, ProgramCreationInput, ShaderType, SpirvProgram,
-    COMPILER_GLOBAL_LOCK,
+    Binary, ProgramCreationError, ProgramCreationInput, ShaderType, COMPILER_GLOBAL_LOCK,
 };
 
 use crate::program::reflection::{Attribute, TransformFeedbackBuffer};
 use crate::program::reflection::{OutputPrimitives, Uniform, UniformBlock};
 use crate::program::reflection::{ShaderStage, SubroutineData, SubroutineUniform};
-use crate::program::shader::{build_shader, build_spirv_shader};
+use crate::program::shader::build_shader;
+#[cfg(feature = "gl46")]
+use crate::program::shader::build_spirv_shader;
 
 use crate::program::raw::RawProgram;
 
@@ -86,20 +88,9 @@ impl Program {
 
                 // TODO: move somewhere else
                 if transform_feedback_varyings.is_some()
-                    && !(facade.get_context().get_version() >= &Version(Api::Gl, 3, 0))
-                    && !facade
-                        .get_context()
-                        .get_extensions()
-                        .gl_ext_transform_feedback
+                    && facade.get_context().get_version().0 != Api::Gl
                 {
                     return Err(ProgramCreationError::TransformFeedbackNotSupported);
-                }
-
-                if uses_point_size
-                    && (facade.get_context().get_version().0 == Api::Gl)
-                    && !(facade.get_context().get_version() >= &Version(Api::Gl, 2, 0))
-                {
-                    return Err(ProgramCreationError::PointSizeNotSupported);
                 }
 
                 let _lock = COMPILER_GLOBAL_LOCK.lock();
@@ -130,21 +121,13 @@ impl Program {
                 data,
                 outputs_srgb,
                 uses_point_size,
-            } => {
-                if uses_point_size
-                    && (facade.get_context().get_version().0 == Api::Gl)
-                    && !(facade.get_context().get_version() >= &Version(Api::Gl, 2, 0))
-                {
-                    return Err(ProgramCreationError::PointSizeNotSupported);
-                }
+            } => (
+                RawProgram::from_binary(facade, data)?,
+                outputs_srgb,
+                uses_point_size,
+            ),
 
-                (
-                    RawProgram::from_binary(facade, data)?,
-                    outputs_srgb,
-                    uses_point_size,
-                )
-            }
-
+            #[cfg(feature = "gl46")]
             ProgramCreationInput::SpirV(SpirvProgram {
                 vertex_shader,
                 tessellation_control_shader,
@@ -181,20 +164,9 @@ impl Program {
 
                 // TODO: move somewhere else
                 if transform_feedback_varyings.is_some()
-                    && !(facade.get_context().get_version() >= &Version(Api::Gl, 3, 0))
-                    && !facade
-                        .get_context()
-                        .get_extensions()
-                        .gl_ext_transform_feedback
+                    && facade.get_context().get_version().0 != Api::Gl
                 {
                     return Err(ProgramCreationError::TransformFeedbackNotSupported);
-                }
-
-                if uses_point_size
-                    && (facade.get_context().get_version().0 == Api::Gl)
-                    && !(facade.get_context().get_version() >= &Version(Api::Gl, 2, 0))
-                {
-                    return Err(ProgramCreationError::PointSizeNotSupported);
                 }
 
                 let _lock = COMPILER_GLOBAL_LOCK.lock();
@@ -242,9 +214,9 @@ impl Program {
     ///
     /// ```no_run
     /// # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-    /// # fn example<T>(display: glium::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
+    /// # fn example<T>(display: safegl::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
     /// # let vertex_source = ""; let fragment_source = ""; let geometry_source = "";
-    /// let program = glium::Program::from_source(&display, vertex_source, fragment_source,
+    /// let program = safegl::Program::from_source(&display, vertex_source, fragment_source,
     ///     Some(geometry_source));
     /// # }
     /// ```
@@ -285,7 +257,7 @@ impl Program {
 
     /// Returns the *location* of an output fragment, if it exists.
     ///
-    /// The *location* is low-level information that is used internally by glium.
+    /// The *location* is low-level information that is used internally by SafeGL.
     /// You probably don't need to call this function.
     ///
     /// You can declare output fragments in your shaders by writing:
@@ -310,7 +282,7 @@ impl Program {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.uniforms() {
     ///     println!("Name: {} - Type: {:?}", name, uniform.ty);
     /// }
@@ -326,7 +298,7 @@ impl Program {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.get_uniform_blocks() {
     ///     println!("Name: {}", name);
     /// }
@@ -399,7 +371,7 @@ impl Program {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, attribute) in program.attributes() {
     ///     println!("Name: {} - Type: {:?}", name, attribute.ty);
     /// }
@@ -421,12 +393,14 @@ impl Program {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.get_shader_storage_blocks() {
     ///     println!("Name: {}", name);
     /// }
     /// # }
     /// ```
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     #[inline]
     pub fn get_shader_storage_blocks(
         &self,
@@ -434,17 +408,19 @@ impl Program {
         self.raw.get_shader_storage_blocks()
     }
 
-    /// Returns the list of shader storage blocks.
+    /// Returns the list of atomic counters.
     ///
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.get_atomic_counters() {
     ///     println!("Name: {}", name);
     /// }
     /// # }
     /// ```
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     #[inline]
     pub fn get_atomic_counters(
         &self,
@@ -459,7 +435,7 @@ impl Program {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (&(ref name, shader), uniform) in program.get_subroutine_uniforms() {
     ///     println!("Name: {}", name);
     /// }
@@ -490,10 +466,10 @@ impl fmt::Debug for Program {
 }
 
 impl GlObject for Program {
-    type Id = Handle;
+    type Id = glow::Program;
 
     #[inline]
-    fn get_id(&self) -> Handle {
+    fn get_id(&self) -> glow::Program {
         self.raw.get_id()
     }
 }
@@ -504,16 +480,16 @@ impl ProgramExt for Program {
         if ctxt.version.0 == Api::Gl {
             if self.uses_point_size && !ctxt.state.enabled_program_point_size {
                 unsafe {
-                    ctxt.gl.Enable(gl::PROGRAM_POINT_SIZE);
+                    ctxt.glow.enable(glow::PROGRAM_POINT_SIZE);
                 }
             } else if !self.uses_point_size && ctxt.state.enabled_program_point_size {
                 unsafe {
-                    ctxt.gl.Disable(gl::PROGRAM_POINT_SIZE);
+                    ctxt.glow.disable(glow::PROGRAM_POINT_SIZE);
                 }
             }
         }
 
-        if (ctxt.version >= &Version(Api::Gl, 3, 0)
+        if (ctxt.version.0 == Api::Gl
             || ctxt.extensions.gl_arb_framebuffer_srgb
             || ctxt.extensions.gl_ext_framebuffer_srgb
             || ctxt.extensions.gl_ext_srgb_write_control)
@@ -522,9 +498,9 @@ impl ProgramExt for Program {
             ctxt.state.enabled_framebuffer_srgb = !self.outputs_srgb;
 
             if self.outputs_srgb {
-                unsafe { ctxt.gl.Disable(gl::FRAMEBUFFER_SRGB) };
+                unsafe { ctxt.glow.disable(glow::FRAMEBUFFER_SRGB) };
             } else {
-                unsafe { ctxt.gl.Enable(gl::FRAMEBUFFER_SRGB) };
+                unsafe { ctxt.glow.enable(glow::FRAMEBUFFER_SRGB) };
             }
         }
 

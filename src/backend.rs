@@ -1,18 +1,20 @@
 /*!
 
-The `backend` module allows one to link between glium and the OpenGL context..
+The `backend` module allows one to link between SafeGL and the OpenGL context..
 
 There are three concepts in play:
 
- - The `Backend` trait describes the glue between glium and the OpenGL context provider like
+ - The `Backend` trait describes the glue between SafeGL and the OpenGL context provider like
    glutin, SDL, GLFW, etc.
- - The `Context` struct is the main brick of glium. It manages everything that glium needs to
+ - The `Context` struct is the main brick of SafeGL. It manages everything that SafeGL needs to
    execute OpenGL commands. Creating a `Context` requires a `Backend`.
  - The `Facade` trait. Calling functions like `VertexBuffer::new` requires passing an object
    that implements this trait. It is implemented on `Rc<Context>`.
 
 */
+use std::num::NonZeroU32;
 use std::ops::Deref;
+#[cfg(not(all(target_family = "wasm", not(target_os = "emscripten"))))]
 use std::os::raw::c_void;
 use std::rc::Rc;
 
@@ -29,11 +31,22 @@ pub use crate::context::ReleaseBehavior;
 #[cfg(feature = "glutin")]
 pub mod glutin;
 
-use ::glutin::surface::SwapInterval;
+#[cfg(all(feature = "webgl", target_family = "wasm", not(target_os = "emscripten")))]
+pub mod web;
+
 #[cfg(feature = "simple_window_builder")]
 pub use winit;
 
-/// Trait for types that can be used as a backend for a glium context.
+/// How the backend should synchronize buffer swaps with the display's refresh rate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SwapInterval {
+    /// Swap buffers immediately, without waiting for the display (no vsync).
+    DontWait,
+    /// Wait for the given number of vertical blanks before swapping buffers.
+    Wait(NonZeroU32),
+}
+
+/// Trait for types that can be used as a backend for a SafeGL context.
 ///
 /// This trait is unsafe, as you can get undefined behaviors or crashes if you don't implement
 /// the methods correctly.
@@ -44,7 +57,23 @@ pub unsafe trait Backend {
     /// Returns the address of an OpenGL function.
     ///
     /// Supposes that the context has been made current before this function is called.
+    #[cfg(not(all(target_family = "wasm", not(target_os = "emscripten"))))]
     unsafe fn get_proc_address(&self, symbol: &str) -> *const c_void;
+
+    /// Creates the `glow` context used to issue OpenGL calls.
+    ///
+    /// Called once, after the context has been made current. The default implementation loads
+    /// the functions with `get_proc_address`.
+    #[cfg(not(all(target_family = "wasm", not(target_os = "emscripten"))))]
+    unsafe fn create_glow_context(&self) -> glow::Context {
+        glow::Context::from_loader_function(|symbol| self.get_proc_address(symbol))
+    }
+
+    /// Creates the `glow` context used to issue OpenGL calls.
+    ///
+    /// Called once, after the context has been made current.
+    #[cfg(all(target_family = "wasm", not(target_os = "emscripten")))]
+    unsafe fn create_glow_context(&self) -> glow::Context;
 
     /// Returns the dimensions of the window, or screen, etc.
     fn get_framebuffer_dimensions(&self) -> (u32, u32);
@@ -60,6 +89,12 @@ pub unsafe trait Backend {
 
     /// Makes the OpenGL context the current context in the current thread.
     unsafe fn make_current(&self);
+
+    /// Returns true if the backend knows that the OpenGL context has been lost, for example a
+    /// browser's WebGL context. Backends that can't tell return `false`.
+    fn is_context_lost(&self) -> bool {
+        false
+    }
 }
 
 unsafe impl<T> Backend for Rc<T>
@@ -70,8 +105,13 @@ where
         self.deref().swap_buffers()
     }
 
+    #[cfg(not(all(target_family = "wasm", not(target_os = "emscripten"))))]
     unsafe fn get_proc_address(&self, symbol: &str) -> *const c_void {
         self.deref().get_proc_address(symbol)
+    }
+
+    unsafe fn create_glow_context(&self) -> glow::Context {
+        self.deref().create_glow_context()
     }
 
     fn get_framebuffer_dimensions(&self) -> (u32, u32) {
@@ -93,9 +133,13 @@ where
     unsafe fn make_current(&self) {
         self.deref().make_current();
     }
+
+    fn is_context_lost(&self) -> bool {
+        self.deref().is_context_lost()
+    }
 }
 
-/// Trait for types that provide a safe access for glium functions.
+/// Trait for types that provide a safe access for SafeGL functions.
 pub trait Facade {
     /// Returns an opaque type that contains the OpenGL state, extensions, version, etc.
     fn get_context(&self) -> &Rc<Context>;

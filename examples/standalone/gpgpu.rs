@@ -1,18 +1,18 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 mod support;
 
-use glium::Display;
+use safegl::Display;
 use glutin::surface::WindowSurface;
 use support::{ApplicationContext, State};
 
 struct Application {}
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE: &'static str = "Glium GPGPU example";
+    const WINDOW_TITLE: &'static str = "SafeGL GPGPU example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
-        let program = glium::program::ComputeShader::from_source(
+        let program = safegl::program::ComputeShader::from_source(
             display,
             r#"\
                 #version 430
@@ -44,8 +44,8 @@ impl ApplicationContext for Application {
         }
         implement_uniform_block!(Data, power, values);
 
-        let mut buffer: glium::uniforms::UniformBuffer<Data> =
-            glium::uniforms::UniformBuffer::empty(display).unwrap();
+        let mut buffer: safegl::uniforms::UniformBuffer<Data> =
+            safegl::uniforms::UniformBuffer::empty(display).unwrap();
 
         {
             let mut mapping = buffer.map();

@@ -1,9 +1,9 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::texture::buffer_texture::BufferTexture;
-use glium::texture::buffer_texture::BufferTextureType;
-use glium::Surface;
+use safegl::texture::buffer_texture::BufferTexture;
+use safegl::texture::buffer_texture::BufferTextureType;
+use safegl::Surface;
 
 mod support;
 
@@ -35,7 +35,7 @@ fn sample() {
 
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -98,7 +98,7 @@ fn wrong_type() {
 
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -135,7 +135,7 @@ fn wrong_type() {
     );
 
     match result {
-        Err(glium::DrawError::UniformTypeMismatch { .. }) => (),
+        Err(safegl::DrawError::UniformTypeMismatch { .. }) => (),
         _ => panic!(),
     };
 

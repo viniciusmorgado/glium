@@ -1,6 +1,7 @@
 use crate::context;
 use crate::gl;
 use crate::ToGlEnum;
+use glow::HasContext;
 
 /// Describes the parameters that must be used for the stencil operations when drawing.
 #[derive(Copy, Clone, Debug)]
@@ -232,7 +233,7 @@ pub fn sync_stencil(ctxt: &mut context::CommandContext<'_>, params: &Stencil) {
         && params.depth_pass_operation_counter_clockwise == StencilOperation::Keep
     {
         if ctxt.state.enabled_stencil_test {
-            unsafe { ctxt.gl.Disable(gl::STENCIL_TEST) };
+            unsafe { ctxt.glow.disable(glow::STENCIL_TEST) };
             ctxt.state.enabled_stencil_test = false;
         }
 
@@ -243,7 +244,7 @@ pub fn sync_stencil(ctxt: &mut context::CommandContext<'_>, params: &Stencil) {
 
     // enabling if necessary
     if !ctxt.state.enabled_stencil_test {
-        unsafe { ctxt.gl.Enable(gl::STENCIL_TEST) };
+        unsafe { ctxt.glow.enable(glow::STENCIL_TEST) };
         ctxt.state.enabled_stencil_test = true;
     }
 
@@ -277,23 +278,23 @@ pub fn sync_stencil(ctxt: &mut context::CommandContext<'_>, params: &Stencil) {
         if ctxt.state.stencil_func_back != (test_cw, ref_cw, read_mask_cw)
             || ctxt.state.stencil_func_front != (test_ccw, ref_ccw, read_mask_ccw)
         {
-            unsafe { ctxt.gl.StencilFunc(test_cw, ref_cw, read_mask_cw) };
+            unsafe { ctxt.glow.stencil_func(test_cw, ref_cw, read_mask_cw) };
             ctxt.state.stencil_func_back = (test_cw, ref_cw, read_mask_cw);
             ctxt.state.stencil_func_front = (test_ccw, ref_ccw, read_mask_ccw);
         }
     } else {
         if ctxt.state.stencil_func_back != (test_cw, ref_cw, read_mask_cw) {
             unsafe {
-                ctxt.gl
-                    .StencilFuncSeparate(gl::BACK, test_cw, ref_cw, read_mask_cw)
+                ctxt.glow
+                    .stencil_func_separate(glow::BACK, test_cw, ref_cw, read_mask_cw)
             };
             ctxt.state.stencil_func_back = (test_cw, ref_cw, read_mask_cw);
         }
 
         if ctxt.state.stencil_func_front != (test_ccw, ref_ccw, read_mask_ccw) {
             unsafe {
-                ctxt.gl
-                    .StencilFuncSeparate(gl::FRONT, test_ccw, ref_ccw, read_mask_ccw)
+                ctxt.glow
+                    .stencil_func_separate(glow::FRONT, test_ccw, ref_ccw, read_mask_ccw)
             };
             ctxt.state.stencil_func_front = (test_ccw, ref_ccw, read_mask_ccw);
         }
@@ -304,23 +305,23 @@ pub fn sync_stencil(ctxt: &mut context::CommandContext<'_>, params: &Stencil) {
         if ctxt.state.stencil_mask_back != params.write_mask_clockwise
             || ctxt.state.stencil_mask_front != params.write_mask_clockwise
         {
-            unsafe { ctxt.gl.StencilMask(params.write_mask_clockwise) };
+            unsafe { ctxt.glow.stencil_mask(params.write_mask_clockwise) };
             ctxt.state.stencil_mask_back = params.write_mask_clockwise;
             ctxt.state.stencil_mask_front = params.write_mask_clockwise;
         }
     } else {
         if ctxt.state.stencil_mask_back != params.write_mask_clockwise {
             unsafe {
-                ctxt.gl
-                    .StencilMaskSeparate(gl::BACK, params.write_mask_clockwise)
+                ctxt.glow
+                    .stencil_mask_separate(glow::BACK, params.write_mask_clockwise)
             };
             ctxt.state.stencil_mask_back = params.write_mask_clockwise;
         }
 
         if ctxt.state.stencil_mask_front != params.write_mask_clockwise {
             unsafe {
-                ctxt.gl
-                    .StencilMaskSeparate(gl::FRONT, params.write_mask_clockwise)
+                ctxt.glow
+                    .stencil_mask_separate(glow::FRONT, params.write_mask_clockwise)
             };
             ctxt.state.stencil_mask_front = params.write_mask_clockwise;
         }
@@ -343,23 +344,23 @@ pub fn sync_stencil(ctxt: &mut context::CommandContext<'_>, params: &Stencil) {
 
     if op_back == op_front {
         if ctxt.state.stencil_op_back != op_back || ctxt.state.stencil_op_front != op_front {
-            unsafe { ctxt.gl.StencilOp(op_back.0, op_back.1, op_back.2) };
+            unsafe { ctxt.glow.stencil_op(op_back.0, op_back.1, op_back.2) };
             ctxt.state.stencil_op_back = op_back;
             ctxt.state.stencil_op_front = op_front;
         }
     } else {
         if ctxt.state.stencil_op_back != op_back {
             unsafe {
-                ctxt.gl
-                    .StencilOpSeparate(gl::BACK, op_back.0, op_back.1, op_back.2)
+                ctxt.glow
+                    .stencil_op_separate(glow::BACK, op_back.0, op_back.1, op_back.2)
             };
             ctxt.state.stencil_op_back = op_back;
         }
 
         if ctxt.state.stencil_op_front != op_front {
             unsafe {
-                ctxt.gl
-                    .StencilOpSeparate(gl::FRONT, op_front.0, op_front.1, op_front.2)
+                ctxt.glow
+                    .stencil_op_separate(glow::FRONT, op_front.0, op_front.1, op_front.2)
             };
             ctxt.state.stencil_op_front = op_front;
         }

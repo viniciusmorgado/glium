@@ -2,11 +2,11 @@
 // It's based on the screenshot example but uses an empty vertex buffer.
 
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::index::PrimitiveType;
-use glium::program::{ProgramCreationInput, SpirvEntryPoint, SpirvProgram};
-use glium::Surface;
+use safegl::index::PrimitiveType;
+use safegl::program::{ProgramCreationInput, SpirvEntryPoint, SpirvProgram};
+use safegl::Surface;
 use glutin::context::Version;
 use glutin::display::GetGlDisplay;
 use glutin::prelude::*;
@@ -16,11 +16,11 @@ use std::num::NonZeroU32;
 
 fn main() {
     // We start by creating the main EventLoop
-    let event_loop = glium::winit::event_loop::EventLoop::builder()
+    let event_loop = safegl::winit::event_loop::EventLoop::builder()
         .build()
         .expect("event loop building");
     let window_attributes =
-        glium::winit::window::Window::default_attributes().with_title("Glium SPIR-V example");
+        safegl::winit::window::Window::default_attributes().with_title("SafeGL SPIR-V example");
     let config_template_builder = glutin::config::ConfigTemplateBuilder::new();
     let display_builder =
         glutin_winit::DisplayBuilder::new().with_window_attributes(Some(window_attributes));
@@ -70,7 +70,7 @@ fn main() {
         .unwrap()
         .make_current(&surface)
         .unwrap();
-    let display = glium::Display::from_context_surface(current_context, surface).unwrap();
+    let display = safegl::Display::from_context_surface(current_context, surface).unwrap();
 
     // building the vertex buffer with no vertices
     // https://www.saschawillems.de/blog/2016/08/13/vulkan-tutorial-on-rendering-a-fullscreen-quad-without-buffers/
@@ -82,19 +82,19 @@ fn main() {
 
         implement_vertex!(Vertex, dummy);
 
-        glium::VertexBuffer::<Vertex>::empty(&display, 0).unwrap()
+        safegl::VertexBuffer::<Vertex>::empty(&display, 0).unwrap()
     };
 
     // building the index buffer
     let index_buffer =
-        glium::IndexBuffer::new(&display, PrimitiveType::TrianglesList, &[0u8, 1, 2]).unwrap();
+        safegl::IndexBuffer::new(&display, PrimitiveType::TrianglesList, &[0u8, 1, 2]).unwrap();
 
     // loading SPIR-V module that contains fragment and vertex shader entry points both called "main"
     let spirv = SpirvEntryPoint {
         binary: include_bytes!("shader.spv"),
         entry_point: "main",
     };
-    let program = glium::Program::new(
+    let program = safegl::Program::new(
         &display,
         ProgramCreationInput::SpirV(SpirvProgram::from_vs_and_fs(spirv, spirv)),
     )
@@ -127,9 +127,9 @@ fn main() {
     target.finish().unwrap();
 
     // reading the front buffer into an image
-    let image: glium::texture::RawImage2d<'_, u8> = display.read_front_buffer().unwrap();
+    let image: safegl::texture::RawImage2d<'_, u8> = display.read_front_buffer().unwrap();
     let image =
         image::ImageBuffer::from_raw(image.width, image.height, image.data.into_owned()).unwrap();
     let image = image::DynamicImage::ImageRgba8(image).flipv();
-    image.save("glium-example-screenshot.png").unwrap();
+    image.save("safegl-example-screenshot.png").unwrap();
 }

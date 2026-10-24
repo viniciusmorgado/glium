@@ -1,7 +1,7 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::Surface;
+use safegl::Surface;
 
 mod support;
 
@@ -21,7 +21,7 @@ fn uniforms_storage_single_value() {
     let display = support::build_display();
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -45,7 +45,7 @@ fn uniforms_storage_single_value() {
     )
     .unwrap();
 
-    let uniforms = glium::uniforms::UniformsStorage::new("color", [1.0, 0.0, 0.0, 0.5f32]);
+    let uniforms = safegl::uniforms::UniformsStorage::new("color", [1.0, 0.0, 0.0, 0.5f32]);
 
     let texture = support::build_renderable_texture(&display);
     texture.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
@@ -65,7 +65,7 @@ fn uniforms_storage_multiple_values() {
     let display = support::build_display();
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -90,7 +90,7 @@ fn uniforms_storage_multiple_values() {
     )
     .unwrap();
 
-    let uniforms = glium::uniforms::UniformsStorage::new("color1", [0.7, 0.0, 0.0, 0.5f32]);
+    let uniforms = safegl::uniforms::UniformsStorage::new("color1", [0.7, 0.0, 0.0, 0.5f32]);
     let uniforms = uniforms.add("color2", [0.3, 0.0, 0.0, 0.5f32]);
 
     let texture = support::build_renderable_texture(&display);
@@ -112,7 +112,7 @@ fn uniforms_storage_ignore_inactive_uniforms() {
     let display = support::build_display();
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -136,7 +136,7 @@ fn uniforms_storage_ignore_inactive_uniforms() {
     )
     .unwrap();
 
-    let uniforms = glium::uniforms::UniformsStorage::new("color", [1.0, 0.0, 0.0, 0.5f32]);
+    let uniforms = safegl::uniforms::UniformsStorage::new("color", [1.0, 0.0, 0.0, 0.5f32]);
     let uniforms = uniforms.add("color2", 0.8f32);
     let uniforms = uniforms.add("color3", [0.1, 1.2f32]);
 
@@ -158,7 +158,7 @@ fn uniform_wrong_type() {
     let display = support::build_display();
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -182,12 +182,12 @@ fn uniform_wrong_type() {
     )
     .unwrap();
 
-    let uniforms = glium::uniforms::UniformsStorage::new("color", 1.0f32);
+    let uniforms = safegl::uniforms::UniformsStorage::new("color", 1.0f32);
 
     let mut target = display.draw();
     target.clear_color(0.0, 0.0, 0.0, 0.0);
     match target.draw(&vb, &ib, &program, &uniforms, &Default::default()) {
-        Err(glium::DrawError::UniformTypeMismatch { .. }) => (),
+        Err(safegl::DrawError::UniformTypeMismatch { .. }) => (),
         a => panic!("{:?}", a),
     };
     target.finish().unwrap();
@@ -200,7 +200,7 @@ fn uniforms_dynamic_single_value() {
     let display = support::build_display();
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -224,7 +224,7 @@ fn uniforms_dynamic_single_value() {
     )
     .unwrap();
 
-    let mut uniforms = glium::uniforms::DynamicUniforms::new();
+    let mut uniforms = safegl::uniforms::DynamicUniforms::new();
     uniforms.add("color", &[1.0, 0.0, 0.0, 0.5f32]);
 
     let texture = support::build_renderable_texture(&display);
@@ -245,7 +245,7 @@ fn uniforms_dynamic_multiple_values() {
     let display = support::build_display();
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -270,7 +270,7 @@ fn uniforms_dynamic_multiple_values() {
     )
     .unwrap();
 
-    let mut uniforms = glium::uniforms::DynamicUniforms::new();
+    let mut uniforms = safegl::uniforms::DynamicUniforms::new();
     uniforms.add("color1", &[0.7, 0.0, 0.0, 0.5f32]);
     uniforms.add("color2", &[0.3, 0.0, 0.0, 0.5f32]);
 
@@ -293,7 +293,7 @@ fn uniforms_dynamic_ignore_inactive_uniforms() {
     let display = support::build_display();
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -317,7 +317,7 @@ fn uniforms_dynamic_ignore_inactive_uniforms() {
     )
     .unwrap();
 
-    let mut uniforms = glium::uniforms::DynamicUniforms::new();
+    let mut uniforms = safegl::uniforms::DynamicUniforms::new();
     uniforms.add("color", &[1.0, 0.0, 0.0, 0.5f32]);
     uniforms.add("color2", &0.8f32);
     uniforms.add("color3", &[0.1, 1.2f32]);
@@ -417,19 +417,19 @@ macro_rules! uniform_test(
                 ", $glsl_ty)
             );
 
-            let program = if let Ok(program) = glium::Program::from_source(&display, v400.0, v400.1, None) {
+            let program = if let Ok(program) = safegl::Program::from_source(&display, v400.0, v400.1, None) {
                 program
-            } else if let Ok(program) = glium::Program::from_source(&display, v140.0, v140.1, None) {
+            } else if let Ok(program) = safegl::Program::from_source(&display, v140.0, v140.1, None) {
                 program
-            } else if let Ok(program) = glium::Program::from_source(&display, v110.0, v110.1, None) {
+            } else if let Ok(program) = safegl::Program::from_source(&display, v110.0, v110.1, None) {
                 program
-            } else if let Ok(program) = glium::Program::from_source(&display, v100.0, v100.1, None) {
+            } else if let Ok(program) = safegl::Program::from_source(&display, v100.0, v100.1, None) {
                 program
             } else {
                 return
             };
 
-            let uniforms = glium::uniforms::UniformsStorage::new("my_uniform", $value);
+            let uniforms = safegl::uniforms::UniformsStorage::new("my_uniform", $value);
             let mut target = display.draw();
             target.clear_color(0.0, 0.0, 0.0, 0.0);
             target.draw(&vb, &ib, &program, &uniforms, &Default::default()).unwrap();

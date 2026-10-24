@@ -7,8 +7,9 @@ use std::sync::Mutex;
 
 use crate::gl;
 use crate::version::Api;
-use crate::version::Version;
 
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 pub use self::compute::{ComputeCommand, ComputeShader};
 pub use self::program::Program;
 pub use self::reflection::{
@@ -18,6 +19,7 @@ pub use self::reflection::{BlockLayout, OutputPrimitives, Uniform, UniformBlock}
 pub use self::reflection::{ShaderStage, SubroutineData, SubroutineUniform};
 
 mod binary_header;
+#[cfg(feature = "gl46")]
 mod compute;
 mod program;
 mod raw;
@@ -45,13 +47,12 @@ where
 
 /// Returns true if the backend supports creating and retrieving binary format.
 #[inline]
-pub fn is_binary_supported<C: ?Sized>(ctxt: &C) -> bool
+pub fn is_binary_supported<C: ?Sized>(_ctxt: &C) -> bool
 where
     C: CapabilitiesSource,
 {
-    ctxt.get_version() >= &Version(Api::Gl, 4, 1)
-        || ctxt.get_version() >= &Version(Api::GlEs, 2, 0)
-        || ctxt.get_extensions().gl_arb_get_programy_binary
+    // program binaries are core in OpenGL 4.1 and OpenGL ES 3.0, but don't exist on WebGL
+    !crate::version::is_webgl()
 }
 
 /// Returns true if the backend supports shader subroutines.
@@ -60,15 +61,7 @@ pub fn is_subroutine_supported<C: ?Sized>(ctxt: &C) -> bool
 where
     C: CapabilitiesSource,
 {
-    // WORKAROUND: Windows only; NVIDIA doesn't actually return a valid function pointer for
-    //              GetProgramStageiv despite supporting ARB_shader_subroutine; see #1439
-    if cfg!(target_os = "windows")
-        && ctxt.get_version() <= &Version(Api::Gl, 4, 0)
-        && ctxt.get_capabilities().vendor == "NVIDIA Corporation"
-    {
-        return false;
-    }
-    ctxt.get_version() >= &Version(Api::Gl, 4, 0) || ctxt.get_extensions().gl_arb_shader_subroutine
+    ctxt.get_version().0 == Api::Gl || ctxt.get_extensions().gl_arb_shader_subroutine
 }
 
 // Some shader compilers have race-condition issues, so we lock this mutex
@@ -105,7 +98,7 @@ impl ShaderType {
         }
     }
     /// Creates an instance of ShaderType corresponding to the given gl::types::GLenum.
-    /// This routine will panic if the given shadertype is not supported by glium.
+    /// This routine will panic if the given shadertype is not supported by SafeGL.
     pub fn from_opengl_type(gl_type: gl::types::GLenum) -> Self {
         match gl_type {
             gl::VERTEX_SHADER => ShaderType::Vertex,
@@ -146,8 +139,11 @@ pub enum ProgramCreationError {
     /// supported by the backend.
     PointSizeNotSupported,
 
-    /// The glium-specific binary header was not found or is corrupt.
+    /// The SafeGL-specific binary header was not found or is corrupt.
     BinaryHeaderError,
+
+    /// The backend doesn't support loading program binaries (WebGL). See `is_binary_supported`.
+    BinaryNotSupported,
 }
 
 impl fmt::Display for ProgramCreationError {
@@ -171,7 +167,8 @@ impl fmt::Display for ProgramCreationError {
             CompilationNotSupported => "The backend doesn't support shaders compilation",
             TransformFeedbackNotSupported => "Transform feedback is not supported by the backend.",
             PointSizeNotSupported => "Point size is not supported by the backend.",
-            BinaryHeaderError => "The glium-specific binary header was not found or is corrupt.",
+            BinaryHeaderError => "The SafeGL-specific binary header was not found or is corrupt.",
+            BinaryNotSupported => "Program binaries are not supported by the backend.",
         };
         match *self {
             CompilationError(ref s, _) => write!(fmt, "{}: {}", desc, s),
@@ -294,10 +291,14 @@ pub enum ProgramCreationInput<'a> {
     },
 
     /// Use a SPIR-V binary.
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     SpirV(SpirvProgram<'a>),
 }
 
 /// Represents a SPIR-V program. The shaders can refer to entry points in the same binary.
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 #[derive(Clone)]
 pub struct SpirvProgram<'a> {
     /// The vertex shader.
@@ -328,6 +329,7 @@ pub struct SpirvProgram<'a> {
     pub uses_point_size: bool,
 }
 
+#[cfg(feature = "gl46")]
 impl<'a> SpirvProgram<'a> {
     /// Create new `SpirvProgram` from vertex and fragment shaders.
     pub fn from_vs_and_fs(
@@ -393,6 +395,8 @@ impl<'a> SpirvProgram<'a> {
 }
 
 /// Represents an entry point of a binary SPIR-V module.
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 #[derive(Copy, Clone)]
 pub struct SpirvEntryPoint<'a> {
     /// The binary module data.

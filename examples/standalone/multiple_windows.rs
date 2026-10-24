@@ -1,10 +1,10 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
 use std::collections::HashMap;
 
-use glium::winit::{event_loop::EventLoop, window::WindowId};
-use glium::{Display, Surface};
+use safegl::winit::{event_loop::EventLoop, window::WindowId};
+use safegl::{Display, Surface};
 use glutin::surface::WindowSurface;
 use support::{ApplicationContext, State};
 
@@ -46,22 +46,22 @@ fn main() {
             match event {
                 // The Resumed/Suspended events are mostly for Android compatiblity since the context can get lost there at any point.
                 // For convenience's sake the Resumed event is also delivered on other platforms on program startup.
-                glium::winit::event::Event::Resumed => {
+                safegl::winit::event::Event::Resumed => {
                     // On startup we create the main window and insert it into the HashMap just like subsequent sub windows.
                     let window: State<Application> = State::new(window_target, true);
                     windows.insert(window.window.id(), window);
                 }
-                glium::winit::event::Event::Suspended => {
+                safegl::winit::event::Event::Suspended => {
                     windows.clear();
                 }
-                glium::winit::event::Event::WindowEvent {
+                safegl::winit::event::Event::WindowEvent {
                     event, window_id, ..
                 } => {
                     if let Some(state) = windows.get_mut(&window_id) {
                         match event {
-                            glium::winit::event::WindowEvent::MouseInput {
-                                state: glium::winit::event::ElementState::Released,
-                                button: glium::winit::event::MouseButton::Left,
+                            safegl::winit::event::WindowEvent::MouseInput {
+                                state: safegl::winit::event::ElementState::Released,
+                                button: safegl::winit::event::MouseButton::Left,
                                 ..
                             } => {
                                 // This is the main part, where we actually create the new window, enumerate it and
@@ -77,11 +77,11 @@ fn main() {
                                     windows.remove(&window_id);
                                 }
                             }
-                            glium::winit::event::WindowEvent::RedrawRequested => {
+                            safegl::winit::event::WindowEvent::RedrawRequested => {
                                 state.context.update();
                                 state.context.draw_frame(&state.display);
                             }
-                            glium::winit::event::WindowEvent::CloseRequested => {
+                            safegl::winit::event::WindowEvent::CloseRequested => {
                                 if state.context.id == 1 {
                                     window_target.exit();
                                 } else {
@@ -90,7 +90,7 @@ fn main() {
                             }
                             // These two aren't necessary for this particular example, but forgetting especially the Resized
                             // event could lead to stretched images being rendered if you decide to render something more interesting based on this example.
-                            glium::winit::event::WindowEvent::Resized(new_size) => {
+                            safegl::winit::event::WindowEvent::Resized(new_size) => {
                                 state.display.resize(new_size.into());
                             }
                             ev => {

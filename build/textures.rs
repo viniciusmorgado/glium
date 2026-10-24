@@ -463,6 +463,7 @@ fn build_texture<W: Write>(dest: &mut W, ty: TextureType, dimensions: TextureDim
 
             use crate::texture::any::{{self, TextureAny, TextureAnyLayer, TextureAnyMipmap}};
             use crate::texture::any::{{TextureAnyLayerMipmap, TextureAnyImage, Dimensions}};
+            #[cfg(feature = \"gl46\")]
             use crate::texture::bindless::{{ResidentTexture, BindlessTexturesNotSupportedError}};
             use crate::texture::get_format::{{InternalFormat, InternalFormatType, GetFormatError}};
             use crate::texture::pixel_buffer::PixelBuffer;
@@ -477,7 +478,9 @@ fn build_texture<W: Write>(dest: &mut W, ty: TextureType, dimensions: TextureDim
             use crate::image_format::{{CompressedSrgbFormat, SrgbFormat, UncompressedUintFormat}};
 
             use crate::backend::Facade;
-            use crate::uniforms::{{UniformValue, AsUniformValue, Sampler, ImageUnit, ImageUnitError, ImageUnitFormat}};
+            use crate::uniforms::{{UniformValue, AsUniformValue, Sampler}};
+            #[cfg(feature = \"gl46\")]
+            use crate::uniforms::{{ImageUnit, ImageUnitError, ImageUnitFormat}};
             use crate::framebuffer;
 
             use crate::Rect;
@@ -565,10 +568,10 @@ fn build_texture<W: Write>(dest: &mut W, ty: TextureType, dimensions: TextureDim
         dest,
         "
                 impl GlObject for {} {{
-                    type Id = gl::types::GLuint;
+                    type Id = glow::Texture;
 
                     #[inline]
-                    fn get_id(&self) -> gl::types::GLuint {{
+                    fn get_id(&self) -> glow::Texture {{
                         self.0.get_id()
                     }}
                 }}
@@ -649,10 +652,10 @@ fn build_texture<W: Write>(dest: &mut W, ty: TextureType, dimensions: TextureDim
                                 /// # Example
                                 ///
                                 /// ```no_run
-                                /// # #[macro_use] extern crate glium;
-                                /// # fn example(texture: glium::texture::Texture2d) {{
+                                /// # #[macro_use] extern crate safegl;
+                                /// # fn example(texture: safegl::texture::Texture2d) {{
                                 /// let uniforms = uniform! {{
-                                ///     color_texture: texture.sampled().magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
+                                ///     color_texture: texture.sampled().magnify_filter(safegl::uniforms::MagnifySamplerFilter::Nearest)
                                 /// }};
                                 /// # }}
                                 /// ```
@@ -676,6 +679,7 @@ fn build_texture<W: Write>(dest: &mut W, ty: TextureType, dimensions: TextureDim
             .replace("Texture", "Image")
             .replace("Cubemap", "ImageCube");
         writeln!(dest, "
+                    #[cfg(feature = \"gl46\")]
                     impl<'a> AsUniformValue for ImageUnit<'a, {myname}> {{
                         #[inline]
                         fn as_uniform_value(&self) -> UniformValue<'_>  {{
@@ -683,9 +687,11 @@ fn build_texture<W: Write>(dest: &mut W, ty: TextureType, dimensions: TextureDim
                         }}
                     }}
 
+                    #[cfg(feature = \"gl46\")]
                     impl {myname} {{
                         /// Builds an image unit marker object that allows you to indicate how the
                         /// texture should be bound to an image unit.
+                        #[cfg_attr(docsrs, doc(cfg(feature = \"gl46\")))]
                         #[inline]
                         pub fn image_unit(&self, format: ImageUnitFormat) -> Result<ImageUnit<'_, {myname}>, ImageUnitError> {{
                              ImageUnit::new(self, format)
@@ -1092,7 +1098,7 @@ fn build_texture<W: Write>(dest: &mut W, ty: TextureType, dimensions: TextureDim
                 /// after this reference's lifetime has ended.
                 pub unsafe fn from_id<F: Facade + ?Sized>(facade: &F,
                                                  format: {format},
-                                                 id: gl::types::GLuint,
+                                                 id: glow::Texture,
                                                  owned: bool,
                                                  mipmap: MipmapsOption,
                                                  ty: Dimensions)
@@ -1102,24 +1108,6 @@ fn build_texture<W: Write>(dest: &mut W, ty: TextureType, dimensions: TextureDim
                     {name}(any::from_id(facade, format, id, owned, mipmap, ty))
                 }}
         ", format = relevant_format, name = name)).unwrap();
-
-    // writing the 'new_from_fd' function
-    (writeln!(dest, r#"
-                /// Builds a new texture reference from an existing texture, externally created by a foreign
-                /// API like Vulkan. The texture is imported via an opaque file descriptor. You must make
-                /// sure all of the texture parameters match those used to create the texture in Vulkan.
-                #[cfg(target_os = "linux")]
-                pub unsafe fn new_from_fd<F: Facade + ?Sized>(facade: &F,
-                                                 format: {format},
-                                                 mipmaps: MipmapsOption,
-                                                 ty: Dimensions,
-                                                 params: crate::texture::ImportParameters,
-                                                 fd: std::fs::File)
-                                                 -> Result<{name}, crate::texture::TextureImportError> {{
-                    let format = format.to_texture_format();
-                    Ok({name}(any::new_from_fd(facade, format, mipmaps, ty, params, fd)?))
-                }}
-        "#, format = relevant_format, name = name)).unwrap();
 
     // dimensions getters
     write_dimensions_getters(dest, dimensions, "self.0", true);
@@ -1367,6 +1355,8 @@ fn build_texture<W: Write>(dest: &mut W, ty: TextureType, dimensions: TextureDim
             /// a "reference to it" in a buffer (actually not a reference but a raw pointer).
             ///
             /// See the documentation of `ResidentTexture` for more infos.
+            #[cfg(feature = "gl46")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
             #[inline]
             pub fn resident(self) -> Result<ResidentTexture, BindlessTexturesNotSupportedError> {{
                 ResidentTexture::new(self.0)

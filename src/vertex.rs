@@ -12,7 +12,7 @@ describe individual vertices. The trait is unsafe to implement, so you are encou
 
 ```
 # #[macro_use]
-# extern crate glium;
+# extern crate safegl;
 # extern crate glutin;
 # fn main() {
 #[derive(Copy, Clone)]
@@ -33,14 +33,14 @@ upload it to the video memory by creating a `VertexBuffer`.
 
 ```no_run
 # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-# fn example<T>(display: glium::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
+# fn example<T>(display: safegl::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
 # #[derive(Copy, Clone)]
 # struct MyVertex {
 #     position: [f32; 3],
 #     texcoords: [f32; 2],
 # }
-# impl glium::vertex::Vertex for MyVertex {
-#     fn build_bindings() -> glium::vertex::VertexFormat { unimplemented!() }
+# impl safegl::vertex::Vertex for MyVertex {
+#     fn build_bindings() -> safegl::vertex::VertexFormat { unimplemented!() }
 # }
 let data = &[
     MyVertex {
@@ -57,7 +57,7 @@ let data = &[
     },
 ];
 
-let vertex_buffer = glium::vertex::VertexBuffer::new(&display, data);
+let vertex_buffer = safegl::vertex::VertexBuffer::new(&display, data);
 # }
 ```
 
@@ -71,17 +71,17 @@ Each source can be:
  - A vertex buffer where each element corresponds to an instance, by
    calling `vertex_buffer.per_instance()`.
  - The same with a slice, by calling `vertex_buffer.slice(start .. end).unwrap().per_instance()`.
- - A marker indicating a number of vertex sources, with `glium::vertex::EmptyVertexAttributes`.
- - A marker indicating a number of instances, with `glium::vertex::EmptyInstanceAttributes`.
+ - A marker indicating a number of vertex sources, with `safegl::vertex::EmptyVertexAttributes`.
+ - A marker indicating a number of instances, with `safegl::vertex::EmptyInstanceAttributes`.
 
 ```no_run
-# use glium::Surface;
+# use safegl::Surface;
 # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-# fn example<T, V>(display: glium::Display<T>, program: glium::program::Program,
-#            vertex_buffer: glium::vertex::VertexBuffer<V>, vertex_buffer2: glium::vertex::VertexBuffer<V>)
-#     where T: SurfaceTypeTrait + ResizeableSurface, V: glium::vertex::Vertex {
-# let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
-# let uniforms = glium::uniforms::EmptyUniforms;
+# fn example<T, V>(display: safegl::Display<T>, program: safegl::program::Program,
+#            vertex_buffer: safegl::vertex::VertexBuffer<V>, vertex_buffer2: safegl::vertex::VertexBuffer<V>)
+#     where T: SurfaceTypeTrait + ResizeableSurface, V: safegl::vertex::Vertex {
+# let indices = safegl::index::NoIndices(safegl::index::PrimitiveType::TrianglesList);
+# let uniforms = safegl::uniforms::EmptyUniforms;
 # let mut frame = display.draw();
 // drawing with a single vertex buffer
 frame.draw(&vertex_buffer, &indices, &program, &uniforms, &Default::default()).unwrap();
@@ -91,7 +91,7 @@ frame.draw((&vertex_buffer, &vertex_buffer2), &indices, &program,
            &uniforms, &Default::default()).unwrap();
 
 // drawing without a vertex source
-frame.draw(glium::vertex::EmptyVertexAttributes { len: 12 }, &indices, &program,
+frame.draw(safegl::vertex::EmptyVertexAttributes { len: 12 }, &indices, &program,
            &uniforms, &Default::default()).unwrap();
 
 // drawing a slice of a vertex buffer
@@ -107,7 +107,7 @@ frame.draw((&vertex_buffer, vertex_buffer2.per_instance().unwrap()), &indices,
            &program, &uniforms, &Default::default()).unwrap();
 
 // instancing without any per-instance attribute
-frame.draw((&vertex_buffer, glium::vertex::EmptyInstanceAttributes { len: 36 }), &indices,
+frame.draw((&vertex_buffer, safegl::vertex::EmptyInstanceAttributes { len: 36 }), &indices,
            &program, &uniforms, &Default::default()).unwrap();
 # }
 ```
@@ -199,7 +199,7 @@ impl<'a> From<EmptyInstanceAttributes> for VerticesSource<'a> {
     }
 }
 
-/// Marker that instructs glium that the buffer is to be used per instance.
+/// Marker that instructs SafeGL that the buffer is to be used per instance.
 pub struct PerInstance<'a>(BufferAnySlice<'a>, VertexFormat);
 
 impl<'a> From<PerInstance<'a>> for VerticesSource<'a> {

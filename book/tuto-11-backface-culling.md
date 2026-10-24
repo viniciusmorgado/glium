@@ -28,17 +28,17 @@ Most of the time this is purely an optimization. By discarding half of the trian
 vertex shader step, you reduce by half the number of fragment shader invocations. This can lead
 to a pretty good speedup.
 
-## Backface culling in glium
+## Backface culling in SafeGL
 
-Using backface culling in glium just consists in modifying a variable in the `DrawParameters` that
+Using backface culling in SafeGL just consists in modifying a variable in the `DrawParameters` that
 you pass to the `draw` function.
 
 Just replace:
 
 ```rust
-let params = glium::DrawParameters {
-    depth: glium::Depth {
-        test: glium::DepthTest::IfLess,
+let params = safegl::DrawParameters {
+    depth: safegl::Depth {
+        test: safegl::DepthTest::IfLess,
         write: true,
         .. Default::default()
     },
@@ -49,13 +49,13 @@ let params = glium::DrawParameters {
 With:
 
 ```rust
-let params = glium::DrawParameters {
-    depth: glium::Depth {
-        test: glium::DepthTest::IfLess,
+let params = safegl::DrawParameters {
+    depth: safegl::Depth {
+        test: safegl::DepthTest::IfLess,
         write: true,
         .. Default::default()
     },
-    backface_culling: glium::draw_parameters::BackfaceCullingMode::CullClockwise,
+    backface_culling: safegl::draw_parameters::BackfaceCullingMode::CullClockwise,
     .. Default::default()
 };
 ```

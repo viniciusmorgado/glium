@@ -1,8 +1,8 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::index::PrimitiveType;
-use glium::Surface;
+use safegl::index::PrimitiveType;
+use safegl::Surface;
 
 mod support;
 
@@ -18,9 +18,9 @@ fn attribute_types_mismatch() {
 
     implement_vertex!(Vertex, field1);
 
-    let vertex_buffer = glium::VertexBuffer::new(&display, &Vec::<Vertex>::new()).unwrap();
+    let vertex_buffer = safegl::VertexBuffer::new(&display, &Vec::<Vertex>::new()).unwrap();
     let index_buffer =
-        glium::IndexBuffer::new(&display, PrimitiveType::Points, &Vec::<u16>::new()).unwrap();
+        safegl::IndexBuffer::new(&display, PrimitiveType::Points, &Vec::<u16>::new()).unwrap();
 
     let program = program!(&display,
         140 => {
@@ -85,7 +85,7 @@ fn attribute_types_mismatch() {
             &vertex_buffer,
             &index_buffer,
             &program,
-            &glium::uniforms::EmptyUniforms,
+            &safegl::uniforms::EmptyUniforms,
             &Default::default(),
         )
         .unwrap();
@@ -106,9 +106,9 @@ fn missing_attribute() {
 
     implement_vertex!(Vertex, field1);
 
-    let vertex_buffer = glium::VertexBuffer::new(&display, &Vec::<Vertex>::new()).unwrap();
+    let vertex_buffer = safegl::VertexBuffer::new(&display, &Vec::<Vertex>::new()).unwrap();
     let index_buffer =
-        glium::IndexBuffer::new(&display, PrimitiveType::Points, &Vec::<u16>::new()).unwrap();
+        safegl::IndexBuffer::new(&display, PrimitiveType::Points, &Vec::<u16>::new()).unwrap();
 
     let program = program!(&display,
         140 => {
@@ -173,7 +173,7 @@ fn missing_attribute() {
             &vertex_buffer,
             &index_buffer,
             &program,
-            &glium::uniforms::EmptyUniforms,
+            &safegl::uniforms::EmptyUniforms,
             &Default::default(),
         )
         .unwrap();
@@ -195,10 +195,10 @@ macro_rules! attribute_test(
 
             implement_vertex!(Vertex, field1);
 
-            let vertex_buffer = glium::VertexBuffer::new(&display, &[
+            let vertex_buffer = safegl::VertexBuffer::new(&display, &[
                                                              Vertex { field1: $value }
                                                          ]).unwrap();
-            let index_buffer = glium::IndexBuffer::new(&display, PrimitiveType::Points,
+            let index_buffer = safegl::IndexBuffer::new(&display, PrimitiveType::Points,
                                                        &[0u16]).unwrap();
 
             let program = program!(&display,
@@ -258,7 +258,7 @@ macro_rules! attribute_test(
 
             // drawing a frame
             let mut target = display.draw();
-            target.draw(&vertex_buffer, &index_buffer, &program, &glium::uniforms::EmptyUniforms,
+            target.draw(&vertex_buffer, &index_buffer, &program, &safegl::uniforms::EmptyUniforms,
                         &Default::default()).unwrap();
             target.finish().unwrap();
 

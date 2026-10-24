@@ -1,9 +1,9 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::framebuffer::SimpleFrameBuffer;
-use glium::uniforms::MagnifySamplerFilter;
-use glium::{BlitMask, BlitTarget, Rect, Surface};
+use safegl::framebuffer::SimpleFrameBuffer;
+use safegl::uniforms::MagnifySamplerFilter;
+use safegl::{BlitMask, BlitTarget, Rect, Surface};
 
 mod support;
 
@@ -34,7 +34,7 @@ fn blit_texture_to_window() {
         &src_rect,
         &target.as_surface(),
         &dest_rect,
-        glium::uniforms::MagnifySamplerFilter::Nearest,
+        safegl::uniforms::MagnifySamplerFilter::Nearest,
     );
 
     let data: Vec<Vec<(u8, u8, u8, u8)>> = target.read();

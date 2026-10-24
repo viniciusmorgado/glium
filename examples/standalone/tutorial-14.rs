@@ -1,16 +1,16 @@
 #[macro_use]
-extern crate glium;
-use glium::Surface;
+extern crate safegl;
+use safegl::Surface;
 
 mod support;
 use support::view_matrix;
 
 fn main() {
-    let event_loop = glium::winit::event_loop::EventLoop::builder()
+    let event_loop = safegl::winit::event_loop::EventLoop::builder()
         .build()
         .expect("event loop building");
-    let (window, display) = glium::backend::glutin::SimpleWindowBuilder::new()
-        .with_title("Glium tutorial #14")
+    let (window, display) = safegl::backend::glutin::SimpleWindowBuilder::new()
+        .with_title("SafeGL tutorial #14")
         .build(&event_loop);
 
     #[derive(Copy, Clone)]
@@ -20,7 +20,7 @@ fn main() {
         tex_coords: [f32; 2],
     }
     implement_vertex!(Vertex, position, normal, tex_coords);
-    let shape = glium::vertex::VertexBuffer::new(
+    let shape = safegl::vertex::VertexBuffer::new(
         &display,
         &[
             Vertex {
@@ -55,8 +55,8 @@ fn main() {
     .to_rgba8();
     let image_dimensions = image.dimensions();
     let image =
-        glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
-    let diffuse_texture = glium::texture::Texture2d::new(&display, image).unwrap();
+        safegl::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+    let diffuse_texture = safegl::texture::Texture2d::new(&display, image).unwrap();
 
     let image = image::load(
         std::io::Cursor::new(&include_bytes!("../../book/resources/tuto-14-normal.png")),
@@ -66,8 +66,8 @@ fn main() {
     .to_rgba8();
     let image_dimensions = image.dimensions();
     let image =
-        glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
-    let normal_map = glium::texture::Texture2d::new(&display, image).unwrap();
+        safegl::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+    let normal_map = safegl::texture::Texture2d::new(&display, image).unwrap();
 
     let vertex_shader_src = r#"
         #version 150
@@ -143,19 +143,19 @@ fn main() {
     "#;
 
     let program =
-        glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None)
+        safegl::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None)
             .unwrap();
     let start = std::time::Instant::now();
 
     #[allow(deprecated)]
     event_loop.run(move |ev, window_target| {
         match ev {
-            glium::winit::event::Event::WindowEvent { event, .. } => match event {
-                glium::winit::event::WindowEvent::CloseRequested => {
+            safegl::winit::event::Event::WindowEvent { event, .. } => match event {
+                safegl::winit::event::WindowEvent::CloseRequested => {
                     window_target.exit();
                 },
                 // We now need to render everyting in response to a RedrawRequested event due to the animation
-                glium::winit::event::WindowEvent::RedrawRequested => {
+                safegl::winit::event::WindowEvent::RedrawRequested => {
                     let mut target = display.draw();
                     target.clear_color_and_depth((0.0, 0.0, 1.0, 1.0), 1.0);
 
@@ -191,31 +191,31 @@ fn main() {
 
                     let light = [1.4, 0.4, 0.7f32];
 
-                    let params = glium::DrawParameters {
-                        depth: glium::Depth {
-                            test: glium::draw_parameters::DepthTest::IfLess,
+                    let params = safegl::DrawParameters {
+                        depth: safegl::Depth {
+                            test: safegl::draw_parameters::DepthTest::IfLess,
                             write: true,
                             .. Default::default()
                         },
                         .. Default::default()
                     };
 
-                    target.draw(&shape, glium::index::NoIndices(glium::index::PrimitiveType::TriangleStrip), &program,
+                    target.draw(&shape, safegl::index::NoIndices(safegl::index::PrimitiveType::TriangleStrip), &program,
                                 &uniform! { model: model, view: view, perspective: perspective,
                                             u_light: light, diffuse_tex: &diffuse_texture, normal_tex: &normal_map },
                                 &params).unwrap();
                     target.finish().unwrap();
                 },
-                // Because glium doesn't know about windows we need to resize the display
+                // Because SafeGL doesn't know about windows we need to resize the display
                 // when the window's size has changed.
-                glium::winit::event::WindowEvent::Resized(window_size) => {
+                safegl::winit::event::WindowEvent::Resized(window_size) => {
                     display.resize(window_size.into());
                 },
                 _ => (),
             },
             // By requesting a redraw in response to a AboutToWait event we get continuous rendering.
             // For applications that only change due to user input you could remove this handler.
-            glium::winit::event::Event::AboutToWait => {
+            safegl::winit::event::Event::AboutToWait => {
                 window.request_redraw();
             },
             _ => (),

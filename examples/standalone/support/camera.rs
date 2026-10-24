@@ -158,12 +158,12 @@ impl CameraState {
         }
     }
 
-    pub fn process_input(&mut self, event: &glium::winit::event::WindowEvent) {
-        use glium::winit::keyboard::{KeyCode, PhysicalKey};
-        let glium::winit::event::WindowEvent::KeyboardInput { event, .. } = event else {
+    pub fn process_input(&mut self, event: &safegl::winit::event::WindowEvent) {
+        use safegl::winit::keyboard::{KeyCode, PhysicalKey};
+        let safegl::winit::event::WindowEvent::KeyboardInput { event, .. } = event else {
             return;
         };
-        let pressed = event.state == glium::winit::event::ElementState::Pressed;
+        let pressed = event.state == safegl::winit::event::ElementState::Pressed;
         match &event.physical_key {
             PhysicalKey::Code(KeyCode::ArrowUp) => self.moving_up = pressed,
             PhysicalKey::Code(KeyCode::ArrowDown) => self.moving_down = pressed,

@@ -2,11 +2,13 @@ use crate::backend::Facade;
 use crate::context::CommandContext;
 use crate::context::Context;
 use crate::gl;
+use crate::handles::RawName;
 use crate::version::Version;
 use crate::CapabilitiesSource;
 use crate::ContextExt;
 use crate::GlObject;
 use crate::TransformFeedbackSessionExt;
+use glow::HasContext;
 use std::cell::Cell;
 use std::error::Error;
 use std::ops::{Deref, DerefMut, Range};
@@ -18,7 +20,7 @@ use crate::buffer::{BufferCreationError, BufferMode, BufferType, Content};
 use crate::vertex::TransformFeedbackSession;
 use crate::vertex_array_object::VertexAttributesSystem;
 
-use crate::version::Api;
+use crate::version::{is_webgl, Api};
 
 /// Error that can happen when reading from a buffer.
 #[derive(Debug, Copy, Clone)]
@@ -69,7 +71,7 @@ pub struct Alloc {
     context: Rc<Context>,
 
     /// OpenGL identifier ; can't be zero.
-    id: gl::types::GLuint,
+    id: glow::Buffer,
 
     /// Type of buffer.
     ty: BufferType,
@@ -206,7 +208,7 @@ impl Alloc {
     fn barrier_for_buffer_update(&self, ctxt: &mut CommandContext<'_>) {
         if self.latest_shader_write.get() >= ctxt.state.latest_memory_barrier_buffer_update {
             unsafe {
-                ctxt.gl.MemoryBarrier(gl::BUFFER_UPDATE_BARRIER_BIT);
+                ctxt.glow.memory_barrier(glow::BUFFER_UPDATE_BARRIER_BIT);
             }
             ctxt.state.latest_memory_barrier_buffer_update = ctxt.state.next_draw_call_id;
         }
@@ -219,7 +221,8 @@ impl Alloc {
 
         if self.latest_shader_write.get() >= ctxt.state.latest_memory_barrier_vertex_attrib_array {
             unsafe {
-                ctxt.gl.MemoryBarrier(gl::VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
+                ctxt.glow
+                    .memory_barrier(glow::VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
             }
             ctxt.state.latest_memory_barrier_vertex_attrib_array = ctxt.state.next_draw_call_id;
         }
@@ -232,7 +235,7 @@ impl Alloc {
 
         if self.latest_shader_write.get() >= ctxt.state.latest_memory_barrier_element_array {
             unsafe {
-                ctxt.gl.MemoryBarrier(gl::ELEMENT_ARRAY_BARRIER_BIT);
+                ctxt.glow.memory_barrier(glow::ELEMENT_ARRAY_BARRIER_BIT);
             }
             ctxt.state.latest_memory_barrier_element_array = ctxt.state.next_draw_call_id;
         }
@@ -240,16 +243,9 @@ impl Alloc {
 
     /// Binds the buffer to `GL_ELEMENT_ARRAY_BUFFER` regardless of the current vertex array object.
     pub fn bind_to_element_array(&self, ctxt: &mut CommandContext<'_>) {
-        if ctxt.version >= &Version(Api::Gl, 1, 5) || ctxt.version >= &Version(Api::GlEs, 2, 0) {
-            unsafe {
-                ctxt.gl.BindBuffer(gl::ELEMENT_ARRAY_BUFFER, self.id);
-            }
-        } else if ctxt.extensions.gl_arb_vertex_buffer_object {
-            unsafe {
-                ctxt.gl.BindBufferARB(gl::ELEMENT_ARRAY_BUFFER, self.id);
-            }
-        } else {
-            unreachable!();
+        unsafe {
+            ctxt.glow
+                .bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(self.id));
         }
     }
 
@@ -261,13 +257,13 @@ impl Alloc {
 
         if self.latest_shader_write.get() >= ctxt.state.latest_memory_barrier_pixel_buffer {
             unsafe {
-                ctxt.gl.MemoryBarrier(gl::PIXEL_BUFFER_BARRIER_BIT);
+                ctxt.glow.memory_barrier(glow::PIXEL_BUFFER_BARRIER_BIT);
             }
             ctxt.state.latest_memory_barrier_pixel_buffer = ctxt.state.next_draw_call_id;
         }
 
         unsafe {
-            bind_buffer(ctxt, self.id, BufferType::PixelPackBuffer);
+            bind_buffer(ctxt, Some(self.id), BufferType::PixelPackBuffer);
         }
     }
 
@@ -275,7 +271,7 @@ impl Alloc {
     #[inline]
     pub fn unbind_pixel_pack(ctxt: &mut CommandContext<'_>) {
         unsafe {
-            bind_buffer(ctxt, 0, BufferType::PixelPackBuffer);
+            bind_buffer(ctxt, None, BufferType::PixelPackBuffer);
         }
     }
 
@@ -287,13 +283,13 @@ impl Alloc {
 
         if self.latest_shader_write.get() >= ctxt.state.latest_memory_barrier_pixel_buffer {
             unsafe {
-                ctxt.gl.MemoryBarrier(gl::PIXEL_BUFFER_BARRIER_BIT);
+                ctxt.glow.memory_barrier(glow::PIXEL_BUFFER_BARRIER_BIT);
             }
             ctxt.state.latest_memory_barrier_pixel_buffer = ctxt.state.next_draw_call_id;
         }
 
         unsafe {
-            bind_buffer(ctxt, self.id, BufferType::PixelUnpackBuffer);
+            bind_buffer(ctxt, Some(self.id), BufferType::PixelUnpackBuffer);
         }
     }
 
@@ -301,12 +297,13 @@ impl Alloc {
     #[inline]
     pub fn unbind_pixel_unpack(ctxt: &mut CommandContext<'_>) {
         unsafe {
-            bind_buffer(ctxt, 0, BufferType::PixelUnpackBuffer);
+            bind_buffer(ctxt, None, BufferType::PixelUnpackBuffer);
         }
     }
 
     /// Makes sure that the buffer is bound to the `GL_QUERY_BUFFER` and calls
     /// `glMemoryBarrier(GL_PIXEL_BUFFER_BARRIER_BIT)` if necessary.
+    #[cfg(feature = "gl46")]
     pub fn prepare_and_bind_for_query(&self, ctxt: &mut CommandContext<'_>) {
         assert!(
             ctxt.version >= &Version(Api::Gl, 4, 4)
@@ -319,21 +316,22 @@ impl Alloc {
 
         if self.latest_shader_write.get() >= ctxt.state.latest_memory_barrier_pixel_buffer {
             unsafe {
-                ctxt.gl.MemoryBarrier(gl::QUERY_BUFFER_BARRIER_BIT);
+                ctxt.glow.memory_barrier(glow::QUERY_BUFFER_BARRIER_BIT);
             }
             ctxt.state.latest_memory_barrier_query_buffer = ctxt.state.next_draw_call_id;
         }
 
         unsafe {
-            bind_buffer(ctxt, self.id, BufferType::QueryBuffer);
+            bind_buffer(ctxt, Some(self.id), BufferType::QueryBuffer);
         }
     }
 
     /// Makes sure that nothing is bound to `GL_QUERY_BUFFER`.
+    #[cfg(feature = "gl46")]
     #[inline]
     pub fn unbind_query(ctxt: &mut CommandContext<'_>) {
         unsafe {
-            bind_buffer(ctxt, 0, BufferType::QueryBuffer);
+            bind_buffer(ctxt, None, BufferType::QueryBuffer);
         }
     }
 
@@ -345,31 +343,32 @@ impl Alloc {
 
         if self.latest_shader_write.get() >= ctxt.state.latest_memory_barrier_command {
             unsafe {
-                ctxt.gl.MemoryBarrier(gl::COMMAND_BARRIER_BIT);
+                ctxt.glow.memory_barrier(glow::COMMAND_BARRIER_BIT);
             }
             ctxt.state.latest_memory_barrier_command = ctxt.state.next_draw_call_id;
         }
 
         unsafe {
-            bind_buffer(ctxt, self.id, BufferType::DrawIndirectBuffer);
+            bind_buffer(ctxt, Some(self.id), BufferType::DrawIndirectBuffer);
         }
     }
 
     /// Makes sure that the buffer is bound to the `GL_DISPATCH_INDIRECT_BUFFER` and calls
     /// `glMemoryBarrier(GL_COMMAND_BARRIER_BIT)` if necessary.
+    #[cfg(feature = "gl46")]
     pub fn prepare_and_bind_for_dispatch_indirect(&self, ctxt: &mut CommandContext<'_>) {
         self.assert_unmapped(ctxt);
         self.assert_not_transform_feedback(ctxt);
 
         if self.latest_shader_write.get() >= ctxt.state.latest_memory_barrier_command {
             unsafe {
-                ctxt.gl.MemoryBarrier(gl::COMMAND_BARRIER_BIT);
+                ctxt.glow.memory_barrier(glow::COMMAND_BARRIER_BIT);
             }
             ctxt.state.latest_memory_barrier_command = ctxt.state.next_draw_call_id;
         }
 
         unsafe {
-            bind_buffer(ctxt, self.id, BufferType::DispatchIndirectBuffer);
+            bind_buffer(ctxt, Some(self.id), BufferType::DispatchIndirectBuffer);
         }
     }
 
@@ -386,7 +385,7 @@ impl Alloc {
 
         if self.latest_shader_write.get() >= ctxt.state.latest_memory_barrier_uniform {
             unsafe {
-                ctxt.gl.MemoryBarrier(gl::UNIFORM_BARRIER_BIT);
+                ctxt.glow.memory_barrier(glow::UNIFORM_BARRIER_BIT);
             }
             ctxt.state.latest_memory_barrier_uniform = ctxt.state.next_draw_call_id;
         }
@@ -396,6 +395,7 @@ impl Alloc {
 
     /// Makes sure that the buffer is bound to the indexed `GL_SHARED_STORAGE_BUFFER` point and calls
     /// `glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT)` if necessary.
+    #[cfg(feature = "gl46")]
     pub fn prepare_and_bind_for_shared_storage(
         &self,
         ctxt: &mut CommandContext<'_>,
@@ -407,7 +407,7 @@ impl Alloc {
 
         if self.latest_shader_write.get() >= ctxt.state.latest_memory_barrier_shader_storage {
             unsafe {
-                ctxt.gl.MemoryBarrier(gl::SHADER_STORAGE_BARRIER_BIT);
+                ctxt.glow.memory_barrier(glow::SHADER_STORAGE_BARRIER_BIT);
             }
             ctxt.state.latest_memory_barrier_shader_storage = ctxt.state.next_draw_call_id;
         }
@@ -419,6 +419,7 @@ impl Alloc {
 
     /// Makes sure that the buffer is bound to the indexed `GL_ATOMIC_COUNTER_BUFFER` point and calls
     /// `glMemoryBarrier(GL_ATOMIC_COUNTER_BARRIER_BIT)` if necessary.
+    #[cfg(feature = "gl46")]
     pub fn prepare_and_bind_for_atomic_counter(
         &self,
         ctxt: &mut CommandContext<'_>,
@@ -430,7 +431,7 @@ impl Alloc {
 
         if self.latest_shader_write.get() >= ctxt.state.latest_memory_barrier_atomic_counter {
             unsafe {
-                ctxt.gl.MemoryBarrier(gl::ATOMIC_COUNTER_BARRIER_BIT);
+                ctxt.glow.memory_barrier(glow::ATOMIC_COUNTER_BARRIER_BIT);
             }
             ctxt.state.latest_memory_barrier_atomic_counter = ctxt.state.next_draw_call_id;
         }
@@ -463,7 +464,7 @@ impl Alloc {
     fn bind(&self, ctxt: &mut CommandContext<'_>, ty: BufferType) {
         self.assert_unmapped(ctxt);
         unsafe {
-            bind_buffer(ctxt, self.id, ty);
+            bind_buffer(ctxt, Some(self.id), ty);
         }
     }
 
@@ -563,43 +564,19 @@ impl Alloc {
                 && (ctxt.version >= &Version(Api::Gl, 4, 3)
                     || ctxt.extensions.gl_arb_invalidate_subdata)
             {
-                ctxt.gl.InvalidateBufferData(self.id);
+                ctxt.extra.InvalidateBufferData(self.id.raw_name());
             }
 
+            let data_bytes =
+                std::slice::from_raw_parts(data.to_void_ptr() as *const u8, mem::size_of_val(data));
+
             if ctxt.version >= &Version(Api::Gl, 4, 5) {
-                ctxt.gl.NamedBufferSubData(
-                    self.id,
-                    offset_bytes as gl::types::GLintptr,
-                    mem::size_of_val(data) as gl::types::GLsizeiptr,
-                    data.to_void_ptr() as *const _,
-                )
-            } else if ctxt.extensions.gl_ext_direct_state_access {
-                ctxt.gl.NamedBufferSubDataEXT(
-                    self.id,
-                    offset_bytes as gl::types::GLintptr,
-                    mem::size_of_val(data) as gl::types::GLsizeiptr,
-                    data.to_void_ptr() as *const _,
-                )
-            } else if ctxt.version >= &Version(Api::Gl, 1, 5)
-                || ctxt.version >= &Version(Api::GlEs, 2, 0)
-            {
-                let bind = bind_buffer(&mut ctxt, self.id, self.ty);
-                ctxt.gl.BufferSubData(
-                    bind,
-                    offset_bytes as gl::types::GLintptr,
-                    mem::size_of_val(data) as gl::types::GLsizeiptr,
-                    data.to_void_ptr() as *const _,
-                );
-            } else if ctxt.extensions.gl_arb_vertex_buffer_object {
-                let bind = bind_buffer(&mut ctxt, self.id, self.ty);
-                ctxt.gl.BufferSubDataARB(
-                    bind,
-                    offset_bytes as gl::types::GLintptr,
-                    mem::size_of_val(data) as gl::types::GLsizeiptr,
-                    data.to_void_ptr() as *const _,
-                );
+                ctxt.glow
+                    .named_buffer_sub_data_u8_slice(self.id, offset_bytes as i32, data_bytes)
             } else {
-                unreachable!();
+                let bind = bind_buffer(&mut ctxt, Some(self.id), self.ty);
+                ctxt.glow
+                    .buffer_sub_data_u8_slice(bind, offset_bytes as i32, data_bytes);
             }
         }
     }
@@ -626,11 +603,11 @@ impl Alloc {
                 || ctxt.extensions.gl_arb_invalidate_subdata)
         {
             if is_whole_buffer {
-                unsafe { ctxt.gl.InvalidateBufferData(self.id) };
+                unsafe { ctxt.extra.InvalidateBufferData(self.id.raw_name()) };
             } else {
                 unsafe {
-                    ctxt.gl.InvalidateBufferSubData(
-                        self.id,
+                    ctxt.extra.InvalidateBufferSubData(
+                        self.id.raw_name(),
                         offset as gl::types::GLintptr,
                         size as gl::types::GLsizeiptr,
                     )
@@ -642,21 +619,9 @@ impl Alloc {
                 BufferMode::Persistent | BufferMode::Dynamic => gl::DYNAMIC_DRAW,
             };
 
-            if ctxt.version >= &Version(Api::Gl, 1, 5) || ctxt.version >= &Version(Api::GlEs, 2, 0)
-            {
-                unsafe {
-                    let bind = bind_buffer(&mut ctxt, self.id, self.ty);
-                    ctxt.gl
-                        .BufferData(bind, size as gl::types::GLsizeiptr, ptr::null(), flags);
-                }
-            } else if ctxt.extensions.gl_arb_vertex_buffer_object {
-                unsafe {
-                    let bind = bind_buffer(&mut ctxt, self.id, self.ty);
-                    ctxt.gl
-                        .BufferDataARB(bind, size as gl::types::GLsizeiptr, ptr::null(), flags);
-                }
-            } else {
-                unreachable!();
+            unsafe {
+                let bind = bind_buffer(&mut ctxt, Some(self.id), self.ty);
+                ctxt.glow.buffer_data_size(bind, size as i32, flags);
             }
         }
     }
@@ -714,6 +679,8 @@ impl Alloc {
                 data,
                 needs_flushing: write,
             }
+        } else if is_webgl() {
+            self.map_shadow_copy(bytes_range, read, write)
         } else {
             let size_bytes = bytes_range.end - bytes_range.start;
 
@@ -779,13 +746,68 @@ impl Alloc {
         }
     }
 
+    /// Maps a range of the buffer by copying it to client memory. Used on WebGL, which has no
+    /// `glMapBufferRange`.
+    ///
+    /// If `read` is true, the range is downloaded with `glGetBufferSubData`. If `write` is true,
+    /// the content is uploaded back with `glBufferSubData` when the mapping is dropped, so, like
+    /// the temporary-buffer mapping of `map_shared`, changes are only visible to OpenGL after
+    /// the mapping is released.
+    ///
+    /// # Panic
+    ///
+    /// Panics if the `bytes_range` is not aligned to a mappable slice.
+    ///
+    unsafe fn map_shadow_copy<D: ?Sized>(
+        &self,
+        bytes_range: Range<usize>,
+        read: bool,
+        write: bool,
+    ) -> MappingImpl<'_, D>
+    where
+        D: Content,
+    {
+        let size_bytes = bytes_range.end - bytes_range.start;
+        assert!(bytes_range.end <= self.size);
+
+        let chunk_size = mem::size_of::<ShadowChunk>();
+        let mut storage = vec![ShadowChunk([0; 16]); size_bytes.div_ceil(chunk_size)];
+        let ptr = storage.as_mut_ptr() as *mut u8;
+
+        let data = Content::ref_from_ptr(ptr as *mut (), size_bytes).expect("Wrong bytes range");
+
+        if read && size_bytes != 0 {
+            let mut ctxt = self.context.make_current();
+            self.assert_unmapped(&mut ctxt);
+            self.assert_not_transform_feedback(&mut ctxt);
+            self.barrier_for_buffer_update(&mut ctxt);
+
+            let bind = bind_buffer(&mut ctxt, Some(self.id), self.ty);
+            ctxt.glow.get_buffer_sub_data(
+                bind,
+                bytes_range.start as i32,
+                std::slice::from_raw_parts_mut(ptr, size_bytes),
+            );
+        }
+
+        MappingImpl::ShadowCopy {
+            buffer: self,
+            offset_bytes: bytes_range.start,
+            _storage: storage,
+            data,
+            needs_flushing: write,
+        }
+    }
+
     /// Returns a mapping in memory of the content of the buffer.
     ///
-    /// There are two possibilities:
+    /// There are three possibilities:
     ///
     ///  - If the buffer uses persistent mapping, it will simply return a wrapper around the
     ///    pointer to the existing mapping.
-    ///  - If the buffer doesn't use persistent mapping, it will map the buffer.
+    ///  - On WebGL, which can't map buffers, it will return a copy of the range in client
+    ///    memory that is uploaded back when the mapping is released (see `map_shadow_copy`).
+    ///  - Otherwise, it will map the buffer.
     ///
     /// Contrary to `map_shared`, this function requires a `&mut self`. It can only be used if
     /// you have exclusive access to the buffer.
@@ -811,7 +833,7 @@ impl Alloc {
     where
         D: Content,
     {
-        if self.persistent_mapping.is_some() || self.immutable {
+        if self.persistent_mapping.is_some() || self.immutable || is_webgl() {
             self.map_shared(bytes_range, read, write)
         } else {
             let data = {
@@ -954,33 +976,16 @@ impl Alloc {
             self.barrier_for_buffer_update(&mut ctxt);
 
             <D as Content>::read(size_to_read, |output| {
-                if ctxt.version >= &Version(Api::Gl, 4, 5) {
-                    ctxt.gl.GetNamedBufferSubData(
-                        self.id,
-                        range.start as gl::types::GLintptr,
-                        size_to_read as gl::types::GLsizeiptr,
-                        output as *mut _ as *mut _,
-                    );
-                } else if ctxt.version >= &Version(Api::Gl, 1, 5) {
-                    let bind = bind_buffer(&mut ctxt, self.id, self.ty);
-                    ctxt.gl.GetBufferSubData(
+                // `glGetBufferSubData` exists on desktop GL and WebGL 2, but not on OpenGL ES
+                if ctxt.version.0 == Api::Gl || is_webgl() {
+                    let bind = bind_buffer(&mut ctxt, Some(self.id), self.ty);
+                    ctxt.glow.get_buffer_sub_data(
                         bind,
-                        range.start as gl::types::GLintptr,
-                        size_to_read as gl::types::GLsizeiptr,
-                        output as *mut _ as *mut _,
+                        range.start as i32,
+                        std::slice::from_raw_parts_mut(output as *mut D as *mut u8, size_to_read),
                     );
-                } else if ctxt.extensions.gl_arb_vertex_buffer_object {
-                    let bind = bind_buffer(&mut ctxt, self.id, self.ty);
-                    ctxt.gl.GetBufferSubDataARB(
-                        bind,
-                        range.start as gl::types::GLintptr,
-                        size_to_read as gl::types::GLsizeiptr,
-                        output as *mut _ as *mut _,
-                    );
-                } else if ctxt.version >= &Version(Api::GlEs, 1, 0) {
-                    return Err(ReadError::NotSupported);
                 } else {
-                    unreachable!()
+                    return Err(ReadError::NotSupported);
                 }
 
                 Ok(())
@@ -1026,7 +1031,7 @@ impl Alloc {
 
 impl fmt::Debug for Alloc {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(fmt, "Buffer #{} (size: {} bytes)", self.id, self.size)
+        write!(fmt, "Buffer {:?} (size: {} bytes)", self.id, self.size)
     }
 }
 
@@ -1043,10 +1048,10 @@ impl Drop for Alloc {
 }
 
 impl GlObject for Alloc {
-    type Id = gl::types::GLuint;
+    type Id = glow::Buffer;
 
     #[inline]
-    fn get_id(&self) -> gl::types::GLuint {
+    fn get_id(&self) -> glow::Buffer {
         self.id
     }
 }
@@ -1063,7 +1068,7 @@ enum MappingImpl<'b, D: ?Sized> {
     TemporaryBuffer {
         original_buffer: &'b Alloc,
         original_buffer_offset: usize,
-        temporary_buffer: gl::types::GLuint,
+        temporary_buffer: glow::Buffer,
         temporary_buffer_data: *mut D,
         needs_flushing: bool,
     },
@@ -1073,6 +1078,38 @@ enum MappingImpl<'b, D: ?Sized> {
         data: *mut D,
         needs_flushing: bool,
     },
+
+    /// WebGL only: a copy of the range in client memory, see `Alloc::map_shadow_copy`.
+    ShadowCopy {
+        buffer: &'b Alloc,
+        offset_bytes: usize,
+        /// Owns the memory `data` points to.
+        _storage: Vec<ShadowChunk>,
+        data: *mut D,
+        needs_flushing: bool,
+    },
+}
+
+/// Unit of storage of a `ShadowCopy` mapping. The alignment makes the storage suitable for any
+/// buffer content type.
+#[derive(Copy, Clone)]
+#[repr(C, align(16))]
+struct ShadowChunk([u8; 16]);
+
+impl<'b, D: ?Sized> MappingImpl<'b, D> {
+    /// Returns the pointer to the mapped data.
+    #[inline]
+    fn data_ptr(&self) -> *mut D {
+        match *self {
+            MappingImpl::PersistentMapping { data, .. } => data,
+            MappingImpl::TemporaryBuffer {
+                temporary_buffer_data,
+                ..
+            } => temporary_buffer_data,
+            MappingImpl::RegularMapping { data, .. } => data,
+            MappingImpl::ShadowCopy { data, .. } => data,
+        }
+    }
 }
 
 unsafe impl<'a, D: ?Sized> Sync for MappingImpl<'a, D> where D: Send + Sync {}
@@ -1151,6 +1188,28 @@ impl<'a, D: ?Sized> Drop for MappingImpl<'a, D> {
 
                 buffer.mapped.set(false);
             }
+
+            MappingImpl::ShadowCopy {
+                buffer,
+                offset_bytes,
+                data,
+                needs_flushing,
+                ..
+            } => unsafe {
+                let size_bytes = mem::size_of_val(&*data);
+                if needs_flushing && size_bytes != 0 {
+                    let mut ctxt = buffer.context.make_current();
+                    buffer.assert_not_transform_feedback(&mut ctxt);
+                    buffer.barrier_for_buffer_update(&mut ctxt);
+
+                    let bind = bind_buffer(&mut ctxt, Some(buffer.id), buffer.ty);
+                    ctxt.glow.buffer_sub_data_u8_slice(
+                        bind,
+                        offset_bytes as i32,
+                        std::slice::from_raw_parts(data as *const u8, size_bytes),
+                    );
+                }
+            },
         }
     }
 }
@@ -1171,16 +1230,7 @@ where
 
     #[inline]
     fn deref(&self) -> &D {
-        match self.mapping {
-            MappingImpl::PersistentMapping { data, .. } => unsafe { &*data },
-
-            MappingImpl::TemporaryBuffer {
-                temporary_buffer_data,
-                ..
-            } => unsafe { &*temporary_buffer_data },
-
-            MappingImpl::RegularMapping { data, .. } => unsafe { &*data },
-        }
+        unsafe { &*self.mapping.data_ptr() }
     }
 }
 
@@ -1190,16 +1240,7 @@ where
 {
     #[inline]
     fn deref_mut(&mut self) -> &mut D {
-        match self.mapping {
-            MappingImpl::PersistentMapping { data, .. } => unsafe { &mut *data },
-
-            MappingImpl::TemporaryBuffer {
-                temporary_buffer_data,
-                ..
-            } => unsafe { &mut *temporary_buffer_data },
-
-            MappingImpl::RegularMapping { data, .. } => unsafe { &mut *data },
-        }
+        unsafe { &mut *self.mapping.data_ptr() }
     }
 }
 
@@ -1219,16 +1260,7 @@ where
 
     #[inline]
     fn deref(&self) -> &D {
-        match self.mapping {
-            MappingImpl::PersistentMapping { data, .. } => unsafe { &*data },
-
-            MappingImpl::TemporaryBuffer {
-                temporary_buffer_data,
-                ..
-            } => unsafe { &*temporary_buffer_data },
-
-            MappingImpl::RegularMapping { data, .. } => unsafe { &*data },
-        }
+        unsafe { &*self.mapping.data_ptr() }
     }
 }
 
@@ -1246,16 +1278,7 @@ where
 {
     #[inline]
     fn get_slice(&mut self) -> &mut D {
-        match self.mapping {
-            MappingImpl::PersistentMapping { data, .. } => unsafe { &mut *data },
-
-            MappingImpl::TemporaryBuffer {
-                temporary_buffer_data,
-                ..
-            } => unsafe { &mut *temporary_buffer_data },
-
-            MappingImpl::RegularMapping { data, .. } => unsafe { &mut *data },
-        }
+        unsafe { &mut *self.mapping.data_ptr() }
     }
 }
 
@@ -1279,14 +1302,7 @@ where
     /// Returns the length of the mapping.
     #[inline]
     pub fn len(&self) -> usize {
-        match self.mapping {
-            MappingImpl::PersistentMapping { data, .. } => unsafe { (&*data).len() },
-            MappingImpl::TemporaryBuffer {
-                temporary_buffer_data,
-                ..
-            } => unsafe { (&*temporary_buffer_data).len() },
-            MappingImpl::RegularMapping { data, .. } => unsafe { (&*data).len() },
-        }
+        unsafe { (&*self.mapping.data_ptr()).len() }
     }
 
     /// Changes an element of the mapping.
@@ -1307,17 +1323,8 @@ pub fn is_buffer_read_supported<C: ?Sized>(ctxt: &C) -> bool
 where
     C: CapabilitiesSource,
 {
-    if ctxt.get_version() >= &Version(Api::Gl, 4, 5) {
-        true
-    } else if ctxt.get_version() >= &Version(Api::Gl, 1, 5) {
-        true
-    } else if ctxt.get_extensions().gl_arb_vertex_buffer_object {
-        true
-    } else if ctxt.get_version() >= &Version(Api::GlEs, 1, 0) {
-        false
-    } else {
-        unreachable!();
-    }
+    // `glGetBufferSubData` is available on desktop GL and WebGL 2, but not on OpenGL ES
+    ctxt.get_version().0 == Api::Gl || is_webgl()
 }
 
 /// Creates a new buffer.
@@ -1331,7 +1338,7 @@ unsafe fn create_buffer<D: ?Sized>(
     data: Option<&D>,
     ty: BufferType,
     mode: BufferMode,
-) -> Result<(gl::types::GLuint, bool, bool, Option<*mut raw::c_void>), BufferCreationError>
+) -> Result<(glow::Buffer, bool, bool, Option<*mut raw::c_void>), BufferCreationError>
 where
     D: Content,
 {
@@ -1344,21 +1351,13 @@ where
     }
 
     // creating the id of the buffer
-    let id = {
-        let mut id: gl::types::GLuint = 0;
+    let id =
         if ctxt.version >= &Version(Api::Gl, 4, 5) || ctxt.extensions.gl_arb_direct_state_access {
-            ctxt.gl.CreateBuffers(1, &mut id);
-        } else if ctxt.version >= &Version(Api::Gl, 1, 5)
-            || ctxt.version >= &Version(Api::GlEs, 2, 0)
-        {
-            ctxt.gl.GenBuffers(1, &mut id);
-        } else if ctxt.extensions.gl_arb_vertex_buffer_object {
-            ctxt.gl.GenBuffersARB(1, &mut id);
+            ctxt.glow.create_named_buffer()
         } else {
-            unreachable!();
+            ctxt.glow.create_buffer()
         }
-        id
-    };
+        .expect("glGenBuffers failed");
 
     // raw pointer to data
     let data_ptr = if let Some(data) = data {
@@ -1373,10 +1372,17 @@ where
     };
 
     // if the `size` is 0 bytes then we use 1 instead, otherwise nvidia drivers complain
-    // note that according to glium the size of the buffer will remain 0
+    // note that according to SafeGL the size of the buffer will remain 0
     let size = match size {
         0 => 1,
         a => a,
+    };
+
+    // the data as a slice of bytes, for the functions that take one
+    let data_bytes = if data_ptr.is_null() {
+        None
+    } else {
+        Some(std::slice::from_raw_parts(data_ptr as *const u8, size))
     };
 
     // the flags to use in the case where only `glBufferData` is supported
@@ -1403,7 +1409,7 @@ where
     };
 
     // will store the actual size of the buffer so that we can compare it with the expected size
-    let mut obtained_size: gl::types::GLint = 0;
+    let obtained_size: gl::types::GLint;
 
     // the value of `immutable` is determined below
     // if true, the buffer won't be modifiable with regular OpenGL function calls
@@ -1413,119 +1419,56 @@ where
     let created_with_buffer_storage: bool;
 
     if ctxt.version >= &Version(Api::Gl, 4, 5) || ctxt.extensions.gl_arb_direct_state_access {
-        ctxt.gl.NamedBufferStorage(
-            id,
-            size as gl::types::GLsizeiptr,
-            data_ptr as *const _,
-            immutable_storage_flags,
-        );
-        ctxt.gl
-            .GetNamedBufferParameteriv(id, gl::BUFFER_SIZE, &mut obtained_size);
+        ctxt.glow
+            .named_buffer_storage(id, size as i32, data_bytes, immutable_storage_flags);
+        let bind = bind_buffer(&mut ctxt, Some(id), ty);
+        obtained_size = ctxt.glow.get_buffer_parameter_i32(bind, glow::BUFFER_SIZE);
         immutable = could_be_immutable;
         created_with_buffer_storage = true;
-    } else if ctxt.extensions.gl_arb_buffer_storage && ctxt.extensions.gl_ext_direct_state_access {
-        ctxt.gl.NamedBufferStorageEXT(
-            id,
-            size as gl::types::GLsizeiptr,
-            data_ptr as *const _,
-            immutable_storage_flags,
-        );
-        ctxt.gl
-            .GetNamedBufferParameterivEXT(id, gl::BUFFER_SIZE, &mut obtained_size);
+    } else if ctxt.version >= &Version(Api::Gl, 4, 4)
+        || ctxt.extensions.gl_arb_buffer_storage
+        || ctxt.extensions.gl_ext_buffer_storage
+    {
+        // glow falls back to glBufferStorageEXT when the core function isn't loaded
+        let bind = bind_buffer(&mut ctxt, Some(id), ty);
+        ctxt.glow
+            .buffer_storage(bind, size as i32, data_bytes, immutable_storage_flags);
+        obtained_size = ctxt.glow.get_buffer_parameter_i32(bind, glow::BUFFER_SIZE);
         immutable = could_be_immutable;
         created_with_buffer_storage = true;
-    } else if ctxt.version >= &Version(Api::Gl, 4, 4) || ctxt.extensions.gl_arb_buffer_storage {
-        let bind = bind_buffer(&mut ctxt, id, ty);
-        ctxt.gl.BufferStorage(
-            bind,
-            size as gl::types::GLsizeiptr,
-            data_ptr as *const _,
-            immutable_storage_flags,
-        );
-        ctxt.gl
-            .GetBufferParameteriv(bind, gl::BUFFER_SIZE, &mut obtained_size);
-        immutable = could_be_immutable;
-        created_with_buffer_storage = true;
-    } else if ctxt.extensions.gl_ext_buffer_storage {
-        let bind = bind_buffer(&mut ctxt, id, ty);
-        ctxt.gl.BufferStorageEXT(
-            bind,
-            size as gl::types::GLsizeiptr,
-            data_ptr as *const _,
-            immutable_storage_flags,
-        );
-        ctxt.gl
-            .GetBufferParameteriv(bind, gl::BUFFER_SIZE, &mut obtained_size);
-        immutable = could_be_immutable;
-        created_with_buffer_storage = true;
-    } else if ctxt.version >= &Version(Api::Gl, 1, 5) || ctxt.version >= &Version(Api::GlEs, 2, 0) {
-        let bind = bind_buffer(&mut ctxt, id, ty);
-        ctxt.gl.BufferData(
-            bind,
-            size as gl::types::GLsizeiptr,
-            data_ptr as *const _,
-            mutable_storage_flags,
-        );
-        ctxt.gl
-            .GetBufferParameteriv(bind, gl::BUFFER_SIZE, &mut obtained_size);
-        immutable = false;
-        created_with_buffer_storage = false;
-    } else if ctxt.extensions.gl_arb_vertex_buffer_object {
-        let bind = bind_buffer(&mut ctxt, id, ty);
-        ctxt.gl.BufferDataARB(
-            bind,
-            size as gl::types::GLsizeiptr,
-            data_ptr as *const _,
-            mutable_storage_flags,
-        );
-        ctxt.gl
-            .GetBufferParameterivARB(bind, gl::BUFFER_SIZE, &mut obtained_size);
-        immutable = false;
-        created_with_buffer_storage = false;
     } else {
-        unreachable!();
+        let bind = bind_buffer(&mut ctxt, Some(id), ty);
+        match data_bytes {
+            Some(data) => ctxt
+                .glow
+                .buffer_data_u8_slice(bind, data, mutable_storage_flags),
+            None => ctxt
+                .glow
+                .buffer_data_size(bind, size as i32, mutable_storage_flags),
+        }
+        obtained_size = ctxt.glow.get_buffer_parameter_i32(bind, glow::BUFFER_SIZE);
+        immutable = false;
+        created_with_buffer_storage = false;
     }
 
     if size != obtained_size as usize {
-        if ctxt.version >= &Version(Api::Gl, 1, 5) || ctxt.version >= &Version(Api::GlEs, 2, 0) {
-            ctxt.gl.DeleteBuffers(1, [id].as_ptr());
-        } else if ctxt.extensions.gl_arb_vertex_buffer_object {
-            ctxt.gl.DeleteBuffersARB(1, [id].as_ptr());
-        } else {
-            unreachable!();
-        }
+        ctxt.glow.delete_buffer(id);
 
         return Err(BufferCreationError::OutOfMemory);
     }
 
     let persistent_mapping = if let BufferMode::Persistent = mode {
         if immutable {
-            let ptr = if ctxt.version >= &Version(Api::Gl, 4, 5) {
-                ctxt.gl.MapNamedBufferRange(
-                    id,
-                    0,
-                    size as gl::types::GLsizeiptr,
-                    gl::MAP_READ_BIT
-                        | gl::MAP_WRITE_BIT
-                        | gl::MAP_PERSISTENT_BIT
-                        | gl::MAP_FLUSH_EXPLICIT_BIT,
-                )
-            } else if ctxt.version >= &Version(Api::Gl, 3, 0)
-                || ctxt.extensions.gl_arb_map_buffer_range
-            {
-                let bind = bind_buffer(&mut ctxt, id, ty);
-                ctxt.gl.MapBufferRange(
-                    bind,
-                    0,
-                    size as gl::types::GLsizeiptr,
-                    gl::MAP_READ_BIT
-                        | gl::MAP_WRITE_BIT
-                        | gl::MAP_PERSISTENT_BIT
-                        | gl::MAP_FLUSH_EXPLICIT_BIT,
-                )
-            } else {
-                unreachable!();
-            };
+            let bind = bind_buffer(&mut ctxt, Some(id), ty);
+            let ptr = ctxt.glow.map_buffer_range(
+                bind,
+                0,
+                size as i32,
+                glow::MAP_READ_BIT
+                    | glow::MAP_WRITE_BIT
+                    | glow::MAP_PERSISTENT_BIT
+                    | glow::MAP_FLUSH_EXPLICIT_BIT,
+            ) as *mut raw::c_void;
 
             if ptr.is_null() {
                 let error = crate::get_gl_error(ctxt);
@@ -1551,35 +1494,15 @@ where
 /// Returns true if a given buffer type is supported on a platform.
 fn is_buffer_type_supported(ctxt: &mut CommandContext<'_>, ty: BufferType) -> bool {
     match ty {
-        // glium fails to initialize if they are not supported
+        // SafeGL fails to initialize if they are not supported
         BufferType::ArrayBuffer | BufferType::ElementArrayBuffer => true,
 
-        BufferType::PixelPackBuffer | BufferType::PixelUnpackBuffer => {
-            ctxt.version >= &Version(Api::Gl, 2, 1)
-                || ctxt.version >= &Version(Api::GlEs, 3, 0)
-                || ctxt.extensions.gl_arb_pixel_buffer_object
-                || ctxt.extensions.gl_nv_pixel_buffer_object
-        }
-
-        BufferType::UniformBuffer => {
-            ctxt.version >= &Version(Api::Gl, 3, 1)
-                || ctxt.version >= &Version(Api::GlEs, 3, 0)
-                || ctxt.extensions.gl_arb_uniform_buffer_object
-        }
-
-        BufferType::CopyReadBuffer => {
-            ctxt.version >= &Version(Api::Gl, 3, 1)
-                || ctxt.extensions.gl_arb_copy_buffer
-                || ctxt.version >= &Version(Api::GlEs, 3, 0)
-                || ctxt.extensions.gl_nv_copy_buffer
-        }
-
-        BufferType::CopyWriteBuffer => {
-            ctxt.version >= &Version(Api::Gl, 3, 0)
-                || ctxt.extensions.gl_arb_copy_buffer
-                || ctxt.version >= &Version(Api::GlEs, 3, 0)
-                || ctxt.extensions.gl_nv_copy_buffer
-        }
+        // core in OpenGL 3.1 and OpenGL ES 3.0
+        BufferType::PixelPackBuffer
+        | BufferType::PixelUnpackBuffer
+        | BufferType::UniformBuffer
+        | BufferType::CopyReadBuffer
+        | BufferType::CopyWriteBuffer => true,
 
         BufferType::DrawIndirectBuffer => {
             // TODO: draw indirect buffers are actually supported in OpenGL 4.0 or
@@ -1590,6 +1513,7 @@ fn is_buffer_type_supported(ctxt: &mut CommandContext<'_>, ty: BufferType) -> bo
                 || ctxt.extensions.gl_ext_multi_draw_indirect
         }
 
+        #[cfg(feature = "gl46")]
         BufferType::DispatchIndirectBuffer => {
             ctxt.version >= &Version(Api::Gl, 4, 3)
                 || ctxt.version >= &Version(Api::GlEs, 3, 1)
@@ -1597,31 +1521,29 @@ fn is_buffer_type_supported(ctxt: &mut CommandContext<'_>, ty: BufferType) -> bo
         }
 
         BufferType::TextureBuffer => {
-            ctxt.version >= &Version(Api::Gl, 3, 0)
-                || ctxt.extensions.gl_arb_texture_buffer_object
-                || ctxt.extensions.gl_ext_texture_buffer_object
+            ctxt.version.0 == Api::Gl
                 || ctxt.extensions.gl_ext_texture_buffer
                 || ctxt.extensions.gl_oes_texture_buffer
         }
 
+        #[cfg(feature = "gl46")]
         BufferType::QueryBuffer => {
             ctxt.version >= &Version(Api::Gl, 4, 4)
                 || ctxt.extensions.gl_arb_query_buffer_object
                 || ctxt.extensions.gl_amd_query_buffer_object
         }
 
+        #[cfg(feature = "gl46")]
         BufferType::ShaderStorageBuffer => {
             ctxt.version >= &Version(Api::Gl, 4, 3)
                 || ctxt.extensions.gl_arb_shader_storage_buffer_object
                 || ctxt.extensions.gl_nv_shader_storage_buffer_object
         }
 
-        BufferType::TransformFeedbackBuffer => {
-            ctxt.version >= &Version(Api::Gl, 3, 0)
-                || ctxt.extensions.gl_ext_transform_feedback
-                || ctxt.extensions.gl_nv_transform_feedback
-        }
+        // FIXME: transform feedback buffers are also core in OpenGL ES 3.0
+        BufferType::TransformFeedbackBuffer => ctxt.version.0 == Api::Gl,
 
+        #[cfg(feature = "gl46")]
         BufferType::AtomicCounterBuffer => {
             ctxt.version >= &Version(Api::Gl, 4, 2)
                 || ctxt.extensions.gl_arb_shader_atomic_counters
@@ -1631,14 +1553,14 @@ fn is_buffer_type_supported(ctxt: &mut CommandContext<'_>, ty: BufferType) -> bo
 }
 
 /// Binds a buffer of the given type, and returns the GLenum of the bind point.
-/// `id` can be 0.
+/// `id` can be `None`.
 ///
 /// ## Unsafety
 ///
 /// Assumes that the type of buffer is supported by the backend.
 unsafe fn bind_buffer(
     ctxt: &mut CommandContext<'_>,
-    id: gl::types::GLuint,
+    id: Option<glow::Buffer>,
     ty: BufferType,
 ) -> gl::types::GLenum {
     macro_rules! check {
@@ -1649,15 +1571,7 @@ unsafe fn bind_buffer(
                 if ctxt.state.$state_var != $input_id {
                     ctxt.state.$state_var = $input_id;
 
-                    if ctxt.version >= &Version(Api::Gl, 1, 5)
-                        || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                    {
-                        ctxt.gl.BindBuffer(en, id);
-                    } else if ctxt.extensions.gl_arb_vertex_buffer_object {
-                        ctxt.gl.BindBufferARB(en, id);
-                    } else {
-                        unreachable!();
-                    }
+                    ctxt.glow.bind_buffer(en, id);
                 }
 
                 return en;
@@ -1671,6 +1585,7 @@ unsafe fn bind_buffer(
     check!(ctxt, id, ty, UniformBuffer, uniform_buffer_binding);
     check!(ctxt, id, ty, CopyReadBuffer, copy_read_buffer_binding);
     check!(ctxt, id, ty, CopyWriteBuffer, copy_write_buffer_binding);
+    #[cfg(feature = "gl46")]
     check!(
         ctxt,
         id,
@@ -1685,8 +1600,10 @@ unsafe fn bind_buffer(
         DrawIndirectBuffer,
         draw_indirect_buffer_binding
     );
+    #[cfg(feature = "gl46")]
     check!(ctxt, id, ty, QueryBuffer, query_buffer_binding);
     check!(ctxt, id, ty, TextureBuffer, texture_buffer_binding);
+    #[cfg(feature = "gl46")]
     check!(
         ctxt,
         id,
@@ -1694,6 +1611,7 @@ unsafe fn bind_buffer(
         AtomicCounterBuffer,
         atomic_counter_buffer_binding
     );
+    #[cfg(feature = "gl46")]
     check!(
         ctxt,
         id,
@@ -1706,13 +1624,7 @@ unsafe fn bind_buffer(
         // TODO: the state if the current buffer is not cached
         VertexAttributesSystem::hijack_current_element_array_buffer(ctxt);
 
-        if ctxt.version >= &Version(Api::Gl, 1, 5) || ctxt.version >= &Version(Api::GlEs, 2, 0) {
-            ctxt.gl.BindBuffer(gl::ELEMENT_ARRAY_BUFFER, id);
-        } else if ctxt.extensions.gl_arb_vertex_buffer_object {
-            ctxt.gl.BindBufferARB(gl::ELEMENT_ARRAY_BUFFER, id);
-        } else {
-            unreachable!();
-        }
+        ctxt.glow.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, id);
 
         return gl::ELEMENT_ARRAY_BUFFER;
     }
@@ -1725,14 +1637,7 @@ unsafe fn bind_buffer(
         if ctxt.state.indexed_transform_feedback_buffer_bindings[0].buffer != id {
             ctxt.state.indexed_transform_feedback_buffer_bindings[0].buffer = id;
 
-            if ctxt.version >= &Version(Api::Gl, 1, 5) || ctxt.version >= &Version(Api::GlEs, 2, 0)
-            {
-                ctxt.gl.BindBuffer(gl::TRANSFORM_FEEDBACK_BUFFER, id);
-            } else if ctxt.extensions.gl_arb_vertex_buffer_object {
-                ctxt.gl.BindBufferARB(gl::TRANSFORM_FEEDBACK_BUFFER, id);
-            } else {
-                unreachable!();
-            }
+            ctxt.glow.bind_buffer(glow::TRANSFORM_FEEDBACK_BUFFER, id);
         }
 
         return gl::TRANSFORM_FEEDBACK_BUFFER;
@@ -1752,7 +1657,7 @@ unsafe fn bind_buffer(
 /// Assumes that the type of buffer is supported by the backend.
 unsafe fn indexed_bind_buffer(
     ctxt: &mut CommandContext<'_>,
-    id: gl::types::GLuint,
+    id: glow::Buffer,
     ty: BufferType,
     index: gl::types::GLuint,
     range: Range<usize>,
@@ -1777,21 +1682,18 @@ unsafe fn indexed_bind_buffer(
                 }
 
                 let unit = &mut ctxt.state.$state_var[$input_index as usize];
-                if unit.buffer != $input_id || unit.offset != offset || unit.size != size {
-                    unit.buffer = $input_id;
+                if unit.buffer != Some($input_id) || unit.offset != offset || unit.size != size {
+                    unit.buffer = Some($input_id);
                     unit.offset = offset;
                     unit.size = size;
 
-                    if ctxt.version >= &Version(Api::Gl, 3, 0)
-                        || ctxt.version >= &Version(Api::GlEs, 3, 0)
-                    {
-                        ctxt.gl.BindBufferRange(en, $input_index, id, offset, size);
-                    } else if ctxt.extensions.gl_ext_transform_feedback {
-                        ctxt.gl
-                            .BindBufferRangeEXT(en, $input_index, id, offset, size);
-                    } else {
-                        panic!("The backend doesn't support indexed buffer bind points");
-                    }
+                    ctxt.glow.bind_buffer_range(
+                        en,
+                        $input_index,
+                        Some(id),
+                        offset as i32,
+                        size as i32,
+                    );
                 }
 
                 return;
@@ -1817,6 +1719,7 @@ unsafe fn indexed_bind_buffer(
         indexed_transform_feedback_buffer_bindings,
         max_indexed_transform_feedback_buffer
     );
+    #[cfg(feature = "gl46")]
     check!(
         ctxt,
         id,
@@ -1826,6 +1729,7 @@ unsafe fn indexed_bind_buffer(
         indexed_atomic_counter_buffer_bindings,
         max_indexed_atomic_counter_buffer
     );
+    #[cfg(feature = "gl46")]
     check!(
         ctxt,
         id,
@@ -1847,169 +1751,138 @@ unsafe fn indexed_bind_buffer(
 ///
 unsafe fn copy_buffer(
     ctxt: &mut CommandContext<'_>,
-    source: gl::types::GLuint,
+    source: glow::Buffer,
     source_offset: usize,
-    dest: gl::types::GLuint,
+    dest: glow::Buffer,
     dest_offset: usize,
     size: usize,
 ) -> Result<(), CopyError> {
-    if ctxt.version >= &Version(Api::Gl, 4, 5) || ctxt.extensions.gl_arb_direct_state_access {
-        ctxt.gl.CopyNamedBufferSubData(
-            source,
-            dest,
-            source_offset as gl::types::GLintptr,
-            dest_offset as gl::types::GLintptr,
-            size as gl::types::GLsizeiptr,
-        );
-    } else if ctxt.extensions.gl_ext_direct_state_access {
-        ctxt.gl.NamedCopyBufferSubDataEXT(
-            source,
-            dest,
-            source_offset as gl::types::GLintptr,
-            dest_offset as gl::types::GLintptr,
-            size as gl::types::GLsizeiptr,
-        );
-    } else if ctxt.version >= &Version(Api::Gl, 3, 1)
-        || ctxt.version >= &Version(Api::GlEs, 3, 0)
-        || ctxt.extensions.gl_arb_copy_buffer
-        || ctxt.extensions.gl_nv_copy_buffer
-    {
-        fn find_bind_point(
-            ctxt: &mut CommandContext<'_>,
-            id: gl::types::GLuint,
-        ) -> Option<gl::types::GLenum> {
-            if ctxt.state.array_buffer_binding == id {
-                Some(gl::ARRAY_BUFFER)
-            } else if ctxt.state.pixel_pack_buffer_binding == id {
-                Some(gl::PIXEL_PACK_BUFFER)
-            } else if ctxt.state.pixel_unpack_buffer_binding == id {
-                Some(gl::PIXEL_UNPACK_BUFFER)
-            } else if ctxt.state.uniform_buffer_binding == id {
-                Some(gl::UNIFORM_BUFFER)
-            } else if ctxt.state.copy_read_buffer_binding == id {
-                Some(gl::COPY_READ_BUFFER)
-            } else if ctxt.state.copy_write_buffer_binding == id {
-                Some(gl::COPY_WRITE_BUFFER)
-            } else {
-                None
-            }
-        }
-
-        let source_bind_point = match find_bind_point(ctxt, source) {
-            Some(p) => p,
-            None => {
-                // if the source is not bound and the destination is bound to COPY_READ,
-                // we bind the source to COPY_WRITE instead, to avoid a state change
-                if ctxt.state.copy_read_buffer_binding == dest {
-                    bind_buffer(ctxt, source, BufferType::CopyWriteBuffer)
-                } else {
-                    bind_buffer(ctxt, source, BufferType::CopyReadBuffer)
-                }
-            }
-        };
-
-        let dest_bind_point = match find_bind_point(ctxt, dest) {
-            Some(p) => p,
-            None => bind_buffer(ctxt, dest, BufferType::CopyWriteBuffer),
-        };
-
-        if ctxt.version >= &Version(Api::Gl, 3, 1)
-            || ctxt.version >= &Version(Api::GlEs, 3, 0)
-            || ctxt.extensions.gl_arb_copy_buffer
-        {
-            ctxt.gl.CopyBufferSubData(
-                source_bind_point,
-                dest_bind_point,
-                source_offset as gl::types::GLintptr,
-                dest_offset as gl::types::GLintptr,
-                size as gl::types::GLsizeiptr,
-            );
-        } else if ctxt.extensions.gl_nv_copy_buffer {
-            ctxt.gl.CopyBufferSubDataNV(
-                source_bind_point,
-                dest_bind_point,
-                source_offset as gl::types::GLintptr,
-                dest_offset as gl::types::GLintptr,
-                size as gl::types::GLsizeiptr,
-            );
+    fn find_bind_point(
+        ctxt: &mut CommandContext<'_>,
+        id: glow::Buffer,
+    ) -> Option<gl::types::GLenum> {
+        if ctxt.state.array_buffer_binding == Some(id) {
+            Some(gl::ARRAY_BUFFER)
+        } else if ctxt.state.pixel_pack_buffer_binding == Some(id) {
+            Some(gl::PIXEL_PACK_BUFFER)
+        } else if ctxt.state.pixel_unpack_buffer_binding == Some(id) {
+            Some(gl::PIXEL_UNPACK_BUFFER)
+        } else if ctxt.state.uniform_buffer_binding == Some(id) {
+            Some(gl::UNIFORM_BUFFER)
+        } else if ctxt.state.copy_read_buffer_binding == Some(id) {
+            Some(gl::COPY_READ_BUFFER)
+        } else if ctxt.state.copy_write_buffer_binding == Some(id) {
+            Some(gl::COPY_WRITE_BUFFER)
         } else {
-            unreachable!();
+            None
         }
-    } else {
-        return Err(CopyError::NotSupported);
     }
+
+    let source_bind_point = match find_bind_point(ctxt, source) {
+        Some(p) => p,
+        None => {
+            // if the source is not bound and the destination is bound to COPY_READ,
+            // we bind the source to COPY_WRITE instead, to avoid a state change
+            if ctxt.state.copy_read_buffer_binding == Some(dest) {
+                bind_buffer(ctxt, Some(source), BufferType::CopyWriteBuffer)
+            } else {
+                bind_buffer(ctxt, Some(source), BufferType::CopyReadBuffer)
+            }
+        }
+    };
+
+    let dest_bind_point = match find_bind_point(ctxt, dest) {
+        Some(p) => p,
+        None => {
+            // if the source is bound to COPY_WRITE, binding the destination there would
+            // replace the source, so we bind the destination to COPY_READ instead
+            if source_bind_point == gl::COPY_WRITE_BUFFER {
+                bind_buffer(ctxt, Some(dest), BufferType::CopyReadBuffer)
+            } else {
+                bind_buffer(ctxt, Some(dest), BufferType::CopyWriteBuffer)
+            }
+        }
+    };
+
+    ctxt.glow.copy_buffer_sub_data(
+        source_bind_point,
+        dest_bind_point,
+        source_offset as i32,
+        dest_offset as i32,
+        size as i32,
+    );
 
     Ok(())
 }
 
 /// Destroys a buffer.
-unsafe fn destroy_buffer(ctxt: &mut CommandContext<'_>, id: gl::types::GLuint) {
+unsafe fn destroy_buffer(ctxt: &mut CommandContext<'_>, id: glow::Buffer) {
     // FIXME: uncomment this and move it from Buffer's destructor
     //self.context.vertex_array_objects.purge_buffer(&mut ctxt, id);
 
-    if ctxt.state.array_buffer_binding == id {
-        ctxt.state.array_buffer_binding = 0;
+    if ctxt.state.array_buffer_binding == Some(id) {
+        ctxt.state.array_buffer_binding = None;
     }
 
-    if ctxt.state.pixel_pack_buffer_binding == id {
-        ctxt.state.pixel_pack_buffer_binding = 0;
+    if ctxt.state.pixel_pack_buffer_binding == Some(id) {
+        ctxt.state.pixel_pack_buffer_binding = None;
     }
 
-    if ctxt.state.pixel_unpack_buffer_binding == id {
-        ctxt.state.pixel_unpack_buffer_binding = 0;
+    if ctxt.state.pixel_unpack_buffer_binding == Some(id) {
+        ctxt.state.pixel_unpack_buffer_binding = None;
     }
 
-    if ctxt.state.uniform_buffer_binding == id {
-        ctxt.state.uniform_buffer_binding = 0;
+    if ctxt.state.uniform_buffer_binding == Some(id) {
+        ctxt.state.uniform_buffer_binding = None;
     }
 
-    if ctxt.state.copy_read_buffer_binding == id {
-        ctxt.state.copy_read_buffer_binding = 0;
+    if ctxt.state.copy_read_buffer_binding == Some(id) {
+        ctxt.state.copy_read_buffer_binding = None;
     }
 
-    if ctxt.state.copy_write_buffer_binding == id {
-        ctxt.state.copy_write_buffer_binding = 0;
+    if ctxt.state.copy_write_buffer_binding == Some(id) {
+        ctxt.state.copy_write_buffer_binding = None;
     }
 
-    if ctxt.state.dispatch_indirect_buffer_binding == id {
-        ctxt.state.dispatch_indirect_buffer_binding = 0;
+    if ctxt.state.dispatch_indirect_buffer_binding == Some(id) {
+        ctxt.state.dispatch_indirect_buffer_binding = None;
     }
 
-    if ctxt.state.draw_indirect_buffer_binding == id {
-        ctxt.state.draw_indirect_buffer_binding = 0;
+    if ctxt.state.draw_indirect_buffer_binding == Some(id) {
+        ctxt.state.draw_indirect_buffer_binding = None;
     }
 
-    if ctxt.state.query_buffer_binding == id {
-        ctxt.state.query_buffer_binding = 0;
+    if ctxt.state.query_buffer_binding == Some(id) {
+        ctxt.state.query_buffer_binding = None;
     }
 
-    if ctxt.state.texture_buffer_binding == id {
-        ctxt.state.texture_buffer_binding = 0;
+    if ctxt.state.texture_buffer_binding == Some(id) {
+        ctxt.state.texture_buffer_binding = None;
     }
 
-    if ctxt.state.atomic_counter_buffer_binding == id {
-        ctxt.state.atomic_counter_buffer_binding = 0;
+    if ctxt.state.atomic_counter_buffer_binding == Some(id) {
+        ctxt.state.atomic_counter_buffer_binding = None;
     }
 
-    if ctxt.state.shader_storage_buffer_binding == id {
-        ctxt.state.shader_storage_buffer_binding = 0;
+    if ctxt.state.shader_storage_buffer_binding == Some(id) {
+        ctxt.state.shader_storage_buffer_binding = None;
     }
 
     for point in ctxt.state.indexed_atomic_counter_buffer_bindings.iter_mut() {
-        if point.buffer == id {
-            point.buffer = 0;
+        if point.buffer == Some(id) {
+            point.buffer = None;
         }
     }
 
     for point in ctxt.state.indexed_shader_storage_buffer_bindings.iter_mut() {
-        if point.buffer == id {
-            point.buffer = 0;
+        if point.buffer == Some(id) {
+            point.buffer = None;
         }
     }
 
     for point in ctxt.state.indexed_uniform_buffer_bindings.iter_mut() {
-        if point.buffer == id {
-            point.buffer = 0;
+        if point.buffer == Some(id) {
+            point.buffer = None;
         }
     }
 
@@ -2019,52 +1892,24 @@ unsafe fn destroy_buffer(ctxt: &mut CommandContext<'_>, id: gl::types::GLuint) {
         .iter_mut()
     {
         // FIXME: end transform feedback if it is active
-        if point.buffer == id {
-            point.buffer = 0;
+        if point.buffer == Some(id) {
+            point.buffer = None;
         }
     }
 
-    if ctxt.version >= &Version(Api::Gl, 1, 5) || ctxt.version >= &Version(Api::GlEs, 2, 0) {
-        ctxt.gl.DeleteBuffers(1, [id].as_ptr());
-    } else if ctxt.extensions.gl_arb_vertex_buffer_object {
-        ctxt.gl.DeleteBuffersARB(1, [id].as_ptr());
-    } else {
-        unreachable!();
-    }
+    ctxt.glow.delete_buffer(id);
 }
 
 /// Flushes a range of a mapped buffer.
 unsafe fn flush_range(
     mut ctxt: &mut CommandContext<'_>,
-    id: gl::types::GLuint,
+    id: glow::Buffer,
     ty: BufferType,
     range: Range<usize>,
 ) {
-    if ctxt.version >= &Version(Api::Gl, 4, 5) || ctxt.extensions.gl_arb_direct_state_access {
-        ctxt.gl.FlushMappedNamedBufferRange(
-            id,
-            range.start as gl::types::GLintptr,
-            (range.end - range.start) as gl::types::GLsizeiptr,
-        );
-    } else if ctxt.extensions.gl_ext_direct_state_access {
-        ctxt.gl.FlushMappedNamedBufferRangeEXT(
-            id,
-            range.start as gl::types::GLintptr,
-            (range.end - range.start) as gl::types::GLsizeiptr,
-        );
-    } else if ctxt.version >= &Version(Api::Gl, 3, 0)
-        || ctxt.version >= &Version(Api::GlEs, 3, 0)
-        || ctxt.extensions.gl_arb_map_buffer_range
-    {
-        let bind = bind_buffer(&mut ctxt, id, ty);
-        ctxt.gl.FlushMappedBufferRange(
-            bind,
-            range.start as gl::types::GLintptr,
-            (range.end - range.start) as gl::types::GLsizeiptr,
-        )
-    } else {
-        unreachable!();
-    }
+    let bind = bind_buffer(&mut ctxt, Some(id), ty);
+    ctxt.glow
+        .flush_mapped_buffer_range(bind, range.start as i32, (range.end - range.start) as i32)
 }
 
 /// Maps a range of a buffer.
@@ -2072,7 +1917,7 @@ unsafe fn flush_range(
 /// *Warning*: always passes `GL_MAP_FLUSH_EXPLICIT_BIT`.
 unsafe fn map_buffer(
     mut ctxt: &mut CommandContext<'_>,
-    id: gl::types::GLuint,
+    id: glow::Buffer,
     ty: BufferType,
     range: Range<usize>,
     read: bool,
@@ -2085,27 +1930,13 @@ unsafe fn map_buffer(
         (false, false) => 0,
     };
 
-    if ctxt.version >= &Version(Api::Gl, 4, 5) {
-        Some(ctxt.gl.MapNamedBufferRange(
-            id,
-            range.start as gl::types::GLintptr,
-            (range.end - range.start) as gl::types::GLsizeiptr,
-            flags,
-        ) as *mut ())
-    } else if ctxt.version >= &Version(Api::Gl, 3, 0)
-        || ctxt.version >= &Version(Api::GlEs, 3, 0)
-        || ctxt.extensions.gl_arb_map_buffer_range
-    {
-        let bind = bind_buffer(&mut ctxt, id, ty);
-        Some(ctxt.gl.MapBufferRange(
-            bind,
-            range.start as gl::types::GLintptr,
-            (range.end - range.start) as gl::types::GLsizeiptr,
-            flags,
-        ) as *mut ())
-    } else {
-        None // FIXME:
-    }
+    let bind = bind_buffer(&mut ctxt, Some(id), ty);
+    Some(ctxt.glow.map_buffer_range(
+        bind,
+        range.start as i32,
+        (range.end - range.start) as i32,
+        flags,
+    ) as *mut ())
 }
 
 /// Unmaps a previously-mapped buffer.
@@ -2113,16 +1944,7 @@ unsafe fn map_buffer(
 /// # Safety
 ///
 /// Assumes that the buffer exists, that it is of the right type, and that it is already mapped.
-unsafe fn unmap_buffer(mut ctxt: &mut CommandContext<'_>, id: gl::types::GLuint, ty: BufferType) {
-    if ctxt.version >= &Version(Api::Gl, 4, 5) {
-        ctxt.gl.UnmapNamedBuffer(id);
-    } else if ctxt.version >= &Version(Api::Gl, 1, 5) || ctxt.version >= &Version(Api::GlEs, 3, 0) {
-        let bind = bind_buffer(&mut ctxt, id, ty);
-        ctxt.gl.UnmapBuffer(bind);
-    } else if ctxt.extensions.gl_arb_vertex_buffer_object {
-        let bind = bind_buffer(&mut ctxt, id, ty);
-        ctxt.gl.UnmapBufferARB(bind);
-    } else {
-        unreachable!();
-    }
+unsafe fn unmap_buffer(mut ctxt: &mut CommandContext<'_>, id: glow::Buffer, ty: BufferType) {
+    let bind = bind_buffer(&mut ctxt, Some(id), ty);
+    ctxt.glow.unmap_buffer(bind);
 }

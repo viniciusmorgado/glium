@@ -1,3 +1,5 @@
+use glow::HasContext;
+
 use crate::BlitTarget;
 use crate::Rect;
 
@@ -33,13 +35,13 @@ pub fn blit(
 
         // scissor testing influences blitting
         if ctxt.state.enabled_scissor_test {
-            ctxt.gl.Disable(gl::SCISSOR_TEST);
+            ctxt.glow.disable(glow::SCISSOR_TEST);
             ctxt.state.enabled_scissor_test = false;
         }
 
         // trying to do a named blit if possible
         if ctxt.version >= &Version(Api::Gl, 4, 5) {
-            ctxt.gl.BlitNamedFramebuffer(
+            ctxt.glow.blit_named_framebuffer(
                 source,
                 target,
                 src_rect.left as gl::types::GLint,
@@ -59,53 +61,28 @@ pub fn blit(
 
         // binding source framebuffer
         if ctxt.state.read_framebuffer != source {
-            if ctxt.version >= &Version(Api::Gl, 3, 0) {
-                ctxt.gl.BindFramebuffer(gl::READ_FRAMEBUFFER, source);
-                ctxt.state.read_framebuffer = source;
-            } else {
-                ctxt.gl.BindFramebufferEXT(gl::READ_FRAMEBUFFER_EXT, source);
-                ctxt.state.read_framebuffer = source;
-            }
+            ctxt.glow.bind_framebuffer(glow::READ_FRAMEBUFFER, source);
+            ctxt.state.read_framebuffer = source;
         }
 
         // binding target framebuffer
         if ctxt.state.draw_framebuffer != target {
-            if ctxt.version >= &Version(Api::Gl, 3, 0) {
-                ctxt.gl.BindFramebuffer(gl::DRAW_FRAMEBUFFER, target);
-                ctxt.state.draw_framebuffer = target;
-            } else {
-                ctxt.gl.BindFramebufferEXT(gl::DRAW_FRAMEBUFFER_EXT, target);
-                ctxt.state.draw_framebuffer = target;
-            }
+            ctxt.glow.bind_framebuffer(glow::DRAW_FRAMEBUFFER, target);
+            ctxt.state.draw_framebuffer = target;
         }
 
         // doing the blit
-        if ctxt.version >= &Version(Api::Gl, 3, 0) {
-            ctxt.gl.BlitFramebuffer(
-                src_rect.left as gl::types::GLint,
-                src_rect.bottom as gl::types::GLint,
-                (src_rect.left + src_rect.width) as gl::types::GLint,
-                (src_rect.bottom + src_rect.height) as gl::types::GLint,
-                target_rect.left as gl::types::GLint,
-                target_rect.bottom as gl::types::GLint,
-                (target_rect.left as i32 + target_rect.width) as gl::types::GLint,
-                (target_rect.bottom as i32 + target_rect.height) as gl::types::GLint,
-                mask,
-                filter,
-            );
-        } else {
-            ctxt.gl.BlitFramebufferEXT(
-                src_rect.left as gl::types::GLint,
-                src_rect.bottom as gl::types::GLint,
-                (src_rect.left + src_rect.width) as gl::types::GLint,
-                (src_rect.bottom + src_rect.height) as gl::types::GLint,
-                target_rect.left as gl::types::GLint,
-                target_rect.bottom as gl::types::GLint,
-                (target_rect.left as i32 + target_rect.width) as gl::types::GLint,
-                (target_rect.bottom as i32 + target_rect.height) as gl::types::GLint,
-                mask,
-                filter,
-            );
-        }
+        ctxt.glow.blit_framebuffer(
+            src_rect.left as gl::types::GLint,
+            src_rect.bottom as gl::types::GLint,
+            (src_rect.left + src_rect.width) as gl::types::GLint,
+            (src_rect.bottom + src_rect.height) as gl::types::GLint,
+            target_rect.left as gl::types::GLint,
+            target_rect.bottom as gl::types::GLint,
+            (target_rect.left as i32 + target_rect.width) as gl::types::GLint,
+            (target_rect.bottom as i32 + target_rect.height) as gl::types::GLint,
+            mask,
+            filter,
+        );
     }
 }

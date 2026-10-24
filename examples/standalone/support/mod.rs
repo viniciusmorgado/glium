@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use glium::Display;
+use safegl::Display;
 use glutin::display::GetGlDisplay;
 use glutin::prelude::*;
 use glutin::surface::WindowSurface;
@@ -16,7 +16,7 @@ pub mod camera;
 pub fn load_wavefront(
     display: &Display<WindowSurface>,
     data: &[u8],
-) -> glium::vertex::VertexBufferAny {
+) -> safegl::vertex::VertexBufferAny {
     #[derive(Copy, Clone)]
     struct Vertex {
         position: [f32; 3],
@@ -54,7 +54,7 @@ pub fn load_wavefront(
         }
     }
 
-    glium::vertex::VertexBuffer::new(display, &vertex_data)
+    safegl::vertex::VertexBuffer::new(display, &vertex_data)
         .unwrap()
         .into()
 }
@@ -105,16 +105,16 @@ pub trait ApplicationContext {
     fn update(&mut self) {}
     fn handle_window_event(
         &mut self,
-        _event: &glium::winit::event::WindowEvent,
-        _window: &glium::winit::window::Window,
+        _event: &safegl::winit::event::WindowEvent,
+        _window: &safegl::winit::window::Window,
     ) {
     }
     const WINDOW_TITLE: &'static str;
 }
 
 pub struct State<T> {
-    pub display: glium::Display<WindowSurface>,
-    pub window: glium::winit::window::Window,
+    pub display: safegl::Display<WindowSurface>,
+    pub window: safegl::winit::window::Window,
     pub context: T,
 }
 
@@ -144,12 +144,12 @@ impl<T: ApplicationContext + 'static> ApplicationHandler<()> for App<T> {
         event: WindowEvent,
     ) {
         match event {
-            glium::winit::event::WindowEvent::Resized(new_size) => {
+            safegl::winit::event::WindowEvent::Resized(new_size) => {
                 if let Some(state) = &self.state {
                     state.display.resize(new_size.into());
                 }
             }
-            glium::winit::event::WindowEvent::RedrawRequested => {
+            safegl::winit::event::WindowEvent::RedrawRequested => {
                 if let Some(state) = &mut self.state {
                     state.context.update();
                     state.context.draw_frame(&state.display);
@@ -160,13 +160,13 @@ impl<T: ApplicationContext + 'static> ApplicationHandler<()> for App<T> {
             }
             // Exit the event loop when requested (by closing the window for example) or when
             // pressing the Esc key.
-            glium::winit::event::WindowEvent::CloseRequested
-            | glium::winit::event::WindowEvent::KeyboardInput {
+            safegl::winit::event::WindowEvent::CloseRequested
+            | safegl::winit::event::WindowEvent::KeyboardInput {
                 event:
-                    glium::winit::event::KeyEvent {
-                        state: glium::winit::event::ElementState::Pressed,
+                    safegl::winit::event::KeyEvent {
+                        state: safegl::winit::event::ElementState::Pressed,
                         logical_key:
-                            glium::winit::keyboard::Key::Named(glium::winit::keyboard::NamedKey::Escape),
+                            safegl::winit::keyboard::Key::Named(safegl::winit::keyboard::NamedKey::Escape),
                         ..
                     },
                 ..
@@ -188,7 +188,7 @@ impl<T: ApplicationContext + 'static> ApplicationHandler<()> for App<T> {
 }
 
 impl<T: ApplicationContext + 'static> State<T> {
-    pub fn new(event_loop: &glium::winit::event_loop::ActiveEventLoop, visible: bool) -> Self {
+    pub fn new(event_loop: &safegl::winit::event_loop::ActiveEventLoop, visible: bool) -> Self {
         let window_attributes = winit::window::Window::default_attributes()
             .with_title(T::WINDOW_TITLE)
             .with_visible(visible);
@@ -205,29 +205,29 @@ impl<T: ApplicationContext + 'static> State<T> {
             .unwrap();
         let window = window.unwrap();
 
-        // Then the configuration which decides which OpenGL version we'll end up using, here we just use the default which is currently 3.3 core
-        // When this fails we'll try and create an ES context, this is mainly used on mobile devices or various ARM SBC's
-        // If you depend on features available in modern OpenGL Versions you need to request a specific, modern, version. Otherwise things will very likely fail.
+        // Then the configuration which decides which OpenGL version we'll end up using. glutin's
+        // default (3.3 core) is below SafeGL's minimum, so we try the context versions of
+        // SafeGL's tier in order: the newest desktop OpenGL first, then OpenGL ES 3.0, which is
+        // mainly used on mobile devices or various ARM SBC's.
         let window_handle = window
             .window_handle()
             .expect("couldn't obtain window handle");
-        let context_attributes =
-            glutin::context::ContextAttributesBuilder::new().build(Some(window_handle.into()));
-        let fallback_context_attributes = glutin::context::ContextAttributesBuilder::new()
-            .with_context_api(glutin::context::ContextApi::Gles(None))
-            .build(Some(window_handle.into()));
-
-        let not_current_gl_context = Some(unsafe {
-            gl_config
-                .display()
-                .create_context(&gl_config, &context_attributes)
-                .unwrap_or_else(|_| {
-                    gl_config
-                        .display()
-                        .create_context(&gl_config, &fallback_context_attributes)
-                        .expect("failed to create context")
+        let not_current_gl_context = Some(
+            safegl::backend::glutin::tier_context_apis()
+                .into_iter()
+                .find_map(|api| {
+                    let context_attributes = glutin::context::ContextAttributesBuilder::new()
+                        .with_context_api(api)
+                        .build(Some(window_handle.into()));
+                    unsafe {
+                        gl_config
+                            .display()
+                            .create_context(&gl_config, &context_attributes)
+                            .ok()
+                    }
                 })
-        });
+                .expect("failed to create context"),
+        );
 
         // Determine our framebuffer size based on the window size, or default to 800x600 if it's invisible
         let (width, height): (u32, u32) = if visible {
@@ -251,14 +251,14 @@ impl<T: ApplicationContext + 'static> State<T> {
             .unwrap()
             .make_current(&surface)
             .unwrap();
-        let display = glium::Display::from_context_surface(current_context, surface).unwrap();
+        let display = safegl::Display::from_context_surface(current_context, surface).unwrap();
 
         Self::from_display_window(display, window)
     }
 
     pub fn from_display_window(
-        display: glium::Display<WindowSurface>,
-        window: glium::winit::window::Window,
+        display: safegl::Display<WindowSurface>,
+        window: safegl::winit::window::Window,
     ) -> Self {
         let context = T::new(&display);
         Self {
@@ -270,7 +270,7 @@ impl<T: ApplicationContext + 'static> State<T> {
 
     /// Start the event_loop and keep rendering frames until the program is closed
     pub fn run_loop() {
-        let event_loop = glium::winit::event_loop::EventLoop::builder()
+        let event_loop = safegl::winit::event_loop::EventLoop::builder()
             .build()
             .expect("event loop building");
         let mut app = App::<T> {
@@ -284,7 +284,7 @@ impl<T: ApplicationContext + 'static> State<T> {
 
     /// Create a context and draw a single frame
     pub fn run_once(visible: bool) {
-        let event_loop = glium::winit::event_loop::EventLoop::builder()
+        let event_loop = safegl::winit::event_loop::EventLoop::builder()
             .build()
             .expect("event loop building");
         let mut app = App::<T> {

@@ -1,5 +1,8 @@
+use glow::HasContext;
+
 use crate::context::CommandContext;
 use crate::gl;
+use crate::version::is_webgl;
 use crate::version::Api;
 use crate::version::Version;
 
@@ -155,238 +158,157 @@ pub fn get_format(
     ctxt: &mut CommandContext<'_>,
     texture: &TextureAny,
 ) -> Result<InternalFormat, GetFormatError> {
-    if ctxt.version >= &Version(Api::Gl, 3, 0) || ctxt.version >= &Version(Api::GlEs, 3, 0) {
-        let (
-            red_sz,
-            red_ty,
-            green_sz,
-            green_ty,
-            blue_sz,
-            blue_ty,
-            alpha_sz,
-            alpha_ty,
-            depth_sz,
+    // `glGetTexLevelParameteriv` is core in OpenGL ES 3.1, and doesn't exist on WebGL
+    if is_webgl() || (ctxt.version.0 == Api::GlEs && ctxt.version < &Version(Api::GlEs, 3, 1)) {
+        return Err(GetFormatError::NotSupported);
+    }
+
+    let (
+        red_sz,
+        red_ty,
+        green_sz,
+        green_ty,
+        blue_sz,
+        blue_ty,
+        alpha_sz,
+        alpha_ty,
+        depth_sz,
+        depth_ty,
+    ) = unsafe {
+        let red_sz;
+        let red_ty;
+        let green_sz;
+        let green_ty;
+        let blue_sz;
+        let blue_ty;
+        let alpha_sz;
+        let alpha_ty;
+        let depth_sz;
+        let depth_ty;
+
+        if ctxt.version >= &Version(Api::Gl, 4, 5) || ctxt.extensions.gl_arb_direct_state_access {
+            let id = texture.get_id();
+            red_sz = ctxt
+                .glow
+                .get_texture_level_parameter_i32(id, 0, glow::TEXTURE_RED_SIZE);
+            red_ty = ctxt
+                .glow
+                .get_texture_level_parameter_i32(id, 0, glow::TEXTURE_RED_TYPE);
+            green_sz = ctxt
+                .glow
+                .get_texture_level_parameter_i32(id, 0, glow::TEXTURE_GREEN_SIZE);
+            green_ty = ctxt
+                .glow
+                .get_texture_level_parameter_i32(id, 0, glow::TEXTURE_GREEN_TYPE);
+            blue_sz = ctxt
+                .glow
+                .get_texture_level_parameter_i32(id, 0, glow::TEXTURE_BLUE_SIZE);
+            blue_ty = ctxt
+                .glow
+                .get_texture_level_parameter_i32(id, 0, glow::TEXTURE_BLUE_TYPE);
+            alpha_sz = ctxt
+                .glow
+                .get_texture_level_parameter_i32(id, 0, glow::TEXTURE_ALPHA_SIZE);
+            alpha_ty = ctxt
+                .glow
+                .get_texture_level_parameter_i32(id, 0, glow::TEXTURE_ALPHA_TYPE);
+            depth_sz = ctxt
+                .glow
+                .get_texture_level_parameter_i32(id, 0, glow::TEXTURE_DEPTH_SIZE);
+            depth_ty = ctxt
+                .glow
+                .get_texture_level_parameter_i32(id, 0, glow::TEXTURE_DEPTH_TYPE);
+        } else {
+            let bind_point = texture.bind_to_current(ctxt);
+            red_sz = ctxt
+                .glow
+                .get_tex_level_parameter_i32(bind_point, 0, glow::TEXTURE_RED_SIZE);
+            red_ty = ctxt
+                .glow
+                .get_tex_level_parameter_i32(bind_point, 0, glow::TEXTURE_RED_TYPE);
+            green_sz =
+                ctxt.glow
+                    .get_tex_level_parameter_i32(bind_point, 0, glow::TEXTURE_GREEN_SIZE);
+            green_ty =
+                ctxt.glow
+                    .get_tex_level_parameter_i32(bind_point, 0, glow::TEXTURE_GREEN_TYPE);
+            blue_sz = ctxt
+                .glow
+                .get_tex_level_parameter_i32(bind_point, 0, glow::TEXTURE_BLUE_SIZE);
+            blue_ty = ctxt
+                .glow
+                .get_tex_level_parameter_i32(bind_point, 0, glow::TEXTURE_BLUE_TYPE);
+            alpha_sz =
+                ctxt.glow
+                    .get_tex_level_parameter_i32(bind_point, 0, glow::TEXTURE_ALPHA_SIZE);
+            alpha_ty =
+                ctxt.glow
+                    .get_tex_level_parameter_i32(bind_point, 0, glow::TEXTURE_ALPHA_TYPE);
+            depth_sz =
+                ctxt.glow
+                    .get_tex_level_parameter_i32(bind_point, 0, glow::TEXTURE_DEPTH_SIZE);
+            depth_ty =
+                ctxt.glow
+                    .get_tex_level_parameter_i32(bind_point, 0, glow::TEXTURE_DEPTH_TYPE);
+        }
+
+        (
+            red_sz as gl::types::GLenum,
+            red_ty as gl::types::GLenum,
+            green_sz as gl::types::GLenum,
+            green_ty as gl::types::GLenum,
+            blue_sz as gl::types::GLenum,
+            blue_ty as gl::types::GLenum,
+            alpha_sz as gl::types::GLenum,
+            alpha_ty as gl::types::GLenum,
+            depth_sz as gl::types::GLenum,
+            depth_ty as gl::types::GLenum,
+        )
+    };
+
+    Ok(
+        match (
+            red_sz, red_ty, green_sz, green_ty, blue_sz, blue_ty, alpha_sz, alpha_ty, depth_sz,
             depth_ty,
-        ) = unsafe {
-            let mut red_sz = 0;
-            let mut red_ty = 0;
-            let mut green_sz = 0;
-            let mut green_ty = 0;
-            let mut blue_sz = 0;
-            let mut blue_ty = 0;
-            let mut alpha_sz = 0;
-            let mut alpha_ty = 0;
-            let mut depth_sz = 0;
-            let mut depth_ty = 0;
-
-            if ctxt.version >= &Version(Api::Gl, 4, 5) || ctxt.extensions.gl_arb_direct_state_access
-            {
-                let id = texture.get_id();
-                ctxt.gl
-                    .GetTextureLevelParameteriv(id, 0, gl::TEXTURE_RED_SIZE, &mut red_sz);
-                ctxt.gl
-                    .GetTextureLevelParameteriv(id, 0, gl::TEXTURE_RED_TYPE, &mut red_ty);
-                ctxt.gl
-                    .GetTextureLevelParameteriv(id, 0, gl::TEXTURE_GREEN_SIZE, &mut green_sz);
-                ctxt.gl
-                    .GetTextureLevelParameteriv(id, 0, gl::TEXTURE_GREEN_TYPE, &mut green_ty);
-                ctxt.gl
-                    .GetTextureLevelParameteriv(id, 0, gl::TEXTURE_BLUE_SIZE, &mut blue_sz);
-                ctxt.gl
-                    .GetTextureLevelParameteriv(id, 0, gl::TEXTURE_BLUE_TYPE, &mut blue_ty);
-                ctxt.gl
-                    .GetTextureLevelParameteriv(id, 0, gl::TEXTURE_ALPHA_SIZE, &mut alpha_sz);
-                ctxt.gl
-                    .GetTextureLevelParameteriv(id, 0, gl::TEXTURE_ALPHA_TYPE, &mut alpha_ty);
-                ctxt.gl
-                    .GetTextureLevelParameteriv(id, 0, gl::TEXTURE_DEPTH_SIZE, &mut depth_sz);
-                ctxt.gl
-                    .GetTextureLevelParameteriv(id, 0, gl::TEXTURE_DEPTH_TYPE, &mut depth_ty);
-            } else if ctxt.extensions.gl_ext_direct_state_access {
-                let id = texture.get_id();
-                let bind_point = texture.get_bind_point();
-
-                ctxt.gl.GetTextureLevelParameterivEXT(
-                    id,
-                    bind_point,
-                    0,
-                    gl::TEXTURE_RED_SIZE,
-                    &mut red_sz,
-                );
-                ctxt.gl.GetTextureLevelParameterivEXT(
-                    id,
-                    bind_point,
-                    0,
-                    gl::TEXTURE_RED_TYPE,
-                    &mut red_ty,
-                );
-                ctxt.gl.GetTextureLevelParameterivEXT(
-                    id,
-                    bind_point,
-                    0,
-                    gl::TEXTURE_GREEN_SIZE,
-                    &mut green_sz,
-                );
-                ctxt.gl.GetTextureLevelParameterivEXT(
-                    id,
-                    bind_point,
-                    0,
-                    gl::TEXTURE_GREEN_TYPE,
-                    &mut green_ty,
-                );
-                ctxt.gl.GetTextureLevelParameterivEXT(
-                    id,
-                    bind_point,
-                    0,
-                    gl::TEXTURE_BLUE_SIZE,
-                    &mut blue_sz,
-                );
-                ctxt.gl.GetTextureLevelParameterivEXT(
-                    id,
-                    bind_point,
-                    0,
-                    gl::TEXTURE_BLUE_TYPE,
-                    &mut blue_ty,
-                );
-                ctxt.gl.GetTextureLevelParameterivEXT(
-                    id,
-                    bind_point,
-                    0,
-                    gl::TEXTURE_ALPHA_SIZE,
-                    &mut alpha_sz,
-                );
-                ctxt.gl.GetTextureLevelParameterivEXT(
-                    id,
-                    bind_point,
-                    0,
-                    gl::TEXTURE_ALPHA_TYPE,
-                    &mut alpha_ty,
-                );
-                ctxt.gl.GetTextureLevelParameterivEXT(
-                    id,
-                    bind_point,
-                    0,
-                    gl::TEXTURE_DEPTH_SIZE,
-                    &mut depth_sz,
-                );
-                ctxt.gl.GetTextureLevelParameterivEXT(
-                    id,
-                    bind_point,
-                    0,
-                    gl::TEXTURE_DEPTH_TYPE,
-                    &mut depth_ty,
-                );
-            } else {
-                let bind_point = texture.bind_to_current(ctxt);
-                ctxt.gl
-                    .GetTexLevelParameteriv(bind_point, 0, gl::TEXTURE_RED_SIZE, &mut red_sz);
-                ctxt.gl
-                    .GetTexLevelParameteriv(bind_point, 0, gl::TEXTURE_RED_TYPE, &mut red_ty);
-                ctxt.gl.GetTexLevelParameteriv(
-                    bind_point,
-                    0,
-                    gl::TEXTURE_GREEN_SIZE,
-                    &mut green_sz,
-                );
-                ctxt.gl.GetTexLevelParameteriv(
-                    bind_point,
-                    0,
-                    gl::TEXTURE_GREEN_TYPE,
-                    &mut green_ty,
-                );
-                ctxt.gl
-                    .GetTexLevelParameteriv(bind_point, 0, gl::TEXTURE_BLUE_SIZE, &mut blue_sz);
-                ctxt.gl
-                    .GetTexLevelParameteriv(bind_point, 0, gl::TEXTURE_BLUE_TYPE, &mut blue_ty);
-                ctxt.gl.GetTexLevelParameteriv(
-                    bind_point,
-                    0,
-                    gl::TEXTURE_ALPHA_SIZE,
-                    &mut alpha_sz,
-                );
-                ctxt.gl.GetTexLevelParameteriv(
-                    bind_point,
-                    0,
-                    gl::TEXTURE_ALPHA_TYPE,
-                    &mut alpha_ty,
-                );
-                ctxt.gl.GetTexLevelParameteriv(
-                    bind_point,
-                    0,
-                    gl::TEXTURE_DEPTH_SIZE,
-                    &mut depth_sz,
-                );
-                ctxt.gl.GetTexLevelParameteriv(
-                    bind_point,
-                    0,
-                    gl::TEXTURE_DEPTH_TYPE,
-                    &mut depth_ty,
-                );
+        ) {
+            (_, gl::NONE, _, _, _, _, _, _, _, gl::NONE) => {
+                return Err(GetFormatError::NotSupported)
             }
-
-            (
-                red_sz as gl::types::GLenum,
-                red_ty as gl::types::GLenum,
-                green_sz as gl::types::GLenum,
-                green_ty as gl::types::GLenum,
-                blue_sz as gl::types::GLenum,
-                blue_ty as gl::types::GLenum,
-                alpha_sz as gl::types::GLenum,
-                alpha_ty as gl::types::GLenum,
-                depth_sz as gl::types::GLenum,
-                depth_ty as gl::types::GLenum,
-            )
-        };
-
-        Ok(
-            match (
-                red_sz, red_ty, green_sz, green_ty, blue_sz, blue_ty, alpha_sz, alpha_ty, depth_sz,
-                depth_ty,
-            ) {
-                (_, gl::NONE, _, _, _, _, _, _, _, gl::NONE) => {
-                    return Err(GetFormatError::NotSupported)
-                }
-                (_, gl::NONE, _, _, _, _, _, _, sz1, ty1) => InternalFormat::OneComponent {
-                    ty1: InternalFormatType::from_glenum(ty1),
-                    bits1: sz1 as usize,
-                },
-                (sz1, ty1, _, gl::NONE, _, _, _, _, _, _) => InternalFormat::OneComponent {
-                    ty1: InternalFormatType::from_glenum(ty1),
-                    bits1: sz1 as usize,
-                },
-                (sz1, ty1, sz2, ty2, _, gl::NONE, _, _, _, _) => InternalFormat::TwoComponents {
+            (_, gl::NONE, _, _, _, _, _, _, sz1, ty1) => InternalFormat::OneComponent {
+                ty1: InternalFormatType::from_glenum(ty1),
+                bits1: sz1 as usize,
+            },
+            (sz1, ty1, _, gl::NONE, _, _, _, _, _, _) => InternalFormat::OneComponent {
+                ty1: InternalFormatType::from_glenum(ty1),
+                bits1: sz1 as usize,
+            },
+            (sz1, ty1, sz2, ty2, _, gl::NONE, _, _, _, _) => InternalFormat::TwoComponents {
+                ty1: InternalFormatType::from_glenum(ty1),
+                bits1: sz1 as usize,
+                ty2: InternalFormatType::from_glenum(ty2),
+                bits2: sz2 as usize,
+            },
+            (sz1, ty1, sz2, ty2, sz3, ty3, _, gl::NONE, _, _) => InternalFormat::ThreeComponents {
+                ty1: InternalFormatType::from_glenum(ty1),
+                bits1: sz1 as usize,
+                ty2: InternalFormatType::from_glenum(ty2),
+                bits2: sz2 as usize,
+                ty3: InternalFormatType::from_glenum(ty3),
+                bits3: sz3 as usize,
+            },
+            (sz1, ty1, sz2, ty2, sz3, ty3, sz4, ty4, _, gl::NONE) => {
+                InternalFormat::FourComponents {
                     ty1: InternalFormatType::from_glenum(ty1),
                     bits1: sz1 as usize,
                     ty2: InternalFormatType::from_glenum(ty2),
                     bits2: sz2 as usize,
-                },
-                (sz1, ty1, sz2, ty2, sz3, ty3, _, gl::NONE, _, _) => {
-                    InternalFormat::ThreeComponents {
-                        ty1: InternalFormatType::from_glenum(ty1),
-                        bits1: sz1 as usize,
-                        ty2: InternalFormatType::from_glenum(ty2),
-                        bits2: sz2 as usize,
-                        ty3: InternalFormatType::from_glenum(ty3),
-                        bits3: sz3 as usize,
-                    }
+                    ty3: InternalFormatType::from_glenum(ty3),
+                    bits3: sz3 as usize,
+                    ty4: InternalFormatType::from_glenum(ty4),
+                    bits4: sz4 as usize,
                 }
-                (sz1, ty1, sz2, ty2, sz3, ty3, sz4, ty4, _, gl::NONE) => {
-                    InternalFormat::FourComponents {
-                        ty1: InternalFormatType::from_glenum(ty1),
-                        bits1: sz1 as usize,
-                        ty2: InternalFormatType::from_glenum(ty2),
-                        bits2: sz2 as usize,
-                        ty3: InternalFormatType::from_glenum(ty3),
-                        bits3: sz3 as usize,
-                        ty4: InternalFormatType::from_glenum(ty4),
-                        bits4: sz4 as usize,
-                    }
-                }
-                _ => unreachable!(),
-            },
-        )
-    } else {
-        // FIXME: GL2
-        Err(GetFormatError::NotSupported)
-    }
+            }
+            _ => unreachable!(),
+        },
+    )
 }

@@ -1,8 +1,8 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::index::PrimitiveType;
-use glium::{Display, Surface};
+use safegl::index::PrimitiveType;
+use safegl::{Display, Surface};
 use glutin::surface::WindowSurface;
 use support::{ApplicationContext, State};
 
@@ -15,19 +15,19 @@ struct Vertex {
 implement_vertex!(Vertex, position);
 
 struct Application {
-    pub vertex_buffer: glium::VertexBuffer<Vertex>,
-    pub index_buffer: glium::IndexBuffer<u16>,
-    pub program: glium::Program,
+    pub vertex_buffer: safegl::VertexBuffer<Vertex>,
+    pub index_buffer: safegl::IndexBuffer<u16>,
+    pub program: safegl::Program,
     pub tess_level: i32,
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE: &'static str = "Glium tesselation example";
+    const WINDOW_TITLE: &'static str = "SafeGL tesselation example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         // building the vertex buffer, which contains all the vertices that we will draw
         let vertex_buffer = {
-            glium::VertexBuffer::new(
+            safegl::VertexBuffer::new(
                 display,
                 &[
                     Vertex {
@@ -45,7 +45,7 @@ impl ApplicationContext for Application {
         };
 
         // building the index buffer
-        let index_buffer = glium::IndexBuffer::new(
+        let index_buffer = safegl::IndexBuffer::new(
             display,
             PrimitiveType::Patches {
                 vertices_per_patch: 3,
@@ -55,9 +55,9 @@ impl ApplicationContext for Application {
         .unwrap();
 
         // compiling shaders and linking them together
-        let program = glium::Program::new(
+        let program = safegl::Program::new(
             display,
-            glium::program::SourceCode {
+            safegl::program::SourceCode {
                 vertex_shader: "
                     #version 140
 
@@ -191,13 +191,13 @@ impl ApplicationContext for Application {
 
     fn handle_window_event(
         &mut self,
-        event: &glium::winit::event::WindowEvent,
-        _window: &glium::winit::window::Window,
+        event: &safegl::winit::event::WindowEvent,
+        _window: &safegl::winit::window::Window,
     ) {
-        use glium::winit::keyboard::{KeyCode, PhysicalKey};
+        use safegl::winit::keyboard::{KeyCode, PhysicalKey};
         match event {
-            glium::winit::event::WindowEvent::KeyboardInput { event, .. } => match event.state {
-                glium::winit::event::ElementState::Pressed => match event.physical_key {
+            safegl::winit::event::WindowEvent::KeyboardInput { event, .. } => match event.state {
+                safegl::winit::event::ElementState::Pressed => match event.physical_key {
                     PhysicalKey::Code(KeyCode::ArrowUp) => {
                         self.tess_level += 1;
                         println!("New tessellation level: {}", self.tess_level);

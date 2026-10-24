@@ -10,11 +10,11 @@
 // Finally, this last texture is blitted to the display framebuffer.
 
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
 use std::time::Instant;
 
-use glium::{
+use safegl::{
     program::ComputeShader, texture::UnsignedTexture2d, uniform, Display, Surface, Texture2d,
 };
 use glutin::surface::WindowSurface;
@@ -32,15 +32,15 @@ struct Application {
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE: &'static str = "Glium compute_image example";
+    const WINDOW_TITLE: &'static str = "SafeGL compute_image example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         let start_time = Instant::now();
 
         let fract_texture = UnsignedTexture2d::empty_with_format(
             display,
-            glium::texture::UncompressedUintFormat::U8U8U8U8,
-            glium::texture::MipmapsOption::NoMipmap,
+            safegl::texture::UncompressedUintFormat::U8U8U8U8,
+            safegl::texture::MipmapsOption::NoMipmap,
             1024,
             1024,
         )
@@ -48,8 +48,8 @@ impl ApplicationContext for Application {
 
         let final_texture = Texture2d::empty_with_format(
             display,
-            glium::texture::UncompressedFloatFormat::U8U8U8U8,
-            glium::texture::MipmapsOption::NoMipmap,
+            safegl::texture::UncompressedFloatFormat::U8U8U8U8,
+            safegl::texture::MipmapsOption::NoMipmap,
             1024,
             1024,
         )
@@ -92,7 +92,7 @@ impl ApplicationContext for Application {
     }
         "#).unwrap();
 
-        let box_blur_shader = glium::program::ComputeShader::from_source(
+        let box_blur_shader = safegl::program::ComputeShader::from_source(
             display,
             r#"\
     #version 430
@@ -127,7 +127,7 @@ impl ApplicationContext for Application {
         )
         .unwrap();
 
-        let copy_shader = glium::program::ComputeShader::from_source(
+        let copy_shader = safegl::program::ComputeShader::from_source(
             display,
             r#"\
     #version 430
@@ -160,9 +160,9 @@ impl ApplicationContext for Application {
         let frame = display.draw();
         let image_unit = self
             .fract_texture
-            .image_unit(glium::uniforms::ImageUnitFormat::RGBA8UI)
+            .image_unit(safegl::uniforms::ImageUnitFormat::RGBA8UI)
             .unwrap()
-            .set_access(glium::uniforms::ImageUnitAccess::Write);
+            .set_access(safegl::uniforms::ImageUnitAccess::Write);
         self.fractal_shader.execute(
             uniform! {
                 uWidth: self.fract_texture.width(),
@@ -177,9 +177,9 @@ impl ApplicationContext for Application {
 
         let image_unit = self
             .fract_texture
-            .image_unit(glium::uniforms::ImageUnitFormat::RGBA8UI)
+            .image_unit(safegl::uniforms::ImageUnitFormat::RGBA8UI)
             .unwrap()
-            .set_access(glium::uniforms::ImageUnitAccess::ReadWrite);
+            .set_access(safegl::uniforms::ImageUnitAccess::ReadWrite);
         self.box_blur_shader.execute(
             uniform! {
                 uWidth: self.fract_texture.width(),
@@ -193,14 +193,14 @@ impl ApplicationContext for Application {
 
         let fract_unit = self
             .fract_texture
-            .image_unit(glium::uniforms::ImageUnitFormat::RGBA8UI)
+            .image_unit(safegl::uniforms::ImageUnitFormat::RGBA8UI)
             .unwrap()
-            .set_access(glium::uniforms::ImageUnitAccess::Read);
+            .set_access(safegl::uniforms::ImageUnitAccess::Read);
         let final_unit = self
             .final_texture
-            .image_unit(glium::uniforms::ImageUnitFormat::RGBA8)
+            .image_unit(safegl::uniforms::ImageUnitFormat::RGBA8)
             .unwrap()
-            .set_access(glium::uniforms::ImageUnitAccess::Write);
+            .set_access(safegl::uniforms::ImageUnitAccess::Write);
 
         self.copy_shader.execute(
             uniform! {
@@ -215,7 +215,7 @@ impl ApplicationContext for Application {
         // drawing a frame
         self.final_texture
             .as_surface()
-            .fill(&frame, glium::uniforms::MagnifySamplerFilter::Nearest);
+            .fill(&frame, safegl::uniforms::MagnifySamplerFilter::Nearest);
 
         frame.finish().unwrap();
     }

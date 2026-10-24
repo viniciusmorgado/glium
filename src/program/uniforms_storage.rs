@@ -4,16 +4,16 @@ use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
 
 use fnv::FnvHasher;
+use glow::HasContext;
 use smallvec::SmallVec;
 
 use crate::context::CommandContext;
 use crate::gl;
+use crate::handles::UniformLocations;
 use crate::program::reflection::ShaderStage;
-use crate::version::Api;
-use crate::version::Version;
-use crate::Handle;
 
 pub struct UniformsStorage {
+    locations: UniformLocations,
     values:
         RefCell<HashMap<gl::types::GLint, Option<RawUniformValue>, BuildHasherDefault<FnvHasher>>>,
     uniform_blocks: RefCell<SmallVec<[Option<gl::types::GLuint>; 4]>>,
@@ -25,8 +25,9 @@ pub struct UniformsStorage {
 impl UniformsStorage {
     /// Builds a new empty storage.
     #[inline]
-    pub fn new() -> UniformsStorage {
+    pub fn new(locations: UniformLocations) -> UniformsStorage {
         UniformsStorage {
+            locations,
             values: RefCell::new(HashMap::with_hasher(Default::default())),
             uniform_blocks: RefCell::new(SmallVec::new()),
             shader_storage_blocks: RefCell::new(SmallVec::new()),
@@ -39,26 +40,21 @@ impl UniformsStorage {
     pub fn set_uniform_value(
         &self,
         ctxt: &mut CommandContext<'_>,
-        program: Handle,
+        program: glow::Program,
         location: gl::types::GLint,
         value: &RawUniformValue,
     ) {
         let mut values = self.values.borrow_mut();
+        let locations = &self.locations;
 
         // TODO: don't assume that, instead use DSA if the program is not current
-        assert!(ctxt.state.program == program);
+        assert!(ctxt.state.program == Some(program));
 
         macro_rules! uniform(
-            ($ctxt:expr, $uniform:ident, $uniform_arb:ident, $($params:expr),+) => (
+            ($ctxt:expr, $uniform:ident, $location:expr, $($params:expr),+) => (
                 unsafe {
-                    if $ctxt.version >= &Version(Api::Gl, 1, 5) ||
-                       $ctxt.version >= &Version(Api::GlEs, 2, 0)
-                    {
-                        $ctxt.gl.$uniform($($params),+)
-                    } else {
-                        assert!($ctxt.extensions.gl_arb_shader_objects);
-                        $ctxt.gl.$uniform_arb($($params),+)
-                    }
+                    let location = locations.get($location);
+                    $ctxt.glow.$uniform(Some(&location), $($params),+)
                 }
             )
         );
@@ -67,7 +63,7 @@ impl UniformsStorage {
             ($ctxt:expr, $uniform:ident, $($params:expr),+) => (
                 unsafe {
                     if $ctxt.extensions.gl_arb_gpu_shader_fp64 {
-                        $ctxt.gl.$uniform($($params),+)
+                        $ctxt.extra.$uniform($($params),+)
                     } else {
                         panic!("Double precision floats are not supported on this system.")
                     }
@@ -79,7 +75,7 @@ impl UniformsStorage {
             ($ctxt:expr, $uniform:ident, $($params:expr),+) => (
                 unsafe {
                     if $ctxt.extensions.gl_arb_gpu_shader_int64 {
-                        $ctxt.gl.$uniform($($params),+)
+                        $ctxt.extra.$uniform($($params),+)
                     } else {
                         panic!("64 bit integers are not supported on this system.")
                     }
@@ -187,193 +183,77 @@ impl UniformsStorage {
 
             (&RawUniformValue::SignedInt(v), target) => {
                 *target = Some(RawUniformValue::SignedInt(v));
-                uniform!(ctxt, Uniform1i, Uniform1iARB, location, v);
+                uniform!(ctxt, uniform_1_i32, location, v);
             }
 
             (&RawUniformValue::UnsignedInt(v), target) => {
                 *target = Some(RawUniformValue::UnsignedInt(v));
-
-                // Uniform1uiARB doesn't exist
-                unsafe {
-                    if ctxt.version >= &Version(Api::Gl, 1, 5)
-                        || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                    {
-                        ctxt.gl.Uniform1ui(location, v)
-                    } else {
-                        assert!(ctxt.extensions.gl_arb_shader_objects);
-                        ctxt.gl.Uniform1iARB(location, v as gl::types::GLint)
-                    }
-                }
+                uniform!(ctxt, uniform_1_u32, location, v);
             }
 
             (&RawUniformValue::Float(v), target) => {
                 *target = Some(RawUniformValue::Float(v));
-                uniform!(ctxt, Uniform1f, Uniform1fARB, location, v);
+                uniform!(ctxt, uniform_1_f32, location, v);
             }
 
             (&RawUniformValue::Mat2(v), target) => {
                 *target = Some(RawUniformValue::Mat2(v));
-                uniform!(
-                    ctxt,
-                    UniformMatrix2fv,
-                    UniformMatrix2fvARB,
-                    location,
-                    1,
-                    gl::FALSE,
-                    v.as_ptr() as *const f32
-                );
+                uniform!(ctxt, uniform_matrix_2_f32_slice, location, false, v.as_flattened());
             }
 
             (&RawUniformValue::Mat3(v), target) => {
                 *target = Some(RawUniformValue::Mat3(v));
-                uniform!(
-                    ctxt,
-                    UniformMatrix3fv,
-                    UniformMatrix3fvARB,
-                    location,
-                    1,
-                    gl::FALSE,
-                    v.as_ptr() as *const f32
-                );
+                uniform!(ctxt, uniform_matrix_3_f32_slice, location, false, v.as_flattened());
             }
 
             (&RawUniformValue::Mat4(v), target) => {
                 *target = Some(RawUniformValue::Mat4(v));
-                uniform!(
-                    ctxt,
-                    UniformMatrix4fv,
-                    UniformMatrix4fvARB,
-                    location,
-                    1,
-                    gl::FALSE,
-                    v.as_ptr() as *const f32
-                );
+                uniform!(ctxt, uniform_matrix_4_f32_slice, location, false, v.as_flattened());
             }
 
             (&RawUniformValue::Vec2(v), target) => {
                 *target = Some(RawUniformValue::Vec2(v));
-                uniform!(
-                    ctxt,
-                    Uniform2fv,
-                    Uniform2fvARB,
-                    location,
-                    1,
-                    v.as_ptr() as *const f32
-                );
+                uniform!(ctxt, uniform_2_f32_slice, location, &v);
             }
 
             (&RawUniformValue::Vec3(v), target) => {
                 *target = Some(RawUniformValue::Vec3(v));
-                uniform!(
-                    ctxt,
-                    Uniform3fv,
-                    Uniform3fvARB,
-                    location,
-                    1,
-                    v.as_ptr() as *const f32
-                );
+                uniform!(ctxt, uniform_3_f32_slice, location, &v);
             }
 
             (&RawUniformValue::Vec4(v), target) => {
                 *target = Some(RawUniformValue::Vec4(v));
-                uniform!(
-                    ctxt,
-                    Uniform4fv,
-                    Uniform4fvARB,
-                    location,
-                    1,
-                    v.as_ptr() as *const f32
-                );
+                uniform!(ctxt, uniform_4_f32_slice, location, &v);
             }
 
             (&RawUniformValue::IntVec2(v), target) => {
                 *target = Some(RawUniformValue::IntVec2(v));
-                uniform!(
-                    ctxt,
-                    Uniform2iv,
-                    Uniform2ivARB,
-                    location,
-                    1,
-                    v.as_ptr() as *const gl::types::GLint
-                );
+                uniform!(ctxt, uniform_2_i32_slice, location, &v);
             }
 
             (&RawUniformValue::IntVec3(v), target) => {
                 *target = Some(RawUniformValue::IntVec3(v));
-                uniform!(
-                    ctxt,
-                    Uniform3iv,
-                    Uniform3ivARB,
-                    location,
-                    1,
-                    v.as_ptr() as *const gl::types::GLint
-                );
+                uniform!(ctxt, uniform_3_i32_slice, location, &v);
             }
 
             (&RawUniformValue::IntVec4(v), target) => {
                 *target = Some(RawUniformValue::IntVec4(v));
-                uniform!(
-                    ctxt,
-                    Uniform4iv,
-                    Uniform4ivARB,
-                    location,
-                    1,
-                    v.as_ptr() as *const gl::types::GLint
-                );
+                uniform!(ctxt, uniform_4_i32_slice, location, &v);
             }
 
             (&RawUniformValue::UnsignedIntVec2(v), target) => {
                 *target = Some(RawUniformValue::UnsignedIntVec2(v));
-
-                // Uniform2uivARB doesn't exist
-                unsafe {
-                    if ctxt.version >= &Version(Api::Gl, 1, 5)
-                        || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                    {
-                        ctxt.gl
-                            .Uniform2uiv(location, 1, v.as_ptr() as *const gl::types::GLuint)
-                    } else {
-                        assert!(ctxt.extensions.gl_arb_shader_objects);
-                        ctxt.gl
-                            .Uniform2ivARB(location, 1, v.as_ptr() as *const gl::types::GLint)
-                    }
-                }
+                uniform!(ctxt, uniform_2_u32_slice, location, &v);
             }
 
             (&RawUniformValue::UnsignedIntVec3(v), target) => {
                 *target = Some(RawUniformValue::UnsignedIntVec3(v));
-
-                // Uniform3uivARB doesn't exist
-                unsafe {
-                    if ctxt.version >= &Version(Api::Gl, 1, 5)
-                        || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                    {
-                        ctxt.gl
-                            .Uniform3uiv(location, 1, v.as_ptr() as *const gl::types::GLuint)
-                    } else {
-                        assert!(ctxt.extensions.gl_arb_shader_objects);
-                        ctxt.gl
-                            .Uniform3ivARB(location, 1, v.as_ptr() as *const gl::types::GLint)
-                    }
-                }
+                uniform!(ctxt, uniform_3_u32_slice, location, &v);
             }
 
             (&RawUniformValue::UnsignedIntVec4(v), target) => {
                 *target = Some(RawUniformValue::UnsignedIntVec4(v));
-
-                // Uniform4uivARB doesn't exist
-                unsafe {
-                    if ctxt.version >= &Version(Api::Gl, 1, 5)
-                        || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                    {
-                        ctxt.gl
-                            .Uniform4uiv(location, 1, v.as_ptr() as *const gl::types::GLuint)
-                    } else {
-                        assert!(ctxt.extensions.gl_arb_shader_objects);
-                        ctxt.gl
-                            .Uniform4ivARB(location, 1, v.as_ptr() as *const gl::types::GLint)
-                    }
-                }
+                uniform!(ctxt, uniform_4_u32_slice, location, &v);
             }
             (&RawUniformValue::Double(v), target) => {
                 *target = Some(RawUniformValue::Double(v));
@@ -528,7 +408,7 @@ impl UniformsStorage {
     pub fn set_uniform_block_binding(
         &self,
         ctxt: &mut CommandContext<'_>,
-        program: Handle,
+        program: glow::Program,
         location: gl::types::GLuint,
         value: gl::types::GLuint,
     ) {
@@ -541,18 +421,15 @@ impl UniformsStorage {
         }
 
         // TODO: don't assume that, instead use DSA if the program is not current
-        assert!(ctxt.state.program == program);
+        assert!(ctxt.state.program == Some(program));
 
         match (value, &mut blocks[location as usize]) {
             (a, &mut Some(b)) if a == b => (),
 
             (a, target) => {
                 *target = Some(a);
-                match program {
-                    Handle::Id(id) => unsafe {
-                        ctxt.gl.UniformBlockBinding(id, location, value);
-                    },
-                    _ => unreachable!(),
+                unsafe {
+                    ctxt.glow.uniform_block_binding(program, location, value);
                 }
             }
         }
@@ -563,7 +440,7 @@ impl UniformsStorage {
     pub fn set_shader_storage_block_binding(
         &self,
         ctxt: &mut CommandContext<'_>,
-        program: Handle,
+        program: glow::Program,
         location: gl::types::GLuint,
         value: gl::types::GLuint,
     ) {
@@ -576,18 +453,16 @@ impl UniformsStorage {
         }
 
         // TODO: don't assume that, instead use DSA if the program is not current
-        assert!(ctxt.state.program == program);
+        assert!(ctxt.state.program == Some(program));
 
         match (value, &mut blocks[location as usize]) {
             (a, &mut Some(b)) if a == b => (),
 
             (a, target) => {
                 *target = Some(a);
-                match program {
-                    Handle::Id(id) => unsafe {
-                        ctxt.gl.ShaderStorageBlockBinding(id, location, value);
-                    },
-                    _ => unreachable!(),
+                unsafe {
+                    ctxt.glow
+                        .shader_storage_block_binding(program, location, value);
                 }
             }
         }
@@ -609,7 +484,7 @@ impl UniformsStorage {
     pub fn set_subroutine_uniforms_for_stage(
         &self,
         ctxt: &mut CommandContext<'_>,
-        program: Handle,
+        program: glow::Program,
         stage: ShaderStage,
         indices: &[gl::types::GLuint],
     ) {
@@ -620,10 +495,10 @@ impl UniformsStorage {
             }
         }
         // TODO: don't assume that, instead use DSA if the program is not current
-        assert!(ctxt.state.program == program);
+        assert!(ctxt.state.program == Some(program));
         subroutine_uniforms.insert(stage, indices.to_vec());
         unsafe {
-            ctxt.gl.UniformSubroutinesuiv(
+            ctxt.extra.UniformSubroutinesuiv(
                 stage.to_gl_enum(),
                 indices.len() as gl::types::GLsizei,
                 indices.as_ptr() as *const _,

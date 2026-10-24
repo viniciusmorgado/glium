@@ -47,7 +47,7 @@ target.draw(&vertex_buffer, &indices, &program, &uniforms,
             &Default::default()).unwrap();
 ```
 
-Note that in OpenGL, and therefore glium, the matrices are column-major.  If we were to write the above matrix in standard mathematical notation, which is row-major, it would look like this:
+Note that in OpenGL, and therefore SafeGL, the matrices are column-major.  If we were to write the above matrix in standard mathematical notation, which is row-major, it would look like this:
 ```
 1.0   0.0   0.0    x
 0.0   1.0   0.0   0.0
@@ -68,4 +68,4 @@ let uniforms = uniform! {
 };
 ```
 
-**[You can find the entire source code here](https://github.com/glium/glium/blob/master/examples/tutorial-04.rs).**
+**[You can find the entire source code here](https://github.com/viniciusmorgado/safegl/blob/develop/examples/standalone/tutorial-04.rs).**

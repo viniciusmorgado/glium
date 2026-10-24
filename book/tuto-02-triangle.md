@@ -17,7 +17,7 @@ Here is an example of an object's shape. As you can see, it is made of hundreds 
 
 ![The famous Utah Teapot](resources/tuto-02-teapot.png)
 
-Each triangle is made of three vertices, which means that a shape is just a collection of vertices linked together to form triangles. The first step to describe a shape like this with glium is to create a struct named `Vertex` (the actual name doesn't matter) whose purpose is to describe each individual vertex. Our collection of vertices can later be represented by a `Vec<Vertex>`.
+Each triangle is made of three vertices, which means that a shape is just a collection of vertices linked together to form triangles. The first step to describe a shape like this with SafeGL is to create a struct named `Vertex` (the actual name doesn't matter) whose purpose is to describe each individual vertex. Our collection of vertices can later be represented by a `Vec<Vertex>`.
 
 ```rust
 #[derive(Copy, Clone)]
@@ -30,7 +30,7 @@ implement_vertex!(Vertex, position);
 To make the `implement_vertex!` macro available you need to add the following lines above the main function:
 ```rust
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 ```
 
 Our struct contains a `position` field which we will use to store the position of each vertex on the window. Being vector-based, OpenGL doesn't use coordinates in pixels. Instead it considers that the window has a width and a height of 2 units, and that the origin is at the center of the window.
@@ -53,13 +53,13 @@ let shape = vec![vertex1, vertex2, vertex3];
 We now have our shape! There is one last step which consists of uploading this shape to the memory of our GPU in what is called a *vertex buffer*, for faster access. Even though that is not strictly necessary, it is very easy to do so and it will make our drawing operation considerably faster.
 
 ```rust
-let vertex_buffer = glium::VertexBuffer::new(&display, &shape).unwrap();
+let vertex_buffer = safegl::VertexBuffer::new(&display, &shape).unwrap();
 ```
 
-More complex shapes consist of hundreds or thousands of vertices. We not only need to have a list of vertices, but also a way to tell OpenGL how to link these vertices together to obtain triangles. Since we only have one triangle, this isn't really a problem for us, so we just create a dummy marker that we will pass to glium later on.
+More complex shapes consist of hundreds or thousands of vertices. We not only need to have a list of vertices, but also a way to tell OpenGL how to link these vertices together to obtain triangles. Since we only have one triangle, this isn't really a problem for us, so we just create a dummy marker that we will pass to SafeGL later on.
 
 ```rust
-let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+let indices = safegl::index::NoIndices(safegl::index::PrimitiveType::TrianglesList);
 ```
 
 This tells OpenGL that we don't use indices and instead want to draw a certain number of separate triangles.
@@ -110,10 +110,10 @@ let fragment_shader_src = r#"
 
 This source code is very similar to our vertex shader above. This time the `main` function is executed once per pixel and has to set the color of this pixel, which we do with the `color = vec4(1.0, 0.0, 0.0, 1.0);` line. Just as with `clear_color` earlier, we need to pass along the red, green, blue and alpha components of the pixel. Here we are specifying an opaque red color. It is possible to set different values per-pixel, but this will be covered later.
 
-Now that we have written our shaders' source codes, let's send them to glium:
+Now that we have written our shaders' source codes, let's send them to SafeGL:
 
 ```rust
-let program = glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None).unwrap();
+let program = safegl::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None).unwrap();
 ```
 
 ## Drawing
@@ -132,7 +132,7 @@ target.finish().unwrap();
 Starting a draw operation needs several things: a source of vertices (here we use our `vertex_buffer`), a source of indices (we use our `indices` variable), a program, the program's uniforms, and some draw parameters. We will explain what uniforms and draw parameters are in the next tutorials, but for the moment we will just ignore them by passing an `EmptyUniforms` marker and by using the default draw parameters.
 
 ```rust
-target.draw(&vertex_buffer, &indices, &program, &glium::uniforms::EmptyUniforms,
+target.draw(&vertex_buffer, &indices, &program, &safegl::uniforms::EmptyUniforms,
             &Default::default()).unwrap();
 ```
 
@@ -140,4 +140,4 @@ The "draw command" designation could make you think that drawing is a heavy oper
 
 ![Our final result](resources/tuto-02-triangle.png)
 
-**[You can find the entire source code for this example here](https://github.com/glium/glium/blob/master/examples/tutorial-02.rs).**
+**[You can find the entire source code for this example here](https://github.com/viniciusmorgado/safegl/blob/develop/examples/standalone/tutorial-02.rs).**

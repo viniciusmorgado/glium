@@ -1,9 +1,8 @@
 use crate::context::CommandContext;
-use crate::version::Api;
-use crate::version::Version;
 
 use crate::gl;
 use crate::DrawError;
+use glow::HasContext;
 
 /// Blend effect that the GPU will use for blending.
 ///
@@ -224,32 +223,15 @@ impl LinearBlendingFactor {
 
 pub fn sync_blending(ctxt: &mut CommandContext<'_>, blend: Blend) -> Result<(), DrawError> {
     #[inline(always)]
-    fn blend_eq(
-        ctxt: &mut CommandContext<'_>,
-        blending_function: BlendingFunction,
-    ) -> Result<gl::types::GLenum, DrawError> {
+    fn blend_eq(blending_function: BlendingFunction) -> gl::types::GLenum {
         match blending_function {
-            BlendingFunction::AlwaysReplace | BlendingFunction::Addition { .. } => Ok(gl::FUNC_ADD),
-            BlendingFunction::Subtraction { .. } => Ok(gl::FUNC_SUBTRACT),
-            BlendingFunction::ReverseSubtraction { .. } => Ok(gl::FUNC_REVERSE_SUBTRACT),
+            BlendingFunction::AlwaysReplace | BlendingFunction::Addition { .. } => gl::FUNC_ADD,
+            BlendingFunction::Subtraction { .. } => gl::FUNC_SUBTRACT,
+            BlendingFunction::ReverseSubtraction { .. } => gl::FUNC_REVERSE_SUBTRACT,
 
-            BlendingFunction::Min => {
-                if ctxt.version <= &Version(Api::GlEs, 2, 0) && !ctxt.extensions.gl_ext_blend_minmax
-                {
-                    Err(DrawError::BlendingParameterNotSupported)
-                } else {
-                    Ok(gl::MIN)
-                }
-            }
-
-            BlendingFunction::Max => {
-                if ctxt.version <= &Version(Api::GlEs, 2, 0) && !ctxt.extensions.gl_ext_blend_minmax
-                {
-                    Err(DrawError::BlendingParameterNotSupported)
-                } else {
-                    Ok(gl::MAX)
-                }
-            }
+            // `GL_MIN` and `GL_MAX` are core in OpenGL ES 3.0
+            BlendingFunction::Min => gl::MIN,
+            BlendingFunction::Max => gl::MAX,
         }
     }
 
@@ -280,22 +262,22 @@ pub fn sync_blending(ctxt: &mut CommandContext<'_>, blend: Blend) -> Result<(), 
         // Both color and alpha always replace. This equals no blending.
         if ctxt.state.enabled_blend {
             unsafe {
-                ctxt.gl.Disable(gl::BLEND);
+                ctxt.glow.disable(glow::BLEND);
             }
             ctxt.state.enabled_blend = false;
         }
     } else {
         if !ctxt.state.enabled_blend {
             unsafe {
-                ctxt.gl.Enable(gl::BLEND);
+                ctxt.glow.enable(glow::BLEND);
             }
             ctxt.state.enabled_blend = true;
         }
 
-        let (color_eq, alpha_eq) = (blend_eq(ctxt, blend.color)?, blend_eq(ctxt, blend.alpha)?);
+        let (color_eq, alpha_eq) = (blend_eq(blend.color), blend_eq(blend.alpha));
         if ctxt.state.blend_equation != (color_eq, alpha_eq) {
             unsafe {
-                ctxt.gl.BlendEquationSeparate(color_eq, alpha_eq);
+                ctxt.glow.blend_equation_separate(color_eq, alpha_eq);
             }
             ctxt.state.blend_equation = (color_eq, alpha_eq);
         }
@@ -327,7 +309,7 @@ pub fn sync_blending(ctxt: &mut CommandContext<'_>, blend: Blend) -> Result<(), 
         {
             let (r, g, b, a) = blend.constant_value;
             unsafe {
-                ctxt.gl.BlendColor(r, g, b, a);
+                ctxt.glow.blend_color(r, g, b, a);
             }
             ctxt.state.blend_color = blend.constant_value;
         }
@@ -346,7 +328,7 @@ pub fn sync_blending(ctxt: &mut CommandContext<'_>, blend: Blend) -> Result<(), 
             )
         {
             unsafe {
-                ctxt.gl.BlendFuncSeparate(
+                ctxt.glow.blend_func_separate(
                     color_factor_src,
                     color_factor_dst,
                     alpha_factor_src,

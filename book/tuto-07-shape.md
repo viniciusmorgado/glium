@@ -37,9 +37,9 @@ mod teapot;
 Loading the data is then very straight-forward:
 
 ```rust
-let positions = glium::VertexBuffer::new(&display, &teapot::VERTICES).unwrap();
-let normals = glium::VertexBuffer::new(&display, &teapot::NORMALS).unwrap();
-let indices = glium::IndexBuffer::new(&display, glium::index::PrimitiveType::TrianglesList,
+let positions = safegl::VertexBuffer::new(&display, &teapot::VERTICES).unwrap();
+let normals = safegl::VertexBuffer::new(&display, &teapot::NORMALS).unwrap();
+let indices = safegl::IndexBuffer::new(&display, safegl::index::PrimitiveType::TrianglesList,
                                       &teapot::INDICES).unwrap();
 ```
 
@@ -146,4 +146,4 @@ And you should now get the correct result:
 
 This looks very primitive, but it is a good first step towards 3D rendering.
 
-**[You can find the entire source code here](https://github.com/glium/glium/blob/master/examples/tutorial-07.rs).**
+**[You can find the entire source code here](https://github.com/viniciusmorgado/safegl/blob/develop/examples/standalone/tutorial-07.rs).**

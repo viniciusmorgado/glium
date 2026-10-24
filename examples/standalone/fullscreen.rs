@@ -1,15 +1,15 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
 use std::io::Cursor;
 
-use glium::index::PrimitiveType;
-use glium::winit::{
+use safegl::index::PrimitiveType;
+use safegl::winit::{
     keyboard::{KeyCode, PhysicalKey},
     window::Fullscreen,
 };
 #[allow(unused_imports)]
-use glium::{Display, Frame, Surface};
+use safegl::{Display, Frame, Surface};
 use glutin::surface::WindowSurface;
 use support::{ApplicationContext, State};
 
@@ -24,15 +24,15 @@ struct Vertex {
 implement_vertex!(Vertex, position, tex_coords);
 
 struct Application {
-    pub vertex_buffer: glium::VertexBuffer<Vertex>,
-    pub index_buffer: glium::IndexBuffer<u16>,
-    pub opengl_texture: glium::texture::CompressedTexture2d,
-    pub program: glium::Program,
+    pub vertex_buffer: safegl::VertexBuffer<Vertex>,
+    pub index_buffer: safegl::IndexBuffer<u16>,
+    pub opengl_texture: safegl::texture::CompressedTexture2d,
+    pub program: safegl::Program,
     pub fullscreen: bool,
 }
 
 impl Application {
-    fn toggle_fullscreen(&mut self, window: &glium::winit::window::Window) {
+    fn toggle_fullscreen(&mut self, window: &safegl::winit::window::Window) {
         if self.fullscreen {
             window.set_fullscreen(None);
             self.fullscreen = false;
@@ -47,7 +47,7 @@ impl Application {
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE: &'static str = "Glium fullscreen example";
+    const WINDOW_TITLE: &'static str = "SafeGL fullscreen example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         // building a texture with "OpenGL" drawn on it
@@ -59,12 +59,12 @@ impl ApplicationContext for Application {
         .to_rgba8();
         let image_dimensions = image.dimensions();
         let image =
-            glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
-        let opengl_texture = glium::texture::CompressedTexture2d::new(display, image).unwrap();
+            safegl::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+        let opengl_texture = safegl::texture::CompressedTexture2d::new(display, image).unwrap();
 
         // building the vertex buffer, which contains all the vertices that we will draw
         let vertex_buffer = {
-            glium::VertexBuffer::new(
+            safegl::VertexBuffer::new(
                 display,
                 &[
                     Vertex {
@@ -90,11 +90,11 @@ impl ApplicationContext for Application {
 
         // building the index buffer
         let index_buffer =
-            glium::IndexBuffer::new(display, PrimitiveType::TriangleStrip, &[1 as u16, 2, 0, 3])
+            safegl::IndexBuffer::new(display, PrimitiveType::TriangleStrip, &[1 as u16, 2, 0, 3])
                 .unwrap();
 
         // compiling shaders and linking them together
-        let program = glium::Program::from_source(
+        let program = safegl::Program::from_source(
             display,
             r"
             #version 140
@@ -161,12 +161,12 @@ impl ApplicationContext for Application {
 
     fn handle_window_event(
         &mut self,
-        event: &glium::winit::event::WindowEvent,
-        window: &glium::winit::window::Window,
+        event: &safegl::winit::event::WindowEvent,
+        window: &safegl::winit::window::Window,
     ) {
         match event {
-            glium::winit::event::WindowEvent::KeyboardInput { event, .. } => match event.state {
-                glium::winit::event::ElementState::Pressed => match event.physical_key {
+            safegl::winit::event::WindowEvent::KeyboardInput { event, .. } => match event.state {
+                safegl::winit::event::ElementState::Pressed => match event.physical_key {
                     PhysicalKey::Code(KeyCode::Enter) => {
                         self.toggle_fullscreen(window);
                     }

@@ -1,0 +1,73 @@
+name: release
+
+# The next version is computed from the conventional commits since the last release
+# (`fix:` -> patch, `feat:` -> minor, `!` or `BREAKING CHANGE:` -> major; while the
+# version is 0.x, breaking changes bump the minor instead) and from an API comparison
+# with the version on crates.io.
+#
+# - On develop, a release PR keeps the version bump and the CHANGELOG entry up to date.
+# - On main, any version in Cargo.toml that isn't on crates.io yet is published and tagged.
+
+on:
+  push:
+    branches: [ develop, main ]
+
+jobs:
+  release-pr:
+    if: github.ref_name == 'develop'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: release-pr
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The first version is set by hand in Cargo.toml. Version bumps start once it is published.
+      - name: Check whether safegl is on crates.io
+        id: crate
+        run: |
+          if curl -sf -A "safegl-release-workflow" https://crates.io/api/v1/crates/safegl > /dev/null; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Rust
+        if: steps.crate.outputs.published == 'true'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Open or update the release PR
+        if: steps.crate.outputs.published == 'true'
+        uses: release-plz/action@v0.5
+        with:
+          command: release-pr
+        env:
+          # No crates.io token here: develop never publishes.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    if: github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish to crates.io and tag
+        uses: release-plz/action@v0.5
+        with:
+          command: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

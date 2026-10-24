@@ -28,10 +28,11 @@ In addition to indices, you can also use **multidraw indirect** rendering.
 
 The idea is to put a list of things to render in a buffer, and pass that buffer to OpenGL.
 
+Multidraw indirect is core in OpenGL 4.3, so it requires the `gl46` Cargo feature.
+
 */
 use crate::gl;
 use crate::version::Api;
-use crate::version::Version;
 use crate::CapabilitiesSource;
 use crate::ToGlEnum;
 
@@ -41,10 +42,15 @@ use crate::buffer::BufferAnySlice;
 
 pub use self::buffer::CreationError as BufferCreationError;
 pub use self::buffer::{IndexBuffer, IndexBufferAny, IndexBufferSlice};
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 pub use self::multidraw::{DrawCommandIndices, DrawCommandsIndicesBuffer};
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 pub use self::multidraw::{DrawCommandNoIndices, DrawCommandsNoIndicesBuffer};
 
 mod buffer;
+#[cfg(feature = "gl46")]
 mod multidraw;
 
 /// Describes a source of indices used for drawing.
@@ -61,6 +67,8 @@ pub enum IndicesSource<'a> {
     },
 
     /// Use a multidraw indirect buffer without indices.
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     MultidrawArray {
         /// The buffer.
         buffer: BufferAnySlice<'a>,
@@ -69,6 +77,8 @@ pub enum IndicesSource<'a> {
     },
 
     /// Use a multidraw indirect buffer with indices.
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     MultidrawElement {
         /// The buffer of the commands.
         commands: BufferAnySlice<'a>,
@@ -94,7 +104,9 @@ impl<'a> IndicesSource<'a> {
     pub fn get_primitives_type(&self) -> PrimitiveType {
         *match self {
             IndicesSource::IndexBuffer { primitives, .. } => primitives,
+            #[cfg(feature = "gl46")]
             IndicesSource::MultidrawArray { primitives, .. } => primitives,
+            #[cfg(feature = "gl46")]
             IndicesSource::MultidrawElement { primitives, .. } => primitives,
             IndicesSource::NoIndices { primitives } => primitives,
         }
@@ -211,16 +223,10 @@ impl PrimitiveType {
             | &PrimitiveType::LineStripAdjacency
             | &PrimitiveType::TrianglesListAdjacency
             | &PrimitiveType::TriangleStripAdjacency => {
-                caps.get_version() >= &Version(Api::Gl, 3, 0)
-                    || caps.get_extensions().gl_arb_geometry_shader4
-                    || caps.get_extensions().gl_ext_geometry_shader4
-                    || caps.get_extensions().gl_ext_geometry_shader
+                caps.get_version().0 == Api::Gl || caps.get_extensions().gl_ext_geometry_shader
             }
 
-            &PrimitiveType::Patches { .. } => {
-                caps.get_version() >= &Version(Api::Gl, 4, 0)
-                    || caps.get_extensions().gl_arb_tessellation_shader
-            }
+            &PrimitiveType::Patches { .. } => caps.get_version().0 == Api::Gl,
         }
     }
 }
@@ -302,11 +308,7 @@ impl IndexType {
         match self {
             IndexType::U8 => true,
             IndexType::U16 => true,
-            IndexType::U32 => {
-                caps.get_version() >= &Version(Api::Gl, 1, 0)
-                    || caps.get_version() >= &Version(Api::GlEs, 3, 0)
-                    || caps.get_extensions().gl_oes_element_index_uint
-            }
+            IndexType::U32 => true,
         }
     }
 }

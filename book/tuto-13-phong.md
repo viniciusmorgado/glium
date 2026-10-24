@@ -87,4 +87,4 @@ And here is the result:
 
 The big white spots are the specular reflection.
 
-**[You can find the entire source code here](https://github.com/glium/glium/blob/master/examples/tutorial-13.rs).**
+**[You can find the entire source code here](https://github.com/viniciusmorgado/safegl/blob/develop/examples/standalone/tutorial-13.rs).**

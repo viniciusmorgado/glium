@@ -1,7 +1,7 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::{Display, Surface};
+use safegl::{Display, Surface};
 use glutin::surface::WindowSurface;
 use std::io::Cursor;
 use support::{ApplicationContext, State};
@@ -16,14 +16,14 @@ struct Vertex {
 implement_vertex!(Vertex, position, tex_coords);
 
 struct Application {
-    pub opengl_texture: glium::texture::CompressedTexture2d,
-    pub vertex_buffer: glium::VertexBuffer<Vertex>,
-    pub program: glium::Program,
+    pub opengl_texture: safegl::texture::CompressedTexture2d,
+    pub vertex_buffer: safegl::VertexBuffer<Vertex>,
+    pub program: safegl::Program,
     pub camera: support::camera::CameraState,
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE: &'static str = "Glium displacement_mapping example";
+    const WINDOW_TITLE: &'static str = "SafeGL displacement_mapping example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         let image = image::load(
@@ -34,12 +34,12 @@ impl ApplicationContext for Application {
         .to_rgba8();
         let image_dimensions = image.dimensions();
         let image =
-            glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
-        let opengl_texture = glium::texture::CompressedTexture2d::new(display, image).unwrap();
+            safegl::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+        let opengl_texture = safegl::texture::CompressedTexture2d::new(display, image).unwrap();
 
         // building the vertex buffer, which contains all the vertices that we will draw
         let vertex_buffer = {
-            glium::VertexBuffer::new(
+            safegl::VertexBuffer::new(
                 display,
                 &[
                     Vertex {
@@ -72,9 +72,9 @@ impl ApplicationContext for Application {
         };
 
         // compiling shaders and linking them together
-        let program = glium::Program::new(
+        let program = safegl::Program::new(
             display,
-            glium::program::SourceCode {
+            safegl::program::SourceCode {
                 vertex_shader: "
                     #version 400
 
@@ -249,7 +249,7 @@ impl ApplicationContext for Application {
         frame
             .draw(
                 &self.vertex_buffer,
-                &glium::index::NoIndices(glium::index::PrimitiveType::Patches {
+                &safegl::index::NoIndices(safegl::index::PrimitiveType::Patches {
                     vertices_per_patch: 3,
                 }),
                 &self.program,
@@ -262,8 +262,8 @@ impl ApplicationContext for Application {
 
     fn handle_window_event(
         &mut self,
-        event: &glium::winit::event::WindowEvent,
-        _window: &glium::winit::window::Window,
+        event: &safegl::winit::event::WindowEvent,
+        _window: &safegl::winit::window::Window,
     ) {
         self.camera.process_input(&event);
     }

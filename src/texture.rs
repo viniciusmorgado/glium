@@ -51,7 +51,7 @@ All textures except depth, stencil and depth-stencil textures have **mipmaps**. 
 smaller version of the texture whose purpose is to be used during rendering when the texture will
 be small on the screen.
 
-# Texture types in glium
+# Texture types in SafeGL
 
 In addition to the nine different dimensions types, there are nine kinds of texture formats:
 
@@ -65,7 +65,7 @@ In addition to the nine different dimensions types, there are nine kinds of text
  - The texture contains stencil information, with the `Stencil` prefix.
  - The texture contains depth and stencil information, with the `DepthStencil` prefix.
 
-Each combination of dimensions and format corresponds to a sampler type in GLSL and in glium.
+Each combination of dimensions and format corresponds to a sampler type in GLSL and in SafeGL.
 For example, an `IntegralTexture3d` can only be bound to an `isampler3D` uniform in GLSL.
 
 The difference between compressed textures and uncompressed textures is that you can't do
@@ -91,7 +91,7 @@ that screens darken some values that they receive.
 When you load image files, you are encouraged to create sRGB textures (with `SrgbTexture2d` instead
 of `Texture2d` for example).
 
-By default, glium enables the `GL_FRAMEBUFFER_SRGB` trigger, which expects the output of your
+By default, SafeGL enables the `GL_FRAMEBUFFER_SRGB` trigger, which expects the output of your
 fragment shader to be in linear RGB and then turns it into sRGB before writing in the framebuffer.
 Sampling from an sRGB texture will convert the texture colors from sRGB to RGB. If you create a
 regular RGB texture and put sRGB data in it, then the result will be too bright.
@@ -99,7 +99,7 @@ regular RGB texture and put sRGB data in it, then the result will be too bright.
 # Bindless textures
 
 *Bindless textures are a very recent feature that is supported only by recent hardware and
-drivers.*
+drivers.* They require the `gl46` Cargo feature.
 
 Without bindless textures, using a texture in a shader requires binding the texture to a specific
 bind point before drawing. This not only slows down rendering, but may also prevent you from
@@ -120,12 +120,11 @@ use crate::image_format::FormatNotSupportedError;
 
 pub use self::any::{Dimensions, TextureAnyImage};
 pub use self::any::{TextureAny, TextureAnyLayer, TextureAnyLayerMipmap, TextureAnyMipmap};
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 pub use self::bindless::{BindlessTexturesNotSupportedError, ResidentTexture, TextureHandle};
 pub use self::get_format::{GetFormatError, InternalFormat, InternalFormatType};
 pub use self::pixel::PixelValue;
-pub use self::texture_import::ExternalTilingMode;
-pub use self::texture_import::ImportParameters;
-pub use self::texture_import::TextureImportError;
 pub use self::ty_support::is_cubemap_arrays_supported;
 pub use self::ty_support::{is_cubemaps_supported, is_texture_2d_multisample_array_supported};
 pub use self::ty_support::{is_texture_1d_array_supported, is_texture_3d_supported};
@@ -138,6 +137,8 @@ pub use crate::image_format::{
     UncompressedFloatFormat, UncompressedIntFormat, UncompressedUintFormat,
 };
 
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 pub mod bindless;
 pub mod buffer_texture;
 pub mod pixel_buffer;
@@ -145,7 +146,6 @@ pub mod pixel_buffer;
 mod any;
 mod get_format;
 mod pixel;
-mod texture_import;
 mod ty_support;
 
 mod textures {

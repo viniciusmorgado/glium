@@ -1,13 +1,13 @@
 #[macro_use]
-extern crate glium;
-use glium::Surface;
+extern crate safegl;
+use safegl::Surface;
 
 fn main() {
-    let event_loop = glium::winit::event_loop::EventLoop::builder()
+    let event_loop = safegl::winit::event_loop::EventLoop::builder()
         .build()
         .expect("event loop building");
-    let (window, display) = glium::backend::glutin::SimpleWindowBuilder::new()
-        .with_title("Glium tutorial #5")
+    let (window, display) = safegl::backend::glutin::SimpleWindowBuilder::new()
+        .with_title("SafeGL tutorial #5")
         .build(&event_loop);
 
     #[derive(Copy, Clone)]
@@ -30,8 +30,8 @@ fn main() {
             color: [0.0, 0.0, 1.0],
         },
     ];
-    let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
-    let vertex_buffer = glium::VertexBuffer::new(&display, &shape).unwrap();
+    let indices = safegl::index::NoIndices(safegl::index::PrimitiveType::TrianglesList);
+    let vertex_buffer = safegl::VertexBuffer::new(&display, &shape).unwrap();
 
     let vertex_shader_src = r#"
         #version 140
@@ -60,7 +60,7 @@ fn main() {
     "#;
 
     let program =
-        glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None)
+        safegl::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None)
             .unwrap();
 
     let mut t: f32 = -0.5;
@@ -69,12 +69,12 @@ fn main() {
     event_loop
         .run(move |ev, window_target| {
             match ev {
-                glium::winit::event::Event::WindowEvent { event, .. } => match event {
-                    glium::winit::event::WindowEvent::CloseRequested => {
+                safegl::winit::event::Event::WindowEvent { event, .. } => match event {
+                    safegl::winit::event::WindowEvent::CloseRequested => {
                         window_target.exit();
                     }
                     // We now need to render everyting in response to a RedrawRequested event due to the animation
-                    glium::winit::event::WindowEvent::RedrawRequested => {
+                    safegl::winit::event::WindowEvent::RedrawRequested => {
                         // we update `t`
                         t += 0.02;
                         let x = t.sin() * 0.5;
@@ -102,16 +102,16 @@ fn main() {
                             .unwrap();
                         target.finish().unwrap();
                     }
-                    // Because glium doesn't know about windows we need to resize the display
+                    // Because SafeGL doesn't know about windows we need to resize the display
                     // when the window's size has changed.
-                    glium::winit::event::WindowEvent::Resized(window_size) => {
+                    safegl::winit::event::WindowEvent::Resized(window_size) => {
                         display.resize(window_size.into());
                     }
                     _ => (),
                 },
                 // By requesting a redraw in response to a AboutToWait event we get continuous rendering.
                 // For applications that only change due to user input you could remove this handler.
-                glium::winit::event::Event::AboutToWait => {
+                safegl::winit::event::Event::AboutToWait => {
                     window.request_redraw();
                 }
                 _ => (),

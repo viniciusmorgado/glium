@@ -1,15 +1,15 @@
 #[macro_use]
-extern crate glium;
-use glium::Surface;
+extern crate safegl;
+use safegl::Surface;
 
 fn main() {
     // We start by creating the EventLoop, this can only be done once per process.
     // This also needs to happen on the main thread to make the program portable.
-    let event_loop = glium::winit::event_loop::EventLoop::builder()
+    let event_loop = safegl::winit::event_loop::EventLoop::builder()
         .build()
         .expect("event loop building");
-    let (_window, display) = glium::backend::glutin::SimpleWindowBuilder::new()
-        .with_title("Glium tutorial #2")
+    let (_window, display) = safegl::backend::glutin::SimpleWindowBuilder::new()
+        .with_title("SafeGL tutorial #2")
         .build(&event_loop);
 
     #[derive(Copy, Clone)]
@@ -28,8 +28,8 @@ fn main() {
             position: [0.5, -0.25],
         },
     ];
-    let vertex_buffer = glium::VertexBuffer::new(&display, &shape).unwrap();
-    let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+    let vertex_buffer = safegl::VertexBuffer::new(&display, &shape).unwrap();
+    let indices = safegl::index::NoIndices(safegl::index::PrimitiveType::TrianglesList);
 
     let vertex_shader_src = r#"
         #version 140
@@ -52,7 +52,7 @@ fn main() {
     "#;
 
     let program =
-        glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None)
+        safegl::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None)
             .unwrap();
 
     let mut target = display.draw();
@@ -62,7 +62,7 @@ fn main() {
             &vertex_buffer,
             &indices,
             &program,
-            &glium::uniforms::EmptyUniforms,
+            &safegl::uniforms::EmptyUniforms,
             &Default::default(),
         )
         .unwrap();
@@ -71,8 +71,8 @@ fn main() {
     #[allow(deprecated)]
     event_loop
         .run(move |ev, window_target| match ev {
-            glium::winit::event::Event::WindowEvent { event, .. } => match event {
-                glium::winit::event::WindowEvent::CloseRequested => {
+            safegl::winit::event::Event::WindowEvent { event, .. } => match event {
+                safegl::winit::event::WindowEvent::CloseRequested => {
                     window_target.exit();
                 }
                 _ => (),

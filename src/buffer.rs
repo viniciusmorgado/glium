@@ -3,9 +3,9 @@
 //! The purpose of buffers is to serve as a space where the GPU can read from or write data to.
 //! It can contain a list of vertices, indices, uniform data, etc.
 //!
-//! # Buffers management in glium
+//! # Buffers management in SafeGL
 //!
-//! There are three levels of abstraction in glium:
+//! There are three levels of abstraction in SafeGL:
 //!
 //!  - An `Alloc` corresponds to an OpenGL buffer object and is unsafe to use.
 //!    This type is not public.
@@ -25,19 +25,19 @@
 //! `implement_buffer_content!` macro on them. You must then use the `empty_unsized` constructor.
 //!
 //! ```no_run
-//! # use glium::implement_buffer_content;
+//! # use safegl::implement_buffer_content;
 //! # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-//! # fn example<T>(display: glium::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
+//! # fn example<T>(display: safegl::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
 //! # use std::mem;
-//! # use glium::buffer::{BufferType, BufferMode};
+//! # use safegl::buffer::{BufferType, BufferMode};
 //! struct Data {
 //!     data: [f32],        // `[f32]` is unsized, therefore `Data` is unsized too
 //! }
 //!
-//! implement_buffer_content!(Data);    // without this, you can't put `Data` in a glium buffer
+//! implement_buffer_content!(Data);    // without this, you can't put `Data` in a SafeGL buffer
 //!
 //! // creates a buffer of 64 bytes, which thus holds 8 f32s
-//! let mut buffer = glium::buffer::Buffer::<Data>::empty_unsized(&display, BufferType::UniformBuffer,
+//! let mut buffer = safegl::buffer::Buffer::<Data>::empty_unsized(&display, BufferType::UniformBuffer,
 //!                                                               64, BufferMode::Default).unwrap();
 //!
 //! // you can then write to it like you normally would
@@ -254,7 +254,7 @@ pub enum BufferMode {
     /// Optimized for when you modify a buffer exactly once per frame. You can modify it more than
     /// once per frame, but if you modify it too often things will slow down.
     ///
-    /// With this mode, glium automatically handles synchronization to prevent the buffer from
+    /// With this mode, SafeGL automatically handles synchronization to prevent the buffer from
     /// being access by both the GPU and the CPU simultaneously. If you try to modify the buffer,
     /// the execution will block until the GPU has finished using it. For this reason, a quick
     /// succession of modifying and drawing using the same buffer will be very slow.
@@ -267,7 +267,7 @@ pub enum BufferMode {
     /// # Implementation
     ///
     /// Tries to use `glBufferStorage` with `GL_MAP_PERSISTENT_BIT`. Sync fences are automatically
-    /// managed by glium.
+    /// managed by SafeGL.
     ///
     /// If this function is not available, falls back to `glBufferData` with `GL_DYNAMIC_DRAW`.
     ///
@@ -305,10 +305,18 @@ pub enum BufferType {
     UniformBuffer,
     CopyReadBuffer,
     CopyWriteBuffer,
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     AtomicCounterBuffer,
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     DispatchIndirectBuffer,
     DrawIndirectBuffer,
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     QueryBuffer,
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     ShaderStorageBuffer,
     TextureBuffer,
     TransformFeedbackBuffer,
@@ -324,10 +332,14 @@ impl BufferType {
             BufferType::UniformBuffer => gl::UNIFORM_BUFFER,
             BufferType::CopyReadBuffer => gl::COPY_READ_BUFFER,
             BufferType::CopyWriteBuffer => gl::COPY_WRITE_BUFFER,
+            #[cfg(feature = "gl46")]
             BufferType::AtomicCounterBuffer => gl::ATOMIC_COUNTER_BUFFER,
+            #[cfg(feature = "gl46")]
             BufferType::DispatchIndirectBuffer => gl::DISPATCH_INDIRECT_BUFFER,
             BufferType::DrawIndirectBuffer => gl::DRAW_INDIRECT_BUFFER,
+            #[cfg(feature = "gl46")]
             BufferType::QueryBuffer => gl::QUERY_BUFFER,
+            #[cfg(feature = "gl46")]
             BufferType::ShaderStorageBuffer => gl::SHADER_STORAGE_BUFFER,
             BufferType::TextureBuffer => gl::TEXTURE_BUFFER,
             BufferType::TransformFeedbackBuffer => gl::TRANSFORM_FEEDBACK_BUFFER,

@@ -11,18 +11,18 @@ use crate::vertex::AttributeType;
 use crate::vertex::VertexFormat;
 use crate::BufferExt;
 use crate::GlObject;
-use crate::Handle;
 
 use crate::context::CommandContext;
 use crate::gl;
-use crate::version::Api;
-use crate::version::Version;
+use glow::HasContext;
 
 /// Stores and handles vertex attributes.
 pub struct VertexAttributesSystem {
     // we maintain a list of VAOs for each vertexbuffer-indexbuffer-program association
     // the key is a (buffers-list-with-offset, program) ; the buffers list must be sorted
-    vaos: RefCell<HashMap<(SmallVec<[(gl::types::GLuint, usize); 3]>, Handle), VertexArrayObject>>,
+    vaos: RefCell<
+        HashMap<(SmallVec<[(Option<glow::Buffer>, usize); 3]>, glow::Program), VertexArrayObject>,
+    >,
 }
 
 /// Object allowing one to bind vertex attributes to the current context.
@@ -30,7 +30,7 @@ pub struct Binder<'a, 'b, 'c> {
     context: &'b mut CommandContext<'c>,
     program: &'a Program,
     element_array_buffer: Option<BufferAnySlice<'a>>,
-    vertex_buffers: SmallVec<[(gl::types::GLuint, VertexFormat, usize, usize, Option<u32>); 2]>,
+    vertex_buffers: SmallVec<[(glow::Buffer, VertexFormat, usize, usize, Option<u32>); 2]>,
     base_vertex: bool,
 }
 
@@ -70,16 +70,16 @@ impl VertexAttributesSystem {
     /// This function *must* be called whenever you destroy a buffer so that the system can
     /// purge its VAOs cache.
     #[inline]
-    pub fn purge_buffer(ctxt: &mut CommandContext<'_>, id: gl::types::GLuint) {
+    pub fn purge_buffer(ctxt: &mut CommandContext<'_>, id: glow::Buffer) {
         VertexAttributesSystem::purge_if(ctxt, |&(ref buffers, _)| {
-            buffers.iter().any(|&(b, _)| b == id)
+            buffers.iter().any(|&(b, _)| b == Some(id))
         })
     }
 
     /// This function *must* be called whenever you destroy a program so that the system can
     /// purge its VAOs cache.
     #[inline]
-    pub fn purge_program(ctxt: &mut CommandContext<'_>, program: Handle) {
+    pub fn purge_program(ctxt: &mut CommandContext<'_>, program: glow::Program) {
         VertexAttributesSystem::purge_if(ctxt, |&(_, p)| p == program)
     }
 
@@ -113,7 +113,7 @@ impl VertexAttributesSystem {
         let vaos = ctxt.vertex_array_objects.vaos.borrow_mut();
 
         for (_, vao) in vaos.iter() {
-            if vao.id == ctxt.state.vertex_array {
+            if Some(vao.id) == ctxt.state.vertex_array {
                 vao.element_array_buffer_hijacked.set(true);
                 return;
             }
@@ -123,7 +123,7 @@ impl VertexAttributesSystem {
     /// Purges VAOs that match a certain condition.
     fn purge_if<F>(ctxt: &mut CommandContext<'_>, mut condition: F)
     where
-        F: FnMut(&(SmallVec<[(gl::types::GLuint, usize); 3]>, Handle)) -> bool,
+        F: FnMut(&(SmallVec<[(Option<glow::Buffer>, usize); 3]>, glow::Program)) -> bool,
     {
         let mut vaos = ctxt.vertex_array_objects.vaos.borrow_mut();
 
@@ -172,118 +172,75 @@ impl<'a, 'b, 'c> Binder<'a, 'b, 'c> {
     pub fn bind(mut self) -> Option<gl::types::GLint> {
         let ctxt = self.context;
 
-        if ctxt.version >= &Version(Api::Gl, 3, 0)
-            || ctxt.version >= &Version(Api::GlEs, 3, 0)
-            || ctxt.extensions.gl_arb_vertex_array_object
-            || ctxt.extensions.gl_oes_vertex_array_object
-            || ctxt.extensions.gl_apple_vertex_array_object
-        {
-            // VAOs are supported
+        // VAOs are core in OpenGL 3.0 and OpenGL ES 3.0
 
-            // finding the base vertex
-            let base_vertex = if self.base_vertex {
-                Some(
-                    self.vertex_buffers
-                        .iter()
-                        .filter(|&&(_, _, _, _, div)| div.is_none())
-                        .map(|&(_, _, off, stride, _)| off / stride)
-                        .min()
-                        .unwrap_or(0),
-                )
-            } else {
-                None
-            };
-
-            // removing the offset corresponding to the base vertex
-            if let Some(base_vertex) = base_vertex {
-                for &mut (_, _, ref mut off, stride, _) in self.vertex_buffers.iter_mut() {
-                    *off -= base_vertex * stride;
-                }
-            }
-
-            let mut buffers_list: SmallVec<[_; 3]> = self
-                .vertex_buffers
-                .iter()
-                .map(|&(v, _, o, s, _)| (v, o))
-                .collect();
-            buffers_list.push((
-                self.element_array_buffer.map(|b| b.get_id()).unwrap_or(0),
-                0,
-            ));
-            buffers_list.sort_unstable();
-
-            let program_id = self.program.get_id();
-
-            // trying to find an existing VAO in the cache
-            if let Some(value) = ctxt
-                .vertex_array_objects
-                .vaos
-                .borrow_mut()
-                .get(&(buffers_list.clone(), program_id))
-            {
-                value.bind(ctxt);
-                return base_vertex.map(|v| v as gl::types::GLint);
-            }
-
-            // if not found, building a new one
-            let new_vao = unsafe {
-                VertexArrayObject::new(
-                    ctxt,
-                    &self.vertex_buffers,
-                    self.element_array_buffer,
-                    self.program,
-                )
-            };
-
-            new_vao.bind(ctxt);
-            ctxt.vertex_array_objects
-                .vaos
-                .borrow_mut()
-                .insert((buffers_list, program_id), new_vao);
-
-            base_vertex.map(|v| v as gl::types::GLint)
+        // finding the base vertex
+        let base_vertex = if self.base_vertex {
+            Some(
+                self.vertex_buffers
+                    .iter()
+                    .filter(|&&(_, _, _, _, div)| div.is_none())
+                    .map(|&(_, _, off, stride, _)| off / stride)
+                    .min()
+                    .unwrap_or(0),
+            )
         } else {
-            // VAOs are not supported
+            None
+        };
 
-            // just in case
-            bind_vao(ctxt, 0);
-
-            if let Some(element_array_buffer) = self.element_array_buffer {
-                element_array_buffer.bind_to_element_array(ctxt);
-            }
-
-            for (vertex_buffer, bindings, offset, stride, divisor) in
-                self.vertex_buffers.into_iter()
-            {
-                unsafe {
-                    bind_attribute(
-                        ctxt,
-                        self.program,
-                        vertex_buffer,
-                        &bindings,
-                        offset,
-                        stride,
-                        divisor,
-                    );
-                }
-            }
-
-            // TODO: it is unlikely that a backend supports base vertex but not VAOs, so we just
-            //       ignore this case ; however it would ideally be better to handle it
-            if self.base_vertex {
-                Some(0)
-            } else {
-                None
+        // removing the offset corresponding to the base vertex
+        if let Some(base_vertex) = base_vertex {
+            for &mut (_, _, ref mut off, stride, _) in self.vertex_buffers.iter_mut() {
+                *off -= base_vertex * stride;
             }
         }
+
+        let mut buffers_list: SmallVec<[_; 3]> = self
+            .vertex_buffers
+            .iter()
+            .map(|&(v, _, o, s, _)| (Some(v), o))
+            .collect();
+        buffers_list.push((self.element_array_buffer.map(|b| b.get_id()), 0));
+        buffers_list.sort_unstable();
+
+        let program_id = self.program.get_id();
+
+        // trying to find an existing VAO in the cache
+        if let Some(value) = ctxt
+            .vertex_array_objects
+            .vaos
+            .borrow_mut()
+            .get(&(buffers_list.clone(), program_id))
+        {
+            value.bind(ctxt);
+            return base_vertex.map(|v| v as gl::types::GLint);
+        }
+
+        // if not found, building a new one
+        let new_vao = unsafe {
+            VertexArrayObject::new(
+                ctxt,
+                &self.vertex_buffers,
+                self.element_array_buffer,
+                self.program,
+            )
+        };
+
+        new_vao.bind(ctxt);
+        ctxt.vertex_array_objects
+            .vaos
+            .borrow_mut()
+            .insert((buffers_list, program_id), new_vao);
+
+        base_vertex.map(|v| v as gl::types::GLint)
     }
 }
 
 /// Stores informations about how to bind a vertex buffer, an index buffer and a program.
 struct VertexArrayObject {
-    id: gl::types::GLuint,
+    id: glow::VertexArray,
     destroyed: bool,
-    element_array_buffer: gl::types::GLuint,
+    element_array_buffer: Option<glow::Buffer>,
     element_array_buffer_hijacked: Cell<bool>,
 }
 
@@ -294,7 +251,7 @@ impl VertexArrayObject {
     /// VAO, and the VB & program attributes must not change.
     unsafe fn new(
         mut ctxt: &mut CommandContext<'_>,
-        vertex_buffers: &[(gl::types::GLuint, VertexFormat, usize, usize, Option<u32>)],
+        vertex_buffers: &[(glow::Buffer, VertexFormat, usize, usize, Option<u32>)],
         index_buffer: Option<BufferAnySlice<'_>>,
         program: &Program,
     ) -> VertexArrayObject {
@@ -370,26 +327,14 @@ impl VertexArrayObject {
         // TODO: check for collisions between the vertices sources
 
         // building the VAO
-        let id = {
-            let mut id = 0;
-            if ctxt.version >= &Version(Api::Gl, 3, 0)
-                || ctxt.version >= &Version(Api::GlEs, 3, 0)
-                || ctxt.extensions.gl_arb_vertex_array_object
-            {
-                ctxt.gl.GenVertexArrays(1, &mut id);
-            } else if ctxt.extensions.gl_oes_vertex_array_object {
-                ctxt.gl.GenVertexArraysOES(1, &mut id);
-            } else if ctxt.extensions.gl_apple_vertex_array_object {
-                ctxt.gl.GenVertexArraysAPPLE(1, &mut id);
-            } else {
-                unreachable!();
-            };
-            id
-        };
+        let id = ctxt
+            .glow
+            .create_vertex_array()
+            .expect("glGenVertexArrays failed");
 
         // we don't use DSA as we're going to make multiple calls for this VAO
         // and we're likely going to use the VAO right after it's been created
-        bind_vao(&mut ctxt, id);
+        bind_vao(&mut ctxt, Some(id));
 
         // binding index buffer
         if let Some(index_buffer) = index_buffer {
@@ -411,7 +356,7 @@ impl VertexArrayObject {
         VertexArrayObject {
             id,
             destroyed: false,
-            element_array_buffer: index_buffer.map(|b| b.get_id()).unwrap_or(0),
+            element_array_buffer: index_buffer.map(|b| b.get_id()),
             element_array_buffer_hijacked: Cell::new(false),
         }
     }
@@ -419,21 +364,12 @@ impl VertexArrayObject {
     /// Sets this VAO as the current VAO.
     fn bind(&self, ctxt: &mut CommandContext<'_>) {
         unsafe {
-            bind_vao(ctxt, self.id);
+            bind_vao(ctxt, Some(self.id));
 
             if self.element_array_buffer_hijacked.get() {
                 // TODO: use a proper function
-                if ctxt.version >= &Version(Api::Gl, 1, 5)
-                    || ctxt.version >= &Version(Api::GlEs, 2, 0)
-                {
-                    ctxt.gl
-                        .BindBuffer(gl::ELEMENT_ARRAY_BUFFER, self.element_array_buffer);
-                } else if ctxt.extensions.gl_arb_vertex_buffer_object {
-                    ctxt.gl
-                        .BindBufferARB(gl::ELEMENT_ARRAY_BUFFER_ARB, self.element_array_buffer);
-                } else {
-                    unreachable!();
-                }
+                ctxt.glow
+                    .bind_buffer(glow::ELEMENT_ARRAY_BUFFER, self.element_array_buffer);
 
                 self.element_array_buffer_hijacked.set(false);
             }
@@ -446,23 +382,12 @@ impl VertexArrayObject {
         self.destroyed = true;
 
         // unbinding
-        if ctxt.state.vertex_array == self.id {
-            ctxt.state.vertex_array = 0;
+        if ctxt.state.vertex_array == Some(self.id) {
+            ctxt.state.vertex_array = None;
         }
 
         // deleting
-        if ctxt.version >= &Version(Api::Gl, 3, 0)
-            || ctxt.version >= &Version(Api::GlEs, 3, 0)
-            || ctxt.extensions.gl_arb_vertex_array_object
-        {
-            unsafe { ctxt.gl.DeleteVertexArrays(1, [self.id].as_ptr()) };
-        } else if ctxt.extensions.gl_oes_vertex_array_object {
-            unsafe { ctxt.gl.DeleteVertexArraysOES(1, [self.id].as_ptr()) };
-        } else if ctxt.extensions.gl_apple_vertex_array_object {
-            unsafe { ctxt.gl.DeleteVertexArraysAPPLE(1, [self.id].as_ptr()) };
-        } else {
-            unreachable!();
-        }
+        unsafe { ctxt.glow.delete_vertex_array(self.id) };
     }
 }
 
@@ -474,10 +399,10 @@ impl Drop for VertexArrayObject {
 }
 
 impl GlObject for VertexArrayObject {
-    type Id = gl::types::GLuint;
+    type Id = glow::VertexArray;
 
     #[inline]
-    fn get_id(&self) -> gl::types::GLuint {
+    fn get_id(&self) -> glow::VertexArray {
         self.id
     }
 }
@@ -566,25 +491,10 @@ fn vertex_binding_type_to_gl(
     }
 }
 
-/// Binds the vertex array object as the current one. Unbinds if `0` is passed.
-///
-/// ## Panic
-///
-/// Panics if the backend doesn't support vertex array objects.
-fn bind_vao(ctxt: &mut CommandContext<'_>, vao_id: gl::types::GLuint) {
+/// Binds the vertex array object as the current one. Unbinds if `None` is passed.
+fn bind_vao(ctxt: &mut CommandContext<'_>, vao_id: Option<glow::VertexArray>) {
     if ctxt.state.vertex_array != vao_id {
-        if ctxt.version >= &Version(Api::Gl, 3, 0)
-            || ctxt.version >= &Version(Api::GlEs, 3, 0)
-            || ctxt.extensions.gl_arb_vertex_array_object
-        {
-            unsafe { ctxt.gl.BindVertexArray(vao_id) };
-        } else if ctxt.extensions.gl_oes_vertex_array_object {
-            unsafe { ctxt.gl.BindVertexArrayOES(vao_id) };
-        } else if ctxt.extensions.gl_apple_vertex_array_object {
-            unsafe { ctxt.gl.BindVertexArrayAPPLE(vao_id) };
-        } else {
-            unreachable!();
-        }
+        unsafe { ctxt.glow.bind_vertex_array(vao_id) };
 
         ctxt.state.vertex_array = vao_id;
     }
@@ -594,7 +504,7 @@ fn bind_vao(ctxt: &mut CommandContext<'_>, vao_id: gl::types::GLuint) {
 unsafe fn bind_attribute(
     ctxt: &mut CommandContext<'_>,
     program: &Program,
-    vertex_buffer: gl::types::GLuint,
+    vertex_buffer: glow::Buffer,
     bindings: &VertexFormat,
     buffer_offset: usize,
     stride: usize,
@@ -602,15 +512,10 @@ unsafe fn bind_attribute(
 ) {
     // glVertexAttribPointer uses the current array buffer
     // TODO: use a proper function
-    if ctxt.state.array_buffer_binding != vertex_buffer {
-        if ctxt.version >= &Version(Api::Gl, 1, 5) || ctxt.version >= &Version(Api::GlEs, 2, 0) {
-            ctxt.gl.BindBuffer(gl::ARRAY_BUFFER, vertex_buffer);
-        } else if ctxt.extensions.gl_arb_vertex_buffer_object {
-            ctxt.gl.BindBufferARB(gl::ARRAY_BUFFER_ARB, vertex_buffer);
-        } else {
-            unreachable!();
-        }
-        ctxt.state.array_buffer_binding = vertex_buffer;
+    if ctxt.state.array_buffer_binding != Some(vertex_buffer) {
+        ctxt.glow
+            .bind_buffer(glow::ARRAY_BUFFER, Some(vertex_buffer));
+        ctxt.state.array_buffer_binding = Some(vertex_buffer);
     }
 
     // binding attributes
@@ -641,13 +546,13 @@ unsafe fn bind_attribute(
             let (attribute_ty, _, _) = vertex_binding_type_to_gl(attribute.ty);
             if normalize {
                 for i in 0..instances_count {
-                    ctxt.gl.VertexAttribPointer(
+                    ctxt.glow.vertex_attrib_pointer_f32(
                         (attribute.location + i) as u32,
                         elements_count as gl::types::GLint,
                         data_type,
-                        1,
+                        true,
                         stride as i32,
-                        (buffer_offset + offset + (i * elements_count * 4) as usize) as *const _,
+                        (buffer_offset + offset + (i * elements_count * 4) as usize) as i32,
                     )
                 }
             } else {
@@ -657,50 +562,47 @@ unsafe fn bind_attribute(
                     | gl::SHORT
                     | gl::UNSIGNED_SHORT
                     | gl::INT
-                    | gl::UNSIGNED_INT => ctxt.gl.VertexAttribIPointer(
+                    | gl::UNSIGNED_INT => ctxt.glow.vertex_attrib_pointer_i32(
                         attribute.location as u32,
                         elements_count as gl::types::GLint,
                         data_type,
                         stride as i32,
-                        (buffer_offset + offset) as *const _,
+                        (buffer_offset + offset) as i32,
                     ),
 
                     gl::FLOAT => {
                         for i in 0..instances_count {
-                            ctxt.gl.VertexAttribPointer(
+                            ctxt.glow.vertex_attrib_pointer_f32(
                                 (attribute.location + i) as u32,
                                 elements_count as gl::types::GLint,
                                 data_type,
-                                0,
+                                false,
                                 stride as i32,
-                                (buffer_offset + offset + (i * elements_count * 4) as usize)
-                                    as *const _,
+                                (buffer_offset + offset + (i * elements_count * 4) as usize) as i32,
                             )
                         }
                     }
                     gl::HALF_FLOAT => {
                         for i in 0..instances_count {
-                            ctxt.gl.VertexAttribPointer(
+                            ctxt.glow.vertex_attrib_pointer_f32(
                                 (attribute.location + i) as u32,
                                 elements_count as gl::types::GLint,
                                 data_type,
-                                0,
+                                false,
                                 stride as i32,
-                                (buffer_offset + offset + (i * elements_count * 2) as usize)
-                                    as *const _,
+                                (buffer_offset + offset + (i * elements_count * 2) as usize) as i32,
                             )
                         }
                     }
 
                     gl::DOUBLE | gl::INT64_NV | gl::UNSIGNED_INT64_NV => {
                         for i in 0..instances_count {
-                            ctxt.gl.VertexAttribLPointer(
+                            ctxt.glow.vertex_attrib_pointer_f64(
                                 (attribute.location + i) as u32,
                                 elements_count as gl::types::GLint,
                                 data_type,
                                 stride as i32,
-                                (buffer_offset + offset + (i * elements_count * 8) as usize)
-                                    as *const _,
+                                (buffer_offset + offset + (i * elements_count * 8) as usize) as i32,
                             )
                         }
                     }
@@ -711,11 +613,11 @@ unsafe fn bind_attribute(
 
             for i in 0..instances_count {
                 if let Some(divisor) = divisor {
-                    ctxt.gl
-                        .VertexAttribDivisor((attribute.location + i) as u32, divisor);
+                    ctxt.glow
+                        .vertex_attrib_divisor((attribute.location + i) as u32, divisor);
                 }
-                ctxt.gl
-                    .EnableVertexAttribArray((attribute.location + i) as u32);
+                ctxt.glow
+                    .enable_vertex_attrib_array((attribute.location + i) as u32);
             }
         }
     }
