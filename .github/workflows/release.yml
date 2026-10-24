@@ -45,8 +45,8 @@ jobs:
         with:
           command: release-pr
         env:
+          # No crates.io token here: develop never publishes.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   publish:
     if: github.ref_name == 'main'
