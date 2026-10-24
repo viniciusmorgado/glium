@@ -576,9 +576,14 @@ impl<'a> TextureExt for BufferTextureRef<'a> {
 
     #[inline]
     fn bind_to_current(&self, ctxt: &mut CommandContext<'_>) -> gl::types::GLenum {
-        unsafe {
-            ctxt.glow
-                .bind_texture(glow::TEXTURE_BUFFER, Some(self.texture));
+        let texture_unit = ctxt.state.active_texture as usize;
+        let unit = &mut ctxt.state.texture_units[texture_unit];
+        if unit.texture != Some(self.texture) {
+            unsafe {
+                ctxt.glow
+                    .bind_texture(glow::TEXTURE_BUFFER, Some(self.texture));
+            }
+            unit.texture = Some(self.texture);
         }
         gl::TEXTURE_BUFFER
     }

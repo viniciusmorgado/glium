@@ -155,6 +155,9 @@ pub struct GlState {
     /// List of buffers bound to the indexed `GL_SHADER_STORAGE_BUFFER`.
     pub indexed_shader_storage_buffer_bindings: SmallVec<[IndexedBufferState; 8]>,
 
+    /// The latest buffer bound to the generic `GL_TRANSFORM_FEEDBACK_BUFFER`.
+    pub transform_feedback_buffer_binding: Option<glow::Buffer>,
+
     /// List of buffers bound to the indexed `GL_TRANSFORM_FEEDBACK_BUFFER`.
     pub indexed_transform_feedback_buffer_bindings: SmallVec<[IndexedBufferState; 4]>,
 
@@ -454,6 +457,7 @@ impl Default for GlState {
             indexed_atomic_counter_buffer_bindings: small_vec_one(),
             shader_storage_buffer_binding: None,
             indexed_shader_storage_buffer_bindings: small_vec_one(),
+            transform_feedback_buffer_binding: None,
             indexed_transform_feedback_buffer_bindings: small_vec_one(),
             read_framebuffer: None,
             draw_framebuffer: None,

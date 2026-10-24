@@ -1634,8 +1634,8 @@ unsafe fn bind_buffer(
 
         // FIXME: pause transform feedback if it is active
 
-        if ctxt.state.indexed_transform_feedback_buffer_bindings[0].buffer != id {
-            ctxt.state.indexed_transform_feedback_buffer_bindings[0].buffer = id;
+        if ctxt.state.transform_feedback_buffer_binding != id {
+            ctxt.state.transform_feedback_buffer_binding = id;
 
             ctxt.glow.bind_buffer(glow::TRANSFORM_FEEDBACK_BUFFER, id);
         }
@@ -1667,7 +1667,7 @@ unsafe fn indexed_bind_buffer(
 
     macro_rules! check {
         ($ctxt:expr, $input_id:expr, $input_ty:expr, $input_index:expr, $check:ident,
-         $state_var:ident, $max:ident) => {
+         $state_var:ident, $generic_state_var:ident, $max:ident) => {
             if $input_ty == BufferType::$check {
                 let en = $input_ty.to_glenum();
 
@@ -1694,6 +1694,9 @@ unsafe fn indexed_bind_buffer(
                         offset as i32,
                         size as i32,
                     );
+                    // glBindBufferRange also changes the generic binding. A cached
+                    // indexed bind skips GL entirely, so must leave it unchanged.
+                    ctxt.state.$generic_state_var = Some($input_id);
                 }
 
                 return;
@@ -1708,6 +1711,7 @@ unsafe fn indexed_bind_buffer(
         index,
         UniformBuffer,
         indexed_uniform_buffer_bindings,
+        uniform_buffer_binding,
         max_indexed_uniform_buffer
     );
     check!(
@@ -1717,6 +1721,7 @@ unsafe fn indexed_bind_buffer(
         index,
         TransformFeedbackBuffer,
         indexed_transform_feedback_buffer_bindings,
+        transform_feedback_buffer_binding,
         max_indexed_transform_feedback_buffer
     );
     #[cfg(feature = "gl46")]
@@ -1727,6 +1732,7 @@ unsafe fn indexed_bind_buffer(
         index,
         AtomicCounterBuffer,
         indexed_atomic_counter_buffer_bindings,
+        atomic_counter_buffer_binding,
         max_indexed_atomic_counter_buffer
     );
     #[cfg(feature = "gl46")]
@@ -1737,6 +1743,7 @@ unsafe fn indexed_bind_buffer(
         index,
         ShaderStorageBuffer,
         indexed_shader_storage_buffer_bindings,
+        shader_storage_buffer_binding,
         max_indexed_shader_storage_buffer
     );
 
@@ -1866,6 +1873,10 @@ unsafe fn destroy_buffer(ctxt: &mut CommandContext<'_>, id: glow::Buffer) {
 
     if ctxt.state.shader_storage_buffer_binding == Some(id) {
         ctxt.state.shader_storage_buffer_binding = None;
+    }
+
+    if ctxt.state.transform_feedback_buffer_binding == Some(id) {
+        ctxt.state.transform_feedback_buffer_binding = None;
     }
 
     for point in ctxt.state.indexed_atomic_counter_buffer_bindings.iter_mut() {
