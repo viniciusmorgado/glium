@@ -289,6 +289,7 @@ fn conditional_render_simultaneous_query() {
     display.assert_no_error(None);
 }
 
+#[cfg(feature = "gl46")]
 #[test]
 fn query_to_buffer() {
     let display = support::build_display();

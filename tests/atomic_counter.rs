@@ -1,3 +1,5 @@
+#![cfg(feature = "gl46")]
+
 #[macro_use]
 extern crate glium;
 

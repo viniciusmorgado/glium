@@ -28,6 +28,8 @@ In addition to indices, you can also use **multidraw indirect** rendering.
 
 The idea is to put a list of things to render in a buffer, and pass that buffer to OpenGL.
 
+Multidraw indirect is core in OpenGL 4.3, so it requires the `gl46` Cargo feature.
+
 */
 use crate::gl;
 use crate::version::Api;
@@ -40,10 +42,15 @@ use crate::buffer::BufferAnySlice;
 
 pub use self::buffer::CreationError as BufferCreationError;
 pub use self::buffer::{IndexBuffer, IndexBufferAny, IndexBufferSlice};
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 pub use self::multidraw::{DrawCommandIndices, DrawCommandsIndicesBuffer};
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 pub use self::multidraw::{DrawCommandNoIndices, DrawCommandsNoIndicesBuffer};
 
 mod buffer;
+#[cfg(feature = "gl46")]
 mod multidraw;
 
 /// Describes a source of indices used for drawing.
@@ -60,6 +67,8 @@ pub enum IndicesSource<'a> {
     },
 
     /// Use a multidraw indirect buffer without indices.
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     MultidrawArray {
         /// The buffer.
         buffer: BufferAnySlice<'a>,
@@ -68,6 +77,8 @@ pub enum IndicesSource<'a> {
     },
 
     /// Use a multidraw indirect buffer with indices.
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     MultidrawElement {
         /// The buffer of the commands.
         commands: BufferAnySlice<'a>,
@@ -93,7 +104,9 @@ impl<'a> IndicesSource<'a> {
     pub fn get_primitives_type(&self) -> PrimitiveType {
         *match self {
             IndicesSource::IndexBuffer { primitives, .. } => primitives,
+            #[cfg(feature = "gl46")]
             IndicesSource::MultidrawArray { primitives, .. } => primitives,
+            #[cfg(feature = "gl46")]
             IndicesSource::MultidrawElement { primitives, .. } => primitives,
             IndicesSource::NoIndices { primitives } => primitives,
         }

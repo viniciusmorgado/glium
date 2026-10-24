@@ -13,9 +13,13 @@ use std::error::Error;
 use std::fmt;
 use std::rc::Rc;
 
+#[cfg(feature = "gl46")]
 use crate::buffer::Buffer;
+#[cfg(feature = "gl46")]
 use crate::buffer::BufferSlice;
+#[cfg(feature = "gl46")]
 use crate::BufferExt;
+#[cfg(feature = "gl46")]
 use crate::BufferSliceExt;
 
 use crate::gl;
@@ -80,12 +84,15 @@ impl fmt::Display for QueryCreationError {
 impl Error for QueryCreationError {}
 
 /// Error that can happen when writing the value of a query to a buffer.
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 #[derive(Copy, Clone, Debug)]
 pub enum ToBufferError {
     /// Writing the result to a buffer is not supported.
     NotSupported,
 }
 
+#[cfg(feature = "gl46")]
 impl fmt::Display for ToBufferError {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::ToBufferError::*;
@@ -96,6 +103,7 @@ impl fmt::Display for ToBufferError {
     }
 }
 
+#[cfg(feature = "gl46")]
 impl Error for ToBufferError {}
 
 impl RawQuery {
@@ -157,6 +165,7 @@ impl RawQuery {
             return false;
         }
 
+        #[cfg(feature = "gl46")]
         Buffer::<u8>::unbind_query(&mut ctxt);
 
         unsafe {
@@ -179,6 +188,7 @@ impl RawQuery {
             return 0;
         }
 
+        #[cfg(feature = "gl46")]
         Buffer::<u8>::unbind_query(&mut ctxt);
 
         unsafe {
@@ -188,6 +198,7 @@ impl RawQuery {
     }
 
     /// Writes the value of the query to a buffer.
+    #[cfg(feature = "gl46")]
     pub fn write_u32_to_buffer(&self, target: BufferSlice<'_, u32>) -> Result<(), ToBufferError> {
         let mut ctxt = self.context.make_current();
 
@@ -234,6 +245,7 @@ impl RawQuery {
             return 0;
         }
 
+        #[cfg(feature = "gl46")]
         Buffer::<u8>::unbind_query(&mut ctxt);
 
         unsafe {
@@ -687,6 +699,8 @@ macro_rules! impl_helper {
             /// queue and orders the GPU to write the result of the query to a buffer.
             ///
             /// This operation is not necessarily supported everywhere.
+            #[cfg(feature = "gl46")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
             #[inline]
             pub fn to_buffer_u32(&self, target: BufferSlice<'_, u32>) -> Result<(), ToBufferError> {
                 self.query.write_u32_to_buffer(target)

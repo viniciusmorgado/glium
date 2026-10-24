@@ -497,6 +497,7 @@ fn get_output_primitives_simple() {
 
 // TODO: add tests for get_output_primitives with geometry shader, TES, and both
 
+#[cfg(feature = "gl46")]
 #[test]
 fn ssbos() {
     let display = support::build_display();
@@ -749,6 +750,7 @@ fn complex_layout() {
     display.assert_no_error(None);
 }
 
+#[cfg(feature = "gl46")]
 #[test]
 fn unsized_array() {
     let display = support::build_display();

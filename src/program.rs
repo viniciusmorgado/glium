@@ -8,6 +8,8 @@ use std::sync::Mutex;
 use crate::gl;
 use crate::version::Api;
 
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 pub use self::compute::{ComputeCommand, ComputeShader};
 pub use self::program::Program;
 pub use self::reflection::{
@@ -17,6 +19,7 @@ pub use self::reflection::{BlockLayout, OutputPrimitives, Uniform, UniformBlock}
 pub use self::reflection::{ShaderStage, SubroutineData, SubroutineUniform};
 
 mod binary_header;
+#[cfg(feature = "gl46")]
 mod compute;
 mod program;
 mod raw;
@@ -288,10 +291,14 @@ pub enum ProgramCreationInput<'a> {
     },
 
     /// Use a SPIR-V binary.
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     SpirV(SpirvProgram<'a>),
 }
 
 /// Represents a SPIR-V program. The shaders can refer to entry points in the same binary.
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 #[derive(Clone)]
 pub struct SpirvProgram<'a> {
     /// The vertex shader.
@@ -322,6 +329,7 @@ pub struct SpirvProgram<'a> {
     pub uses_point_size: bool,
 }
 
+#[cfg(feature = "gl46")]
 impl<'a> SpirvProgram<'a> {
     /// Create new `SpirvProgram` from vertex and fragment shaders.
     pub fn from_vs_and_fs(
@@ -387,6 +395,8 @@ impl<'a> SpirvProgram<'a> {
 }
 
 /// Represents an entry point of a binary SPIR-V module.
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 #[derive(Copy, Clone)]
 pub struct SpirvEntryPoint<'a> {
     /// The binary module data.

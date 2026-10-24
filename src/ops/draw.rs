@@ -82,14 +82,18 @@ where
     let (vertices_count, instances_count, base_vertex) = {
         let index_buffer = match indices {
             IndicesSource::IndexBuffer { buffer, .. } => Some(buffer),
+            #[cfg(feature = "gl46")]
             IndicesSource::MultidrawArray { .. } => None,
+            #[cfg(feature = "gl46")]
             IndicesSource::MultidrawElement { indices, .. } => Some(indices),
             IndicesSource::NoIndices { .. } => None,
         };
 
         // determining whether we can use the `base_vertex` variants for drawing
         let use_base_vertex = match indices {
+            #[cfg(feature = "gl46")]
             IndicesSource::MultidrawArray { .. } => false,
+            #[cfg(feature = "gl46")]
             IndicesSource::MultidrawElement { .. } => false,
             IndicesSource::NoIndices { .. } => true,
             _ => {
@@ -283,6 +287,7 @@ where
                 }
             }
 
+            #[cfg(feature = "gl46")]
             IndicesSource::MultidrawArray {
                 ref buffer,
                 primitives,
@@ -307,6 +312,7 @@ where
                 }
             }
 
+            #[cfg(feature = "gl46")]
             IndicesSource::MultidrawElement {
                 ref commands,
                 ref indices,

@@ -18,15 +18,18 @@ use crate::ProgramExt;
 use crate::RawUniformValue;
 
 use crate::program::GetBinaryError;
+#[cfg(feature = "gl46")]
+use crate::program::SpirvProgram;
 use crate::program::{
-    Binary, ProgramCreationError, ProgramCreationInput, ShaderType, SpirvProgram,
-    COMPILER_GLOBAL_LOCK,
+    Binary, ProgramCreationError, ProgramCreationInput, ShaderType, COMPILER_GLOBAL_LOCK,
 };
 
 use crate::program::reflection::{Attribute, TransformFeedbackBuffer};
 use crate::program::reflection::{OutputPrimitives, Uniform, UniformBlock};
 use crate::program::reflection::{ShaderStage, SubroutineData, SubroutineUniform};
-use crate::program::shader::{build_shader, build_spirv_shader};
+use crate::program::shader::build_shader;
+#[cfg(feature = "gl46")]
+use crate::program::shader::build_spirv_shader;
 
 use crate::program::raw::RawProgram;
 
@@ -124,6 +127,7 @@ impl Program {
                 uses_point_size,
             ),
 
+            #[cfg(feature = "gl46")]
             ProgramCreationInput::SpirV(SpirvProgram {
                 vertex_shader,
                 tessellation_control_shader,
@@ -395,6 +399,8 @@ impl Program {
     /// }
     /// # }
     /// ```
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     #[inline]
     pub fn get_shader_storage_blocks(
         &self,
@@ -402,7 +408,7 @@ impl Program {
         self.raw.get_shader_storage_blocks()
     }
 
-    /// Returns the list of shader storage blocks.
+    /// Returns the list of atomic counters.
     ///
     /// ## Example
     ///
@@ -413,6 +419,8 @@ impl Program {
     /// }
     /// # }
     /// ```
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     #[inline]
     pub fn get_atomic_counters(
         &self,

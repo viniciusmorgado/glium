@@ -305,10 +305,18 @@ pub enum BufferType {
     UniformBuffer,
     CopyReadBuffer,
     CopyWriteBuffer,
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     AtomicCounterBuffer,
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     DispatchIndirectBuffer,
     DrawIndirectBuffer,
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     QueryBuffer,
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     ShaderStorageBuffer,
     TextureBuffer,
     TransformFeedbackBuffer,
@@ -324,10 +332,14 @@ impl BufferType {
             BufferType::UniformBuffer => gl::UNIFORM_BUFFER,
             BufferType::CopyReadBuffer => gl::COPY_READ_BUFFER,
             BufferType::CopyWriteBuffer => gl::COPY_WRITE_BUFFER,
+            #[cfg(feature = "gl46")]
             BufferType::AtomicCounterBuffer => gl::ATOMIC_COUNTER_BUFFER,
+            #[cfg(feature = "gl46")]
             BufferType::DispatchIndirectBuffer => gl::DISPATCH_INDIRECT_BUFFER,
             BufferType::DrawIndirectBuffer => gl::DRAW_INDIRECT_BUFFER,
+            #[cfg(feature = "gl46")]
             BufferType::QueryBuffer => gl::QUERY_BUFFER,
+            #[cfg(feature = "gl46")]
             BufferType::ShaderStorageBuffer => gl::SHADER_STORAGE_BUFFER,
             BufferType::TextureBuffer => gl::TEXTURE_BUFFER,
             BufferType::TransformFeedbackBuffer => gl::TRANSFORM_FEEDBACK_BUFFER,

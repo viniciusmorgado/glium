@@ -1,12 +1,15 @@
 use crate::gl;
 
 use crate::context::CommandContext;
+#[cfg(feature = "gl46")]
 use crate::version::Api;
+#[cfg(feature = "gl46")]
 use crate::version::Version;
 
 use crate::backend::Facade;
 use crate::context::Context;
 use crate::ContextExt;
+#[cfg(feature = "gl46")]
 use crate::UniformsExt;
 
 use std::cell::RefCell;
@@ -18,22 +21,29 @@ use std::fmt;
 use fnv::FnvHasher;
 use glow::HasContext;
 
+#[cfg(feature = "gl46")]
 use crate::DrawError;
 use crate::GlObject;
 use crate::ProgramExt;
 use crate::RawUniformValue;
 
+#[cfg(feature = "gl46")]
 use crate::draw_parameters::TimeElapsedQuery;
+#[cfg(feature = "gl46")]
 use crate::QueryExt;
 
+#[cfg(feature = "gl46")]
 use crate::buffer::BufferSlice;
+#[cfg(feature = "gl46")]
 use crate::BufferExt;
+#[cfg(feature = "gl46")]
 use crate::BufferSliceExt;
 
 use crate::program::uniforms_storage::UniformsStorage;
 use crate::program::{is_binary_supported, Binary, GetBinaryError, ProgramCreationError};
 
 use crate::program::binary_header::{attach_glium_header, process_glium_header};
+#[cfg(feature = "gl46")]
 use crate::program::compute::ComputeCommand;
 use crate::program::reflection::reflect_subroutine_data;
 use crate::program::reflection::{reflect_attributes, reflect_uniform_blocks, reflect_uniforms};
@@ -44,6 +54,7 @@ use crate::program::reflection::{OutputPrimitives, Uniform, UniformBlock};
 use crate::program::reflection::{ShaderStage, SubroutineData};
 use crate::program::shader::Shader;
 
+#[cfg(feature = "gl46")]
 use crate::uniforms::Uniforms;
 
 use crate::vertex::VertexFormat;
@@ -509,6 +520,7 @@ impl RawProgram {
     ///
     /// The program *must* contain a compute shader.
     /// TODO: check inside the program if it has a compute shader instead of being unsafe
+    #[cfg(feature = "gl46")]
     pub unsafe fn dispatch_compute<U>(
         &self,
         uniforms: U,
@@ -556,6 +568,7 @@ impl RawProgram {
     ///
     /// The program *must* contain a compute shader.
     /// TODO: check inside the program if it has a compute shader instead of being unsafe
+    #[cfg(feature = "gl46")]
     pub unsafe fn dispatch_compute_indirect<U>(
         &self,
         uniforms: U,

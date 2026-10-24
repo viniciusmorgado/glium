@@ -303,6 +303,7 @@ impl Alloc {
 
     /// Makes sure that the buffer is bound to the `GL_QUERY_BUFFER` and calls
     /// `glMemoryBarrier(GL_PIXEL_BUFFER_BARRIER_BIT)` if necessary.
+    #[cfg(feature = "gl46")]
     pub fn prepare_and_bind_for_query(&self, ctxt: &mut CommandContext<'_>) {
         assert!(
             ctxt.version >= &Version(Api::Gl, 4, 4)
@@ -326,6 +327,7 @@ impl Alloc {
     }
 
     /// Makes sure that nothing is bound to `GL_QUERY_BUFFER`.
+    #[cfg(feature = "gl46")]
     #[inline]
     pub fn unbind_query(ctxt: &mut CommandContext<'_>) {
         unsafe {
@@ -353,6 +355,7 @@ impl Alloc {
 
     /// Makes sure that the buffer is bound to the `GL_DISPATCH_INDIRECT_BUFFER` and calls
     /// `glMemoryBarrier(GL_COMMAND_BARRIER_BIT)` if necessary.
+    #[cfg(feature = "gl46")]
     pub fn prepare_and_bind_for_dispatch_indirect(&self, ctxt: &mut CommandContext<'_>) {
         self.assert_unmapped(ctxt);
         self.assert_not_transform_feedback(ctxt);
@@ -392,6 +395,7 @@ impl Alloc {
 
     /// Makes sure that the buffer is bound to the indexed `GL_SHARED_STORAGE_BUFFER` point and calls
     /// `glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT)` if necessary.
+    #[cfg(feature = "gl46")]
     pub fn prepare_and_bind_for_shared_storage(
         &self,
         ctxt: &mut CommandContext<'_>,
@@ -415,6 +419,7 @@ impl Alloc {
 
     /// Makes sure that the buffer is bound to the indexed `GL_ATOMIC_COUNTER_BUFFER` point and calls
     /// `glMemoryBarrier(GL_ATOMIC_COUNTER_BARRIER_BIT)` if necessary.
+    #[cfg(feature = "gl46")]
     pub fn prepare_and_bind_for_atomic_counter(
         &self,
         ctxt: &mut CommandContext<'_>,
@@ -1508,6 +1513,7 @@ fn is_buffer_type_supported(ctxt: &mut CommandContext<'_>, ty: BufferType) -> bo
                 || ctxt.extensions.gl_ext_multi_draw_indirect
         }
 
+        #[cfg(feature = "gl46")]
         BufferType::DispatchIndirectBuffer => {
             ctxt.version >= &Version(Api::Gl, 4, 3)
                 || ctxt.version >= &Version(Api::GlEs, 3, 1)
@@ -1520,12 +1526,14 @@ fn is_buffer_type_supported(ctxt: &mut CommandContext<'_>, ty: BufferType) -> bo
                 || ctxt.extensions.gl_oes_texture_buffer
         }
 
+        #[cfg(feature = "gl46")]
         BufferType::QueryBuffer => {
             ctxt.version >= &Version(Api::Gl, 4, 4)
                 || ctxt.extensions.gl_arb_query_buffer_object
                 || ctxt.extensions.gl_amd_query_buffer_object
         }
 
+        #[cfg(feature = "gl46")]
         BufferType::ShaderStorageBuffer => {
             ctxt.version >= &Version(Api::Gl, 4, 3)
                 || ctxt.extensions.gl_arb_shader_storage_buffer_object
@@ -1535,6 +1543,7 @@ fn is_buffer_type_supported(ctxt: &mut CommandContext<'_>, ty: BufferType) -> bo
         // FIXME: transform feedback buffers are also core in OpenGL ES 3.0
         BufferType::TransformFeedbackBuffer => ctxt.version.0 == Api::Gl,
 
+        #[cfg(feature = "gl46")]
         BufferType::AtomicCounterBuffer => {
             ctxt.version >= &Version(Api::Gl, 4, 2)
                 || ctxt.extensions.gl_arb_shader_atomic_counters
@@ -1576,6 +1585,7 @@ unsafe fn bind_buffer(
     check!(ctxt, id, ty, UniformBuffer, uniform_buffer_binding);
     check!(ctxt, id, ty, CopyReadBuffer, copy_read_buffer_binding);
     check!(ctxt, id, ty, CopyWriteBuffer, copy_write_buffer_binding);
+    #[cfg(feature = "gl46")]
     check!(
         ctxt,
         id,
@@ -1590,8 +1600,10 @@ unsafe fn bind_buffer(
         DrawIndirectBuffer,
         draw_indirect_buffer_binding
     );
+    #[cfg(feature = "gl46")]
     check!(ctxt, id, ty, QueryBuffer, query_buffer_binding);
     check!(ctxt, id, ty, TextureBuffer, texture_buffer_binding);
+    #[cfg(feature = "gl46")]
     check!(
         ctxt,
         id,
@@ -1599,6 +1611,7 @@ unsafe fn bind_buffer(
         AtomicCounterBuffer,
         atomic_counter_buffer_binding
     );
+    #[cfg(feature = "gl46")]
     check!(
         ctxt,
         id,
@@ -1706,6 +1719,7 @@ unsafe fn indexed_bind_buffer(
         indexed_transform_feedback_buffer_bindings,
         max_indexed_transform_feedback_buffer
     );
+    #[cfg(feature = "gl46")]
     check!(
         ctxt,
         id,
@@ -1715,6 +1729,7 @@ unsafe fn indexed_bind_buffer(
         indexed_atomic_counter_buffer_bindings,
         max_indexed_atomic_counter_buffer
     );
+    #[cfg(feature = "gl46")]
     check!(
         ctxt,
         id,

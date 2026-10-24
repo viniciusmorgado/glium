@@ -12,6 +12,13 @@ browser on WebGL 2. Breaking changes:
   EXT framebuffer objects, APPLE/OES vertex arrays, APPLE sync, ...) were removed.
 - **Feature tiers:** new Cargo features `gl46` (default), `gl41`, `gles30` and `webgl`. Enabling
   `gl46` on macOS, or a tier above `gles30` for `wasm32-unknown-unknown`, is a compile error.
+- **APIs above OpenGL 4.1 need `gl46`:** compute shaders, shader storage buffers, atomic counters,
+  image load/store, multidraw indirect, empty framebuffers, query buffers, clip control, SPIR-V
+  shaders and bindless textures are only compiled with the `gl46` feature. This includes
+  `ARB_bindless_texture` and `ARB_clip_control`, even though some 4.1 drivers have them as
+  extensions. `gl46` builds keep the runtime checks for older drivers. See "APIs that need `gl46`"
+  in the README for the full list of gated items. The `compute_image`, `gpgpu` and `spirv` examples
+  require `gl46`.
 - **Object ids:** `GlObject::get_id()` returns glow handle types (`glow::Buffer`, `glow::Texture`,
   `glow::Program`, ...) instead of `GLuint`, and `from_id` takes a `glow::Texture`. The public
   `Handle` enum was removed. `glow` is re-exported as `glium::glow`.

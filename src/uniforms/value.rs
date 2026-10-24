@@ -9,6 +9,7 @@ use crate::uniforms::SamplerBehavior;
 use crate::uniforms::UniformBlock;
 
 use crate::buffer::BufferAnySlice;
+#[cfg(feature = "gl46")]
 use crate::uniforms::ImageUnitBehavior;
 
 /// Type of a uniform in a program.
@@ -299,38 +300,80 @@ pub enum UniformValue<'a> {
     DepthCubemapArray(&'a texture::DepthCubemapArray, Option<SamplerBehavior>),
     BufferTexture(texture::buffer_texture::BufferTextureRef<'a>),
 
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     Image1d(&'a texture::Texture1d, Option<ImageUnitBehavior>),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     IntegralImage1d(&'a texture::IntegralTexture1d, Option<ImageUnitBehavior>),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     UnsignedImage1d(&'a texture::UnsignedTexture1d, Option<ImageUnitBehavior>),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     Image2d(&'a texture::Texture2d, Option<ImageUnitBehavior>),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     IntegralImage2d(&'a texture::IntegralTexture2d, Option<ImageUnitBehavior>),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     UnsignedImage2d(&'a texture::UnsignedTexture2d, Option<ImageUnitBehavior>),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     Image3d(&'a texture::Texture3d, Option<ImageUnitBehavior>),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     IntegralImage3d(&'a texture::IntegralTexture3d, Option<ImageUnitBehavior>),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     UnsignedImage3d(&'a texture::UnsignedTexture3d, Option<ImageUnitBehavior>),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     Image1dArray(&'a texture::Texture1dArray, Option<ImageUnitBehavior>),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     IntegralImage1dArray(
         &'a texture::IntegralTexture1dArray,
         Option<ImageUnitBehavior>,
     ),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     UnsignedImage1dArray(
         &'a texture::UnsignedTexture1dArray,
         Option<ImageUnitBehavior>,
     ),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     Image2dArray(&'a texture::Texture2dArray, Option<ImageUnitBehavior>),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     IntegralImage2dArray(
         &'a texture::IntegralTexture2dArray,
         Option<ImageUnitBehavior>,
     ),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     UnsignedImage2dArray(
         &'a texture::UnsignedTexture2dArray,
         Option<ImageUnitBehavior>,
     ),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     ImageCube(&'a texture::Cubemap, Option<ImageUnitBehavior>),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     IntegralImageCube(&'a texture::IntegralCubemap, Option<ImageUnitBehavior>),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     UnsignedImageCube(&'a texture::UnsignedCubemap, Option<ImageUnitBehavior>),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     ImageCubeArray(&'a texture::CubemapArray, Option<ImageUnitBehavior>),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     IntegralImageCubeArray(&'a texture::IntegralCubemapArray, Option<ImageUnitBehavior>),
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     UnsignedImageCubeArray(&'a texture::UnsignedCubemapArray, Option<ImageUnitBehavior>),
 }
 
@@ -456,26 +499,47 @@ impl<'a> UniformValue<'a> {
             (&UniformValue::DepthTexture2dMultisample(..), UniformType::Sampler2dMultisample) => {
                 true
             }
+            #[cfg(feature = "gl46")]
             (&UniformValue::Image1d(..), UniformType::Image1d) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::IntegralImage1d(..), UniformType::IImage1d) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::UnsignedImage1d(..), UniformType::UImage1d) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::Image2d(..), UniformType::Image2d) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::IntegralImage2d(..), UniformType::IImage2d) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::UnsignedImage2d(..), UniformType::UImage2d) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::Image3d(..), UniformType::Image3d) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::IntegralImage3d(..), UniformType::IImage3d) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::UnsignedImage3d(..), UniformType::UImage3d) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::Image1dArray(..), UniformType::Image1dArray) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::IntegralImage1dArray(..), UniformType::IImage1dArray) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::UnsignedImage1dArray(..), UniformType::UImage1dArray) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::Image2dArray(..), UniformType::Image2dArray) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::IntegralImage2dArray(..), UniformType::IImage2dArray) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::UnsignedImage2dArray(..), UniformType::UImage2dArray) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::ImageCube(..), UniformType::ImageCube) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::IntegralImageCube(..), UniformType::IImageCube) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::UnsignedImageCube(..), UniformType::UImageCube) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::ImageCubeArray(..), UniformType::ImageCubeArray) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::IntegralImageCubeArray(..), UniformType::IImageCubeArray) => true,
+            #[cfg(feature = "gl46")]
             (&UniformValue::UnsignedImageCubeArray(..), UniformType::UImageCubeArray) => true,
             _ => false,
         }

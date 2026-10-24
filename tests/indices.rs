@@ -510,6 +510,7 @@ fn indexbuffer_slice_draw() {
     display.assert_no_error(None);
 }
 
+#[cfg(feature = "gl46")]
 #[test]
 fn multidraw_array() {
     let display = support::build_display();
@@ -570,6 +571,7 @@ fn multidraw_array() {
     display.assert_no_error(None);
 }
 
+#[cfg(feature = "gl46")]
 #[test]
 fn multidraw_elements() {
     let display = support::build_display();

@@ -86,6 +86,9 @@ use std::ops::Range;
 pub use self::blend::{Blend, BlendingFunction, LinearBlendingFactor};
 pub use self::depth::{Depth, DepthClamp, DepthTest};
 pub use self::query::QueryCreationError;
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
+pub use self::query::ToBufferError;
 pub use self::query::{AnySamplesPassedQuery, TransformFeedbackPrimitivesWrittenQuery};
 pub use self::query::{PrimitivesGeneratedQuery, SamplesPassedQuery, TimeElapsedQuery};
 pub use self::stencil::{Stencil, StencilOperation, StencilTest};
@@ -420,9 +423,13 @@ pub struct DrawParameters<'a> {
     pub polygon_offset: PolygonOffset,
 
     /// Clip control origin. The default value is `LowerLeft`.
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     pub clip_control_origin: ClipControlOrigin,
 
     /// Clip control depth mode. The default value is `NegativeOneToOne`.
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     pub clip_control_depth: ClipControlDepth,
 }
 
@@ -492,6 +499,8 @@ impl Default for PolygonOffset {
 }
 
 /// Specifies the clip control origin.
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ClipControlOrigin {
     /// The clip space origin is at the lower-left corner of the viewport. This is the default state.
@@ -502,6 +511,8 @@ pub enum ClipControlOrigin {
 }
 
 /// Specifies the clip control depth mode.
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ClipControlDepth {
     /// The near and far clipping planes correspond to Z coordinates of -1 and +1. This is the default state.
@@ -539,7 +550,9 @@ impl<'a> Default for DrawParameters<'a> {
             primitive_bounding_box: (-1.0..1.0, -1.0..1.0, -1.0..1.0, -1.0..1.0),
             primitive_restart_index: false,
             polygon_offset: Default::default(),
+            #[cfg(feature = "gl46")]
             clip_control_origin: ClipControlOrigin::LowerLeft,
+            #[cfg(feature = "gl46")]
             clip_control_depth: ClipControlDepth::NegativeOneToOne,
         }
     }
@@ -599,6 +612,7 @@ pub fn sync(
     sync_primitive_bounding_box(ctxt, &draw_parameters.primitive_bounding_box);
     sync_primitive_restart_index(ctxt, draw_parameters.primitive_restart_index)?;
     sync_polygon_offset(ctxt, draw_parameters.polygon_offset)?;
+    #[cfg(feature = "gl46")]
     sync_clip_control(
         ctxt,
         draw_parameters.clip_control_origin,
@@ -1193,6 +1207,7 @@ fn sync_polygon_offset(
     Ok(())
 }
 
+#[cfg(feature = "gl46")]
 fn sync_clip_control(
     ctxt: &mut context::CommandContext<'_>,
     origin: ClipControlOrigin,

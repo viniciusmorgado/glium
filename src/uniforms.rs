@@ -130,7 +130,11 @@ let program = glium::Program::from_source(&display,
 ```
 */
 pub use self::buffer::UniformBuffer;
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 pub use self::image_unit::{ImageUnit, ImageUnitBehavior};
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 pub use self::image_unit::{ImageUnitAccess, ImageUnitError, ImageUnitFormat};
 pub use self::sampler::{
     DepthTextureComparison, MagnifySamplerFilter, MinifySamplerFilter, SamplerWrapFunction,
@@ -149,6 +153,7 @@ use crate::program::BlockLayout;
 
 mod bind;
 mod buffer;
+#[cfg(feature = "gl46")]
 mod image_unit;
 mod sampler;
 mod uniforms;

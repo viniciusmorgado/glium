@@ -99,7 +99,7 @@ regular RGB texture and put sRGB data in it, then the result will be too bright.
 # Bindless textures
 
 *Bindless textures are a very recent feature that is supported only by recent hardware and
-drivers.*
+drivers.* They require the `gl46` Cargo feature.
 
 Without bindless textures, using a texture in a shader requires binding the texture to a specific
 bind point before drawing. This not only slows down rendering, but may also prevent you from
@@ -120,6 +120,8 @@ use crate::image_format::FormatNotSupportedError;
 
 pub use self::any::{Dimensions, TextureAnyImage};
 pub use self::any::{TextureAny, TextureAnyLayer, TextureAnyLayerMipmap, TextureAnyMipmap};
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 pub use self::bindless::{BindlessTexturesNotSupportedError, ResidentTexture, TextureHandle};
 pub use self::get_format::{GetFormatError, InternalFormat, InternalFormatType};
 pub use self::pixel::PixelValue;
@@ -135,6 +137,8 @@ pub use crate::image_format::{
     UncompressedFloatFormat, UncompressedIntFormat, UncompressedUintFormat,
 };
 
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 pub mod bindless;
 pub mod buffer_texture;
 pub mod pixel_buffer;

@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate glium;
 
+#[cfg(feature = "gl46")]
 use glium::Surface;
 
 mod support;
@@ -575,6 +576,7 @@ fn zero_sized_texture_3d_creation() {
     display.assert_no_error(None);
 }
 
+#[cfg(feature = "gl46")]
 #[test]
 fn bindless_texture_residency_context_rebuild() {
     let display = support::build_display();

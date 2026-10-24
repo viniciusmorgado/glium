@@ -62,7 +62,8 @@ Some restrictions apply when you use framebuffers:
 # Empty framebuffers
 
 Modern OpenGL implementations support empty framebuffers. This is handled by glium with the
-`EmptyFrameBuffer` struct.
+`EmptyFrameBuffer` struct. Empty framebuffers are core in OpenGL 4.3, so this struct requires
+the `gl46` Cargo feature.
 
 You can check whether they are supported by calling `EmptyFrameBuffer::is_supported(&display)`.
 
@@ -78,9 +79,13 @@ use crate::texture::TextureAnyImage;
 
 use crate::backend::Facade;
 use crate::context::Context;
+#[cfg(feature = "gl46")]
 use crate::version::Api;
+#[cfg(feature = "gl46")]
 use crate::version::Version;
-use crate::{BlitMask, CapabilitiesSource};
+use crate::BlitMask;
+#[cfg(feature = "gl46")]
+use crate::CapabilitiesSource;
 
 use crate::ops;
 use crate::uniforms;
@@ -904,11 +909,14 @@ impl<'a> FboAttachments for MultiOutputFrameBuffer<'a> {
 /// A framebuffer with no attachment at all.
 ///
 /// Note that this is only supported on recent hardware.
+#[cfg(feature = "gl46")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
 pub struct EmptyFrameBuffer {
     context: Rc<Context>,
     attachments: fbo::ValidatedAttachments<'static>,
 }
 
+#[cfg(feature = "gl46")]
 impl<'a> EmptyFrameBuffer {
     /// Returns true if empty framebuffers are supported by the backend.
     pub fn is_supported<C: ?Sized>(context: &C) -> bool
@@ -1015,6 +1023,7 @@ impl<'a> EmptyFrameBuffer {
     }
 }
 
+#[cfg(feature = "gl46")]
 impl Surface for EmptyFrameBuffer {
     #[inline]
     fn clear(
@@ -1164,6 +1173,7 @@ impl Surface for EmptyFrameBuffer {
     }
 }
 
+#[cfg(feature = "gl46")]
 impl FboAttachments for EmptyFrameBuffer {
     #[inline]
     fn get_attachments(&self) -> Option<&fbo::ValidatedAttachments<'_>> {

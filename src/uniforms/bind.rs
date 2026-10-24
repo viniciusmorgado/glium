@@ -18,6 +18,7 @@ use crate::RawUniformValue;
 use crate::TextureExt;
 use crate::UniformsExt;
 
+#[cfg(feature = "gl46")]
 use crate::uniforms::ImageUnitBehavior;
 use crate::uniforms::SamplerBehavior;
 use crate::uniforms::UniformValue;
@@ -47,6 +48,7 @@ where
     {
         let mut texture_bind_points = Bitsfield::new();
         let mut uniform_buffer_bind_points = Bitsfield::new();
+        #[cfg(feature = "gl46")]
         let mut shared_storage_buffer_bind_points = Bitsfield::new();
         let mut image_unit_bind_points = Bitsfield::new();
         image_unit_bind_points.set_used(0); // Trying to attach data to image unit 0 would not go well
@@ -110,46 +112,38 @@ where
                 if let Some(fence) = fence {
                     fences.push(fence);
                 }
-            } else if let Some(block) = program.get_shader_storage_blocks().get(name) {
-                let fence = match bind_shared_storage_block(
+            } else {
+                #[cfg(feature = "gl46")]
+                match bind_storage_uniform(
                     &mut ctxt,
                     &value,
-                    block,
                     program,
                     &mut shared_storage_buffer_bind_points,
                     name,
                 ) {
-                    Ok(f) => f,
+                    Ok(None) => (),
+                    Ok(Some(fence)) => {
+                        if let Some(fence) = fence {
+                            fences.push(fence);
+                        }
+                        return;
+                    }
                     Err(e) => {
                         visiting_result = Err(e);
                         return;
                     }
-                };
-
-                if let Some(fence) = fence {
-                    fences.push(fence);
                 }
-            } else if let Some(block) = program.get_atomic_counters().get(name) {
-                let fence = match bind_atomic_counter(&mut ctxt, &value, block, program, name) {
-                    Ok(f) => f,
-                    Err(e) => {
-                        visiting_result = Err(e);
-                        return;
+
+                if let UniformValue::Subroutine(stage, sr_name) = value {
+                    if let Some(subroutine_uniform) = program
+                        .get_subroutine_data()
+                        .subroutine_uniforms
+                        .get(&(name.into(), stage))
+                    {
+                        subroutine_bindings.entry(stage).or_insert(Vec::new());
+                        let vec = subroutine_bindings.get_mut(&stage).unwrap();
+                        vec.push((subroutine_uniform, sr_name));
                     }
-                };
-
-                if let Some(fence) = fence {
-                    fences.push(fence);
-                }
-            } else if let UniformValue::Subroutine(stage, sr_name) = value {
-                if let Some(subroutine_uniform) = program
-                    .get_subroutine_data()
-                    .subroutine_uniforms
-                    .get(&(name.into(), stage))
-                {
-                    subroutine_bindings.entry(stage).or_insert(Vec::new());
-                    let vec = subroutine_bindings.get_mut(&stage).unwrap();
-                    vec.push((subroutine_uniform, sr_name));
                 }
             }
         });
@@ -267,6 +261,38 @@ where
     }
 }
 
+/// Binds `value` to the shader storage block or the atomic counter called `name`.
+///
+/// Returns `Ok(None)` if the program has neither, otherwise the fence to insert after the draw.
+#[cfg(feature = "gl46")]
+fn bind_storage_uniform<'a, P>(
+    ctxt: &mut context::CommandContext<'_>,
+    value: &UniformValue<'a>,
+    program: &P,
+    shared_storage_buffer_bind_points: &mut Bitsfield,
+    name: &str,
+) -> Result<Option<Option<Inserter<'a>>>, DrawError>
+where
+    P: ProgramExt,
+{
+    if let Some(block) = program.get_shader_storage_blocks().get(name) {
+        bind_shared_storage_block(
+            ctxt,
+            value,
+            block,
+            program,
+            shared_storage_buffer_bind_points,
+            name,
+        )
+        .map(Some)
+    } else if let Some(block) = program.get_atomic_counters().get(name) {
+        bind_atomic_counter(ctxt, value, block, program, name).map(Some)
+    } else {
+        Ok(None)
+    }
+}
+
+#[cfg(feature = "gl46")]
 fn bind_shared_storage_block<'a, P>(
     ctxt: &mut context::CommandContext<'_>,
     value: &UniformValue<'a>,
@@ -314,6 +340,7 @@ where
     }
 }
 
+#[cfg(feature = "gl46")]
 fn bind_atomic_counter<'a, P>(
     ctxt: &mut context::CommandContext<'_>,
     value: &UniformValue<'a>,
@@ -995,6 +1022,7 @@ where
         UniformValue::BufferTexture(texture) => {
             bind_texture_uniform(ctxt, &texture, None, location, program, texture_bind_points)
         }
+        #[cfg(feature = "gl46")]
         UniformValue::Image1d(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1003,6 +1031,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::IntegralImage1d(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1011,6 +1040,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::UnsignedImage1d(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1019,6 +1049,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::Image2d(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1027,6 +1058,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::IntegralImage2d(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1035,6 +1067,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::UnsignedImage2d(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1043,6 +1076,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::Image3d(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1051,6 +1085,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::IntegralImage3d(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1059,6 +1094,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::UnsignedImage3d(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1067,6 +1103,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::Image1dArray(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1075,6 +1112,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::IntegralImage1dArray(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1083,6 +1121,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::UnsignedImage1dArray(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1091,6 +1130,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::Image2dArray(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1099,6 +1139,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::IntegralImage2dArray(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1107,6 +1148,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::UnsignedImage2dArray(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1115,6 +1157,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::ImageCube(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1123,6 +1166,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::IntegralImageCube(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1131,6 +1175,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::UnsignedImageCube(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1139,6 +1184,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::ImageCubeArray(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1147,6 +1193,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::IntegralImageCubeArray(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1155,6 +1202,7 @@ where
             program,
             image_unit_bind_points,
         ),
+        #[cfg(feature = "gl46")]
         UniformValue::UnsignedImageCubeArray(texture, unit) => bind_image_uniform(
             ctxt,
             &**texture,
@@ -1257,6 +1305,7 @@ where
     Ok(())
 }
 
+#[cfg(feature = "gl46")]
 fn bind_image_uniform<P, T>(
     ctxt: &mut context::CommandContext,
     texture: &T,

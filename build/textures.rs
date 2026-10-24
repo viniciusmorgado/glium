@@ -463,6 +463,7 @@ fn build_texture<W: Write>(dest: &mut W, ty: TextureType, dimensions: TextureDim
 
             use crate::texture::any::{{self, TextureAny, TextureAnyLayer, TextureAnyMipmap}};
             use crate::texture::any::{{TextureAnyLayerMipmap, TextureAnyImage, Dimensions}};
+            #[cfg(feature = \"gl46\")]
             use crate::texture::bindless::{{ResidentTexture, BindlessTexturesNotSupportedError}};
             use crate::texture::get_format::{{InternalFormat, InternalFormatType, GetFormatError}};
             use crate::texture::pixel_buffer::PixelBuffer;
@@ -477,7 +478,9 @@ fn build_texture<W: Write>(dest: &mut W, ty: TextureType, dimensions: TextureDim
             use crate::image_format::{{CompressedSrgbFormat, SrgbFormat, UncompressedUintFormat}};
 
             use crate::backend::Facade;
-            use crate::uniforms::{{UniformValue, AsUniformValue, Sampler, ImageUnit, ImageUnitError, ImageUnitFormat}};
+            use crate::uniforms::{{UniformValue, AsUniformValue, Sampler}};
+            #[cfg(feature = \"gl46\")]
+            use crate::uniforms::{{ImageUnit, ImageUnitError, ImageUnitFormat}};
             use crate::framebuffer;
 
             use crate::Rect;
@@ -676,6 +679,7 @@ fn build_texture<W: Write>(dest: &mut W, ty: TextureType, dimensions: TextureDim
             .replace("Texture", "Image")
             .replace("Cubemap", "ImageCube");
         writeln!(dest, "
+                    #[cfg(feature = \"gl46\")]
                     impl<'a> AsUniformValue for ImageUnit<'a, {myname}> {{
                         #[inline]
                         fn as_uniform_value(&self) -> UniformValue<'_>  {{
@@ -683,9 +687,11 @@ fn build_texture<W: Write>(dest: &mut W, ty: TextureType, dimensions: TextureDim
                         }}
                     }}
 
+                    #[cfg(feature = \"gl46\")]
                     impl {myname} {{
                         /// Builds an image unit marker object that allows you to indicate how the
                         /// texture should be bound to an image unit.
+                        #[cfg_attr(docsrs, doc(cfg(feature = \"gl46\")))]
                         #[inline]
                         pub fn image_unit(&self, format: ImageUnitFormat) -> Result<ImageUnit<'_, {myname}>, ImageUnitError> {{
                              ImageUnit::new(self, format)
@@ -1349,6 +1355,8 @@ fn build_texture<W: Write>(dest: &mut W, ty: TextureType, dimensions: TextureDim
             /// a "reference to it" in a buffer (actually not a reference but a raw pointer).
             ///
             /// See the documentation of `ResidentTexture` for more infos.
+            #[cfg(feature = "gl46")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
             #[inline]
             pub fn resident(self) -> Result<ResidentTexture, BindlessTexturesNotSupportedError> {{
                 ResidentTexture::new(self.0)

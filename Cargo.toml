@@ -88,6 +88,7 @@ takeable-option = "0.5.0"
 
 [package.metadata.docs.rs]
 all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [[example]]
 name = "blitting"
@@ -96,6 +97,7 @@ path = "examples/standalone/blitting.rs"
 [[example]]
 name = "compute_image"
 path = "examples/standalone/compute_image.rs"
+required-features = ["gl46"]
 
 [[example]]
 name = "deferred"
@@ -116,6 +118,7 @@ path = "examples/standalone/fxaa.rs"
 [[example]]
 name = "gpgpu"
 path = "examples/standalone/gpgpu.rs"
+required-features = ["gl46"]
 
 [[example]]
 name = "image"
@@ -228,6 +231,7 @@ path = "examples/standalone/tutorial-14.rs"
 [[example]]
 name = "spirv"
 path = "examples/standalone/spirv/main.rs"
+required-features = ["gl46"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = { version = "0.2", optional = true }

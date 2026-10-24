@@ -72,9 +72,34 @@ Cargo features. Each tier includes everything in the tiers below it.
 | `webgl`  | WebGL 2, the `gles30` tier in a browser       | Browsers, through `wasm32-unknown-unknown` (see [examples/web](examples/web))                  |
 
 Selecting a tier above what the target platform supports is a compile error: `gl46` on macOS, or
-anything above `gles30` in the browser. Within a tier, optional features (for example bindless
-textures or compute shaders on a 4.1 driver) are still checked at runtime and return an error when
-the driver lacks them.
+anything above `gles30` in the browser.
+
+### APIs that need `gl46`
+
+The `gl41`, `gles30` and `webgl` tiers only expose what OpenGL 4.1 and OpenGL ES 3.0 provide.
+The following APIs exist only when the `gl46` feature is enabled. Other builds don't compile them
+at all, even where a 4.1 driver offers them as an extension:
+
+| Functionality       | Core since                        | Gated items                                                                                                                                  |
+|---------------------|-----------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| Compute shaders     | OpenGL 4.3                        | `program::ComputeShader`, `program::ComputeCommand`, `BufferType::DispatchIndirectBuffer`                                                    |
+| Shader storage      | OpenGL 4.3                        | `BufferType::ShaderStorageBuffer`, `Program::get_shader_storage_blocks`, binding buffers to GLSL `buffer` blocks                             |
+| Atomic counters     | OpenGL 4.2                        | `BufferType::AtomicCounterBuffer`, `Program::get_atomic_counters`, binding buffers to `atomic_uint` uniforms                                 |
+| Image load/store    | OpenGL 4.2                        | `uniforms::{ImageUnit, ImageUnitBehavior, ImageUnitAccess, ImageUnitFormat, ImageUnitError}`, `image_unit()` on textures, `UniformValue::*Image*`, `DrawError::InsufficientImageUnits` |
+| Multidraw indirect  | OpenGL 4.3                        | `index::{DrawCommandsNoIndicesBuffer, DrawCommandsIndicesBuffer, DrawCommandNoIndices, DrawCommandIndices}`, `IndicesSource::Multidraw*`     |
+| Empty framebuffers  | OpenGL 4.3                        | `framebuffer::EmptyFrameBuffer`                                                                                                              |
+| Query buffers       | OpenGL 4.4                        | `to_buffer_u32()` on queries, `draw_parameters::ToBufferError`, `BufferType::QueryBuffer`                                                    |
+| Clip control        | OpenGL 4.5                        | `DrawParameters::{clip_control_origin, clip_control_depth}`, `ClipControlOrigin`, `ClipControlDepth`, `DrawError::ClipControlNotSupported`   |
+| SPIR-V shaders      | OpenGL 4.6                        | `ProgramCreationInput::SpirV`, `program::{SpirvProgram, SpirvEntryPoint}`                                                                    |
+| Bindless textures   | never (`ARB_bindless_texture`)    | `texture::bindless`, `texture::{ResidentTexture, TextureHandle, BindlessTexturesNotSupportedError}`, `resident()` on textures                 |
+
+A `gl46` build still runs on an older driver, so these APIs keep their runtime checks: for example
+`ComputeShader::is_supported` returns `false` and `resident()` returns an error when the driver lacks
+the version or extension. Optional features that every tier exposes (tessellation or geometry
+shaders on OpenGL ES 3.0, for example) are checked at runtime in the same way.
+
+`BufferMode::Persistent` and `BufferMode::Immutable` are available in every tier. They use
+`glBufferStorage` (OpenGL 4.4) when the driver has it and fall back to `glBufferData` otherwise.
 
 `gl46` is enabled by default:
 

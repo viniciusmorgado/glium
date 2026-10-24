@@ -408,6 +408,7 @@ fn multi_color_attachments_maximum() {
     glium::framebuffer::MultiOutputFrameBuffer::new(&display, colors).unwrap();
 }
 
+#[cfg(feature = "gl46")]
 #[test]
 #[should_panic]
 fn empty_framebuffer_wrong_layers() {
@@ -423,6 +424,7 @@ fn empty_framebuffer_wrong_layers() {
     let _fb = EmptyFrameBuffer::new(&display, 256, 256, Some(0), None, true);
 }
 
+#[cfg(feature = "gl46")]
 #[test]
 #[should_panic]
 fn empty_framebuffer_wrong_samples() {
@@ -438,6 +440,7 @@ fn empty_framebuffer_wrong_samples() {
     let _fb = EmptyFrameBuffer::new(&display, 256, 256, None, Some(0), true);
 }
 
+#[cfg(feature = "gl46")]
 #[test]
 fn empty_framebuffer_width_out_of_range() {
     use glium::framebuffer::{EmptyFrameBuffer, ValidationError};
@@ -457,6 +460,7 @@ fn empty_framebuffer_width_out_of_range() {
     display.assert_no_error(None);
 }
 
+#[cfg(feature = "gl46")]
 #[test]
 fn empty_framebuffer_height_out_of_range() {
     use glium::framebuffer::{EmptyFrameBuffer, ValidationError};
@@ -476,6 +480,7 @@ fn empty_framebuffer_height_out_of_range() {
     display.assert_no_error(None);
 }
 
+#[cfg(feature = "gl46")]
 #[test]
 fn empty_framebuffer_layers_out_of_range() {
     use glium::framebuffer::{EmptyFrameBuffer, ValidationError};
@@ -495,6 +500,7 @@ fn empty_framebuffer_layers_out_of_range() {
     display.assert_no_error(None);
 }
 
+#[cfg(feature = "gl46")]
 #[test]
 fn empty_framebuffer_samples_out_of_range() {
     use glium::framebuffer::{EmptyFrameBuffer, ValidationError};
@@ -514,6 +520,7 @@ fn empty_framebuffer_samples_out_of_range() {
     display.assert_no_error(None);
 }
 
+#[cfg(feature = "gl46")]
 #[test]
 fn empty_framebuffer_simple_draw() {
     use glium::framebuffer::EmptyFrameBuffer;

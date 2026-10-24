@@ -88,6 +88,7 @@ result to the user.
 
 */
 #![warn(missing_docs)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 // TODO: remove these when everything is implemented
 #![allow(dead_code)]
 #![allow(unused_variables)]
@@ -261,9 +262,11 @@ trait BufferExt {
 
     /// Makes sure that the buffer is bound to the `GL_QUERY_BUFFER` and calls
     /// `glMemoryBarrier(GL_PIXEL_BUFFER_BARRIER_BIT)` if necessary.
+    #[cfg(feature = "gl46")]
     fn prepare_and_bind_for_query(&self, _: &mut CommandContext<'_>);
 
     /// Makes sure that nothing is bound to `GL_QUERY_BUFFER`.
+    #[cfg(feature = "gl46")]
     fn unbind_query(_: &mut CommandContext<'_>);
 
     /// Makes sure that the buffer is bound to the `GL_DRAW_INDIRECT_BUFFER` and calls
@@ -272,6 +275,7 @@ trait BufferExt {
 
     /// Makes sure that the buffer is bound to the `GL_DISPATCH_INDIRECT_BUFFER` and calls
     /// `glMemoryBarrier(GL_COMMAND_BARRIER_BIT)` if necessary.
+    #[cfg(feature = "gl46")]
     fn prepare_and_bind_for_dispatch_indirect(&self, _: &mut CommandContext<'_>);
 
     /// Makes sure that the buffer is bound to the indexed `GL_UNIFORM_BUFFER` point and calls
@@ -280,6 +284,7 @@ trait BufferExt {
 
     /// Makes sure that the buffer is bound to the indexed `GL_SHARED_STORAGE_BUFFER` point and calls
     /// `glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT)` if necessary.
+    #[cfg(feature = "gl46")]
     fn prepare_and_bind_for_shared_storage(
         &self,
         _: &mut CommandContext<'_>,
@@ -288,6 +293,7 @@ trait BufferExt {
 
     /// Makes sure that the buffer is bound to the indexed `GL_ATOMIC_COUNTER_BUFFER` point and calls
     /// `glMemoryBarrier(GL_ATOMIC_COUNTER_BARRIER_BIT)` if necessary.
+    #[cfg(feature = "gl46")]
     fn prepare_and_bind_for_atomic_counter(
         &self,
         _: &mut CommandContext<'_>,
@@ -1233,12 +1239,16 @@ pub enum DrawError {
     FixedIndexRestartingNotSupported,
 
     /// Changing the clip volume definition (origin and depth mode) is not supported by the backend.
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     ClipControlNotSupported,
 
     /// Tried to enable a clip plane that does not exist.
     ClipPlaneIndexOutOfBounds,
 
     /// Tried to use too many image units simultaneously
+    #[cfg(feature = "gl46")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gl46")))]
     InsufficientImageUnits,
 
     /// A polygon mode other than `Fill` was requested, but the backend doesn't support it.
@@ -1320,10 +1330,12 @@ impl fmt::Display for DrawError {
                 "One the blending parameters is not supported by the backend",
             FixedIndexRestartingNotSupported =>
                 "Restarting indices (multiple objects per draw call) is not supported by the backend",
+            #[cfg(feature = "gl46")]
             ClipControlNotSupported =>
                 "Changing the clip volume definition (origin and depth mode) is not supported by the backend",
             ClipPlaneIndexOutOfBounds =>
                 "Tried to enable a clip plane that does not exist.",
+            #[cfg(feature = "gl46")]
             InsufficientImageUnits =>
                 "Tried to use more image uniforms that the implementation has support for",
             PolygonModeNotSupported =>
