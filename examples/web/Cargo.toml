@@ -9,6 +9,6 @@ description = "Draws a rotating triangle with SafeGL on a WebGL 2 canvas."
 crate-type = ["cdylib"]
 
 [dependencies]
-glium = { path = "../..", default-features = false, features = ["webgl"] }
+safegl = { path = "../..", default-features = false, features = ["webgl"] }
 wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = ["Document", "Element", "HtmlCanvasElement", "Performance", "Window", "console"] }

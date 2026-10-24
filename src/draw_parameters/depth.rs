@@ -75,7 +75,7 @@ impl Default for Depth {
 /// The most common value for depth testing is to set `depth_test` to `IfLess`, and `depth_write`
 /// to `true`.
 ///
-/// If you don't have a depth buffer available, you can only pass `Overwrite`. Glium detects if
+/// If you don't have a depth buffer available, you can only pass `Overwrite`. SafeGL detects if
 /// you pass any other value and reports an error.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DepthTest {

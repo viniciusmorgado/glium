@@ -1,8 +1,8 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
 #[cfg(feature = "gl46")]
-use glium::Surface;
+use safegl::Surface;
 
 mod support;
 
@@ -10,10 +10,10 @@ mod support;
 fn empty_texture1d_u8u8u8u8() {
     let display = support::build_display();
 
-    let texture = glium::texture::Texture1d::empty_with_format(
+    let texture = safegl::texture::Texture1d::empty_with_format(
         &display,
-        glium::texture::UncompressedFloatFormat::U8U8U8U8,
-        glium::texture::MipmapsOption::NoMipmap,
+        safegl::texture::UncompressedFloatFormat::U8U8U8U8,
+        safegl::texture::MipmapsOption::NoMipmap,
         128,
     );
 
@@ -26,10 +26,10 @@ fn empty_texture1d_u8u8u8u8() {
 fn get_format_u8u8u8u8() {
     let display = support::build_display();
 
-    let texture = glium::texture::Texture2d::empty_with_format(
+    let texture = safegl::texture::Texture2d::empty_with_format(
         &display,
-        glium::texture::UncompressedFloatFormat::U8U8U8U8,
-        glium::texture::MipmapsOption::NoMipmap,
+        safegl::texture::UncompressedFloatFormat::U8U8U8U8,
+        safegl::texture::MipmapsOption::NoMipmap,
         128,
         128,
     )
@@ -43,7 +43,7 @@ fn get_format_u8u8u8u8() {
     };
 
     match format {
-        glium::texture::InternalFormat::FourComponents {
+        safegl::texture::InternalFormat::FourComponents {
             ty1,
             bits1,
             ty2,
@@ -53,10 +53,10 @@ fn get_format_u8u8u8u8() {
             ty4,
             bits4,
         } => {
-            assert_eq!(ty1, glium::texture::InternalFormatType::UnsignedNormalized);
-            assert_eq!(ty2, glium::texture::InternalFormatType::UnsignedNormalized);
-            assert_eq!(ty3, glium::texture::InternalFormatType::UnsignedNormalized);
-            assert_eq!(ty4, glium::texture::InternalFormatType::UnsignedNormalized);
+            assert_eq!(ty1, safegl::texture::InternalFormatType::UnsignedNormalized);
+            assert_eq!(ty2, safegl::texture::InternalFormatType::UnsignedNormalized);
+            assert_eq!(ty3, safegl::texture::InternalFormatType::UnsignedNormalized);
+            assert_eq!(ty4, safegl::texture::InternalFormatType::UnsignedNormalized);
 
             assert!(bits1 >= 8);
             assert!(bits2 >= 8);
@@ -71,7 +71,7 @@ fn get_format_u8u8u8u8() {
 fn depth_texture_1d_creation() {
     let display = support::build_display();
 
-    let texture = match glium::texture::DepthTexture1d::new(&display, vec![0.0, 0.0, 0.0, 0.0f32]) {
+    let texture = match safegl::texture::DepthTexture1d::new(&display, vec![0.0, 0.0, 0.0, 0.0f32]) {
         Err(_) => return, // TODO: not supported error
         Ok(t) => t,
     };
@@ -88,7 +88,7 @@ fn depth_texture_1d_creation() {
 fn texture_2d_creation() {
     let display = support::build_display();
 
-    let texture = glium::texture::Texture2d::new(
+    let texture = safegl::texture::Texture2d::new(
         &display,
         vec![
             vec![(0, 0, 0, 0), (0, 0, 0, 0)],
@@ -110,7 +110,7 @@ fn texture_2d_creation() {
 fn texture_2d_as_uniform_value_lifetime() {
     let display = support::build_display();
 
-    let texture = glium::texture::Texture2d::new(
+    let texture = safegl::texture::Texture2d::new(
         &display,
         vec![
             vec![(0, 0, 0, 0), (0, 0, 0, 0)],
@@ -122,15 +122,15 @@ fn texture_2d_as_uniform_value_lifetime() {
 
     // A function that takes texture reference should be able to return UniformValue (with lifetime
     // inherited from the reference).
-    fn get_uniforms(texture: &glium::texture::Texture2d) -> glium::uniforms::UniformValue<'_> {
-        use glium::uniforms::AsUniformValue;
+    fn get_uniforms(texture: &safegl::texture::Texture2d) -> safegl::uniforms::UniformValue<'_> {
+        use safegl::uniforms::AsUniformValue;
         texture.as_uniform_value()
     }
 
     let uniforms = get_uniforms(&texture);
     assert!(matches!(
         uniforms,
-        glium::uniforms::UniformValue::Texture2d(..)
+        safegl::uniforms::UniformValue::Texture2d(..)
     ));
 
     display.assert_no_error(None);
@@ -140,10 +140,10 @@ fn texture_2d_as_uniform_value_lifetime() {
 fn empty_texture2d_u8u8u8u8() {
     let display = support::build_display();
 
-    let texture = glium::texture::Texture2d::empty_with_format(
+    let texture = safegl::texture::Texture2d::empty_with_format(
         &display,
-        glium::texture::UncompressedFloatFormat::U8U8U8U8,
-        glium::texture::MipmapsOption::NoMipmap,
+        safegl::texture::UncompressedFloatFormat::U8U8U8U8,
+        safegl::texture::MipmapsOption::NoMipmap,
         128,
         128,
     );
@@ -157,7 +157,7 @@ fn empty_texture2d_u8u8u8u8() {
 fn depth_texture_2d_creation() {
     let display = support::build_display();
 
-    let texture = glium::texture::DepthTexture2d::new(
+    let texture = safegl::texture::DepthTexture2d::new(
         &display,
         vec![
             vec![0.0, 0.0, 0.0, 0.0f32],
@@ -184,7 +184,7 @@ fn depth_texture_2d_creation() {
 fn empty_depth_texture2d_f32() {
     let display = support::build_display();
 
-    let _texture = glium::texture::DepthTexture2d::empty(&display, 128, 128);
+    let _texture = safegl::texture::DepthTexture2d::empty(&display, 128, 128);
 
     display.assert_no_error(None);
     drop(_texture);
@@ -195,7 +195,7 @@ fn empty_depth_texture2d_f32() {
 fn compressed_texture_2d_creation() {
     let display = support::build_display();
 
-    let texture = glium::texture::CompressedTexture2d::new(
+    let texture = safegl::texture::CompressedTexture2d::new(
         &display,
         vec![
             vec![(0, 0, 0, 0), (0, 0, 0, 0)],
@@ -221,7 +221,7 @@ macro_rules! empty_texture_test {
         fn $test_name() {
             let display = support::build_display();
 
-            let texture = match glium::texture::$tex_ty::empty(&display, $($dims),+) {
+            let texture = match safegl::texture::$tex_ty::empty(&display, $($dims),+) {
                 Err(_) => return,       // TODO: make sure it's `NotSupported`
                 Ok(tex) => tex
             };
@@ -530,7 +530,7 @@ empty_texture_test!(
 fn zero_sized_texture_1d_creation() {
     let display = support::build_display();
 
-    let texture = match glium::texture::Texture1d::new(&display, Vec::<(u8, u8, u8, u8)>::new()) {
+    let texture = match safegl::texture::Texture1d::new(&display, Vec::<(u8, u8, u8, u8)>::new()) {
         Err(_) => return, // TODO: make sure it's `NotSupported`
         Ok(t) => t,
     };
@@ -548,7 +548,7 @@ fn zero_sized_texture_2d_creation() {
     let display = support::build_display();
 
     let texture =
-        glium::texture::Texture2d::new(&display, Vec::<Vec<(u8, u8, u8, u8)>>::new()).unwrap();
+        safegl::texture::Texture2d::new(&display, Vec::<Vec<(u8, u8, u8, u8)>>::new()).unwrap();
 
     assert_eq!(texture.get_width(), 0);
     assert_eq!(texture.get_height(), Some(0));
@@ -563,7 +563,7 @@ fn zero_sized_texture_3d_creation() {
     let display = support::build_display();
 
     let texture =
-        match glium::texture::Texture3d::new(&display, Vec::<Vec<Vec<(u8, u8, u8, u8)>>>::new()) {
+        match safegl::texture::Texture3d::new(&display, Vec::<Vec<Vec<(u8, u8, u8, u8)>>>::new()) {
             Err(_) => return, // TODO: make sure it's `NotSupported`
             Ok(t) => t,
         };
@@ -582,7 +582,7 @@ fn bindless_texture_residency_context_rebuild() {
     let display = support::build_display();
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let texture = glium::texture::Texture2d::new(
+    let texture = safegl::texture::Texture2d::new(
         &display,
         vec![
             vec![(255, 0, 0, 255), (255, 0, 0, 255)],
@@ -597,13 +597,13 @@ fn bindless_texture_residency_context_rebuild() {
     };
 
     // here is the trick: we rebuild the display, meaning that texture residency has to be updated
-    // by glium
+    // by SafeGL
     support::rebuild_display(&display);
 
     // if bindless textures are supported, we can call .unwrap() and expect that everything
     // else is supported here as well
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 100
@@ -632,9 +632,9 @@ fn bindless_texture_residency_context_rebuild() {
     )
     .unwrap();
 
-    let buffer = glium::uniforms::UniformBuffer::new(
+    let buffer = safegl::uniforms::UniformBuffer::new(
         &display,
-        glium::texture::TextureHandle::new(&texture, &Default::default()),
+        safegl::texture::TextureHandle::new(&texture, &Default::default()),
     )
     .unwrap();
 
@@ -665,9 +665,9 @@ fn bindless_texture_residency_context_rebuild() {
 fn upload_from_pixel_buffer() {
     let display = support::build_display();
 
-    let texture = glium::texture::Texture2d::empty(&display, 2, 2).unwrap();
+    let texture = safegl::texture::Texture2d::empty(&display, 2, 2).unwrap();
 
-    let buffer = glium::texture::pixel_buffer::PixelBuffer::new_empty(&display, 4);
+    let buffer = safegl::texture::pixel_buffer::PixelBuffer::new_empty(&display, 4);
     buffer.write(&[
         (0u8, 255u8, 0u8, 255u8),
         (255, 0, 255, 0),
@@ -692,9 +692,9 @@ fn upload_from_pixel_buffer() {
 fn upload_from_pixel_buffer_inverted() {
     let display = support::build_display();
 
-    let texture = glium::texture::Texture2d::empty(&display, 2, 2).unwrap();
+    let texture = safegl::texture::Texture2d::empty(&display, 2, 2).unwrap();
 
-    let buffer = glium::texture::pixel_buffer::PixelBuffer::new_empty(&display, 4);
+    let buffer = safegl::texture::pixel_buffer::PixelBuffer::new_empty(&display, 4);
     buffer.write(&[
         (0u8, 255u8, 0u8, 255u8),
         (255, 0, 255, 0),

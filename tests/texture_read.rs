@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
 mod support;
 
@@ -8,7 +8,7 @@ mod support;
 fn empty_pixel_buffer() {
     let display = support::build_display();
 
-    let pixel_buffer = glium::pixel_buffer::PixelBuffer::new_empty(&display, 128 * 128);
+    let pixel_buffer = safegl::pixel_buffer::PixelBuffer::new_empty(&display, 128 * 128);
     display.assert_no_error(None);
 
     let _: Vec<Vec<(u8, u8, u8, u8)>> = pixel_buffer.read_as_texture_2d().unwrap();
@@ -19,7 +19,7 @@ fn texture_2d_read_pixelbuffer() {
     let display = support::build_display();
 
     // we use only powers of two, in order to avoid float rounding errors
-    let texture = glium::texture::Texture2d::new(
+    let texture = safegl::texture::Texture2d::new(
         &display,
         vec![
             vec![(0u8, 1u8, 2u8), (4u8, 8u8, 16u8)],
@@ -31,7 +31,7 @@ fn texture_2d_read_pixelbuffer() {
     let read_back: Vec<Vec<(u8, u8, u8, u8)>> =
         match texture.read_to_pixel_buffer().read_as_texture_2d() {
             Ok(r) => r,
-            Err(glium::buffer::ReadError::NotSupported) => return,
+            Err(safegl::buffer::ReadError::NotSupported) => return,
             e => e.unwrap(),
         };
 
@@ -49,7 +49,7 @@ macro_rules! read_texture_test {
         fn $test_name() {
             let display = support::build_display();
 
-            let texture = match glium::texture::$tex_ty::new(&display, $data) {
+            let texture = match safegl::texture::$tex_ty::new(&display, $data) {
                 Err(_) => return, // TODO: make sure that the error is "NotSupported"
                 Ok(t) => t,
             };

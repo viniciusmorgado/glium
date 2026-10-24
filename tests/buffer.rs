@@ -1,10 +1,10 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
 mod support;
 
-use glium::buffer::BufferMode;
-use glium::Surface;
+use safegl::buffer::BufferMode;
+use safegl::Surface;
 use std::mem;
 
 #[test]
@@ -19,7 +19,7 @@ fn buffer_immutable_creation() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    glium::VertexBuffer::new(
+    safegl::VertexBuffer::new(
         &display,
         &[
             Vertex {
@@ -53,7 +53,7 @@ fn buffer_dynamic_creation() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    glium::VertexBuffer::dynamic(
+    safegl::VertexBuffer::dynamic(
         &display,
         &[
             Vertex {
@@ -87,7 +87,7 @@ fn buffer_immutable_empty_creation() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    let vb: glium::VertexBuffer<Vertex> = glium::VertexBuffer::empty(&display, 12).unwrap();
+    let vb: safegl::VertexBuffer<Vertex> = safegl::VertexBuffer::empty(&display, 12).unwrap();
     assert_eq!(vb.len(), 12);
 
     display.assert_no_error(None);
@@ -105,7 +105,7 @@ fn buffer_dynamic_empty_creation() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    let vb: glium::VertexBuffer<Vertex> = glium::VertexBuffer::empty_dynamic(&display, 12).unwrap();
+    let vb: safegl::VertexBuffer<Vertex> = safegl::VertexBuffer::empty_dynamic(&display, 12).unwrap();
     assert_eq!(vb.len(), 12);
 
     display.assert_no_error(None);
@@ -123,7 +123,7 @@ fn buffer_immutable_mapping_read() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    let mut vb = glium::VertexBuffer::new(
+    let mut vb = safegl::VertexBuffer::new(
         &display,
         &[
             Vertex {
@@ -157,7 +157,7 @@ fn buffer_dynamic_mapping_read() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    let mut vb = glium::VertexBuffer::dynamic(
+    let mut vb = safegl::VertexBuffer::dynamic(
         &display,
         &[
             Vertex {
@@ -191,7 +191,7 @@ fn buffer_immutable_mapping_write() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    let mut vb = glium::VertexBuffer::new(
+    let mut vb = safegl::VertexBuffer::new(
         &display,
         &[
             Vertex {
@@ -230,7 +230,7 @@ fn buffer_dynamic_mapping_write() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    let mut vb = glium::VertexBuffer::dynamic(
+    let mut vb = safegl::VertexBuffer::dynamic(
         &display,
         &[
             Vertex {
@@ -270,7 +270,7 @@ fn buffer_mapping_multithread() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    let mut vb = glium::VertexBuffer::empty(&display, 2).unwrap();
+    let mut vb = safegl::VertexBuffer::empty(&display, 2).unwrap();
 
     {
         let mut mapping = vb.map();
@@ -299,7 +299,7 @@ fn buffer_immutable_read() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    let vb = glium::VertexBuffer::new(
+    let vb = safegl::VertexBuffer::new(
         &display,
         &[
             Vertex {
@@ -316,7 +316,7 @@ fn buffer_immutable_read() {
 
     let data = match vb.read() {
         Ok(r) => r,
-        Err(glium::buffer::ReadError::NotSupported) => return,
+        Err(safegl::buffer::ReadError::NotSupported) => return,
         e => e.unwrap(),
     };
 
@@ -338,7 +338,7 @@ fn buffer_dynamic_read() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    let vb = glium::VertexBuffer::dynamic(
+    let vb = safegl::VertexBuffer::dynamic(
         &display,
         &[
             Vertex {
@@ -355,7 +355,7 @@ fn buffer_dynamic_read() {
 
     let data = match vb.read() {
         Ok(r) => r,
-        Err(glium::buffer::ReadError::NotSupported) => return,
+        Err(safegl::buffer::ReadError::NotSupported) => return,
         e => e.unwrap(),
     };
 
@@ -377,7 +377,7 @@ fn buffer_immutable_read_slice() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    let vb = glium::VertexBuffer::new(
+    let vb = safegl::VertexBuffer::new(
         &display,
         &[
             Vertex {
@@ -394,7 +394,7 @@ fn buffer_immutable_read_slice() {
 
     let data = match vb.slice(1..2).unwrap().read() {
         Ok(r) => r,
-        Err(glium::buffer::ReadError::NotSupported) => return,
+        Err(safegl::buffer::ReadError::NotSupported) => return,
         e => e.unwrap(),
     };
 
@@ -415,7 +415,7 @@ fn buffer_dynamic_read_slice() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    let vb = glium::VertexBuffer::dynamic(
+    let vb = safegl::VertexBuffer::dynamic(
         &display,
         &[
             Vertex {
@@ -432,7 +432,7 @@ fn buffer_dynamic_read_slice() {
 
     let data = match vb.slice(1..2).unwrap().read() {
         Ok(r) => r,
-        Err(glium::buffer::ReadError::NotSupported) => return,
+        Err(safegl::buffer::ReadError::NotSupported) => return,
         e => e.unwrap(),
     };
 
@@ -453,7 +453,7 @@ fn buffer_slice_out_of_bounds() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    let vb = glium::VertexBuffer::new(
+    let vb = safegl::VertexBuffer::new(
         &display,
         &[
             Vertex {
@@ -485,7 +485,7 @@ fn buffer_immutable_write() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    let vb = glium::VertexBuffer::new(
+    let vb = safegl::VertexBuffer::new(
         &display,
         &[
             Vertex {
@@ -513,7 +513,7 @@ fn buffer_immutable_write() {
 
     let data = match vb.read() {
         Ok(r) => r,
-        Err(glium::buffer::ReadError::NotSupported) => return,
+        Err(safegl::buffer::ReadError::NotSupported) => return,
         e => e.unwrap(),
     };
 
@@ -537,7 +537,7 @@ fn buffer_dynamic_write() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    let vb = glium::VertexBuffer::dynamic(
+    let vb = safegl::VertexBuffer::dynamic(
         &display,
         &[
             Vertex {
@@ -565,7 +565,7 @@ fn buffer_dynamic_write() {
 
     let data = match vb.read() {
         Ok(r) => r,
-        Err(glium::buffer::ReadError::NotSupported) => return,
+        Err(safegl::buffer::ReadError::NotSupported) => return,
         e => e.unwrap(),
     };
 
@@ -589,7 +589,7 @@ fn buffer_immutable_write_slice() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    let vb = glium::VertexBuffer::new(
+    let vb = safegl::VertexBuffer::new(
         &display,
         &[
             Vertex {
@@ -611,7 +611,7 @@ fn buffer_immutable_write_slice() {
 
     let data = match vb.read() {
         Ok(r) => r,
-        Err(glium::buffer::ReadError::NotSupported) => return,
+        Err(safegl::buffer::ReadError::NotSupported) => return,
         e => e.unwrap(),
     };
 
@@ -635,7 +635,7 @@ fn buffer_dynamic_write_slice() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    let vb = glium::VertexBuffer::dynamic(
+    let vb = safegl::VertexBuffer::dynamic(
         &display,
         &[
             Vertex {
@@ -657,7 +657,7 @@ fn buffer_dynamic_write_slice() {
 
     let data = match vb.read() {
         Ok(r) => r,
-        Err(glium::buffer::ReadError::NotSupported) => return,
+        Err(safegl::buffer::ReadError::NotSupported) => return,
         e => e.unwrap(),
     };
 
@@ -681,7 +681,7 @@ fn zero_sized_immutable_buffer() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    glium::VertexBuffer::new(&display, &Vec::<Vertex>::new()).unwrap();
+    safegl::VertexBuffer::new(&display, &Vec::<Vertex>::new()).unwrap();
 
     display.assert_no_error(None);
 }
@@ -698,7 +698,7 @@ fn zero_sized_dynamic_buffer() {
 
     implement_vertex!(Vertex, field1, field2);
 
-    glium::VertexBuffer::new(&display, &Vec::<Vertex>::new()).unwrap();
+    safegl::VertexBuffer::new(&display, &Vec::<Vertex>::new()).unwrap();
 
     display.assert_no_error(None);
 }
@@ -713,7 +713,7 @@ fn invalidate() {
     }
     implement_vertex!(Vertex, field);
 
-    let buffer = glium::VertexBuffer::new(&display, &[Vertex { field: 2.0 }]).unwrap();
+    let buffer = safegl::VertexBuffer::new(&display, &[Vertex { field: 2.0 }]).unwrap();
 
     buffer.invalidate();
 
@@ -730,7 +730,7 @@ fn invalidate_range() {
     }
     implement_vertex!(Vertex, field);
 
-    let buffer = glium::VertexBuffer::new(
+    let buffer = safegl::VertexBuffer::new(
         &display,
         &[
             Vertex { field: 1.0 },
@@ -749,10 +749,10 @@ fn invalidate_range() {
 fn immutable_mapping_forget_then_remap() {
     let display = support::build_display();
 
-    let mut buf = glium::buffer::BufferView::new(
+    let mut buf = safegl::buffer::BufferView::new(
         &display,
         &[1, 2, 3],
-        glium::buffer::BufferType::ArrayBuffer,
+        safegl::buffer::BufferType::ArrayBuffer,
         BufferMode::Immutable,
     )
     .unwrap();
@@ -774,10 +774,10 @@ fn immutable_mapping_forget_then_remap() {
 fn immutable_mapping_forget_then_read() {
     let display = support::build_display();
 
-    let mut buf = glium::buffer::BufferView::new(
+    let mut buf = safegl::buffer::BufferView::new(
         &display,
         &[1, 2, 3],
-        glium::buffer::BufferType::ArrayBuffer,
+        safegl::buffer::BufferType::ArrayBuffer,
         BufferMode::Immutable,
     )
     .unwrap();
@@ -790,7 +790,7 @@ fn immutable_mapping_forget_then_read() {
 
     let data = match buf.read() {
         Ok(r) => r,
-        Err(glium::buffer::ReadError::NotSupported) => return,
+        Err(safegl::buffer::ReadError::NotSupported) => return,
         e => e.unwrap(),
     };
 
@@ -804,10 +804,10 @@ fn immutable_mapping_forget_then_read() {
 fn immutable_mapping_forget_then_invalidate() {
     let display = support::build_display();
 
-    let mut buf = glium::buffer::BufferView::new(
+    let mut buf = safegl::buffer::BufferView::new(
         &display,
         &[1, 2, 3],
-        glium::buffer::BufferType::ArrayBuffer,
+        safegl::buffer::BufferType::ArrayBuffer,
         BufferMode::Immutable,
     )
     .unwrap();
@@ -833,7 +833,7 @@ fn immutable_mapping_forget_then_draw() {
 
     implement_vertex!(Vertex, position);
 
-    let mut vb = glium::VertexBuffer::new(
+    let mut vb = safegl::VertexBuffer::new(
         &display,
         &[
             Vertex {
@@ -922,7 +922,7 @@ fn immutable_mapping_forget_then_draw() {
         .as_surface()
         .draw(
             &vb,
-            &glium::index::NoIndices(glium::index::PrimitiveType::TriangleStrip),
+            &safegl::index::NoIndices(safegl::index::PrimitiveType::TriangleStrip),
             &program,
             &uniform! {},
             &Default::default(),
@@ -941,10 +941,10 @@ fn immutable_mapping_forget_then_draw() {
 fn persistent_mapping_forget_then_remap() {
     let display = support::build_display();
 
-    let mut buf = glium::buffer::BufferView::new(
+    let mut buf = safegl::buffer::BufferView::new(
         &display,
         &[1, 2, 3],
-        glium::buffer::BufferType::ArrayBuffer,
+        safegl::buffer::BufferType::ArrayBuffer,
         BufferMode::Persistent,
     )
     .unwrap();
@@ -966,10 +966,10 @@ fn persistent_mapping_forget_then_remap() {
 fn persistent_mapping_forget_then_read() {
     let display = support::build_display();
 
-    let mut buf = glium::buffer::BufferView::new(
+    let mut buf = safegl::buffer::BufferView::new(
         &display,
         &[1, 2, 3],
-        glium::buffer::BufferType::ArrayBuffer,
+        safegl::buffer::BufferType::ArrayBuffer,
         BufferMode::Persistent,
     )
     .unwrap();
@@ -982,7 +982,7 @@ fn persistent_mapping_forget_then_read() {
 
     let data = match buf.read() {
         Ok(r) => r,
-        Err(glium::buffer::ReadError::NotSupported) => return,
+        Err(safegl::buffer::ReadError::NotSupported) => return,
         e => e.unwrap(),
     };
 
@@ -996,10 +996,10 @@ fn persistent_mapping_forget_then_read() {
 fn persistent_mapping_forget_then_invalidate() {
     let display = support::build_display();
 
-    let mut buf = glium::buffer::BufferView::new(
+    let mut buf = safegl::buffer::BufferView::new(
         &display,
         &[1, 2, 3],
-        glium::buffer::BufferType::ArrayBuffer,
+        safegl::buffer::BufferType::ArrayBuffer,
         BufferMode::Persistent,
     )
     .unwrap();
@@ -1025,7 +1025,7 @@ fn dynamic_mapping_forget_then_draw() {
 
     implement_vertex!(Vertex, position);
 
-    let mut vb = glium::VertexBuffer::dynamic(
+    let mut vb = safegl::VertexBuffer::dynamic(
         &display,
         &[
             Vertex {
@@ -1114,7 +1114,7 @@ fn dynamic_mapping_forget_then_draw() {
         .as_surface()
         .draw(
             &vb,
-            &glium::index::NoIndices(glium::index::PrimitiveType::TriangleStrip),
+            &safegl::index::NoIndices(safegl::index::PrimitiveType::TriangleStrip),
             &program,
             &uniform! {},
             &Default::default(),
@@ -1133,18 +1133,18 @@ fn dynamic_mapping_forget_then_draw() {
 fn copy_to() {
     let display = support::build_display();
 
-    let buf1 = glium::buffer::BufferView::new(
+    let buf1 = safegl::buffer::BufferView::new(
         &display,
         &[1, 2, 3],
-        glium::buffer::BufferType::ArrayBuffer,
+        safegl::buffer::BufferType::ArrayBuffer,
         BufferMode::Persistent,
     );
     let buf1 = if let Ok(buf) = buf1 { buf } else { return };
 
-    let buf2 = glium::buffer::BufferView::new(
+    let buf2 = safegl::buffer::BufferView::new(
         &display,
         &[0, 0, 0],
-        glium::buffer::BufferType::ArrayBuffer,
+        safegl::buffer::BufferType::ArrayBuffer,
         BufferMode::Persistent,
     );
     let buf2 = if let Ok(buf) = buf2 { buf } else { return };
@@ -1167,18 +1167,18 @@ fn copy_to() {
 fn copy_to_slice() {
     let display = support::build_display();
 
-    let buf1 = glium::buffer::BufferView::<[u8]>::new(
+    let buf1 = safegl::buffer::BufferView::<[u8]>::new(
         &display,
         &[1, 2],
-        glium::buffer::BufferType::ArrayBuffer,
+        safegl::buffer::BufferType::ArrayBuffer,
         BufferMode::Persistent,
     );
     let buf1 = if let Ok(buf) = buf1 { buf } else { return };
 
-    let buf2 = glium::buffer::BufferView::<[u8]>::new(
+    let buf2 = safegl::buffer::BufferView::<[u8]>::new(
         &display,
         &[0, 0, 0],
-        glium::buffer::BufferType::ArrayBuffer,
+        safegl::buffer::BufferType::ArrayBuffer,
         BufferMode::Persistent,
     );
     let buf2 = if let Ok(buf) = buf2 { buf } else { return };

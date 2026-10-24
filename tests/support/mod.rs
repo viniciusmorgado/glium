@@ -5,14 +5,14 @@ Test supports module.
 
 #![allow(dead_code)]
 
-use glium::backend::{Context, Facade};
-use glium::index::PrimitiveType;
-use glium::Display;
+use safegl::backend::{Context, Facade};
+use safegl::index::PrimitiveType;
+use safegl::Display;
 
-use glium::winit::application::ApplicationHandler;
-use glium::winit::event::WindowEvent;
-use glium::winit::event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy};
-use glium::winit::window::{Window, WindowId};
+use safegl::winit::application::ApplicationHandler;
+use safegl::winit::event::WindowEvent;
+use safegl::winit::event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy};
+use safegl::winit::window::{Window, WindowId};
 use glutin::config::ConfigTemplateBuilder;
 use glutin::context::{ContextAttributesBuilder, NotCurrentContext};
 use glutin::display::GetGlDisplay;
@@ -32,9 +32,9 @@ use std::thread;
 
 // There is a Wayland version of this extension trait but the X11 version also works on Wayland
 #[cfg(windows)]
-use glium::winit::platform::windows::EventLoopBuilderExtWindows;
+use safegl::winit::platform::windows::EventLoopBuilderExtWindows;
 #[cfg(unix)]
-use glium::winit::platform::x11::EventLoopBuilderExtX11;
+use safegl::winit::platform::x11::EventLoopBuilderExtX11;
 
 type DisplayRequest = Sender<(Window, NotCurrentContext, Surface<WindowSurface>)>;
 
@@ -65,7 +65,7 @@ impl ApplicationHandler<DisplayRequest> for Tests {
         let raw_window_handle = window.window_handle().unwrap().as_raw();
 
         // Then the configuration which decides which OpenGL version we'll end up using. Unless
-        // GLIUM_GL_VERSION is set, we try the context versions of SafeGL's tier in order, because
+        // SAFEGL_GL_VERSION is set, we try the context versions of SafeGL's tier in order, because
         // glutin's default (3.3 core) is below SafeGL's minimum.
         let not_current_gl_context = parse_version()
             .into_iter()
@@ -175,13 +175,13 @@ pub fn build_display() -> WindowDisplay {
 /// Rebuilds an existing display.
 ///
 /// In real applications this is used for things such as switching to fullscreen. Some things are
-/// invalidated during a rebuild, and this has to be handled by glium.
-pub fn rebuild_display(_display: &glium::Display<WindowSurface>) {
+/// invalidated during a rebuild, and this has to be handled by SafeGL.
+pub fn rebuild_display(_display: &safegl::Display<WindowSurface>) {
     todo!();
     /*
     let version = parse_version();
-    let event_loop = glium::winit::event_loop::EventLoop::new();
-    let wb = glium::winit::window::WindowBuilder::new().with_visible(false);
+    let event_loop = safegl::winit::event_loop::EventLoop::new();
+    let wb = safegl::winit::window::WindowBuilder::new().with_visible(false);
     let cb = glutin::ContextBuilder::new()
         .with_gl_debug_flag(true)
         .with_gl(version);
@@ -190,7 +190,7 @@ pub fn rebuild_display(_display: &glium::Display<WindowSurface>) {
 }
 
 fn parse_version() -> Vec<glutin::context::ContextApi> {
-    match env::var("GLIUM_GL_VERSION") {
+    match env::var("SAFEGL_GL_VERSION") {
         Ok(version) => {
             // expects "OpenGL 3.3" for example
 
@@ -215,7 +215,7 @@ fn parse_version() -> Vec<glutin::context::ContextApi> {
                 panic!();
             }]
         }
-        Err(_) => glium::backend::glutin::tier_context_apis(),
+        Err(_) => safegl::backend::glutin::tier_context_apis(),
     }
 }
 
@@ -225,7 +225,7 @@ pub fn build_unicolor_texture2d<F: ?Sized>(
     red: f32,
     green: f32,
     blue: f32,
-) -> glium::Texture2d
+) -> safegl::Texture2d
 where
     F: Facade,
 {
@@ -235,15 +235,15 @@ where
         (blue * 255.0) as u8,
     );
 
-    glium::texture::Texture2d::new(facade, vec![vec![color, color], vec![color, color]]).unwrap()
+    safegl::texture::Texture2d::new(facade, vec![vec![color, color], vec![color, color]]).unwrap()
 }
 
 /// Builds a 2x2 depth texture.
-pub fn build_constant_depth_texture<F>(facade: &F, depth: f32) -> glium::texture::DepthTexture2d
+pub fn build_constant_depth_texture<F>(facade: &F, depth: f32) -> safegl::texture::DepthTexture2d
 where
     F: Facade + ?Sized,
 {
-    glium::texture::DepthTexture2d::new(facade, vec![vec![depth, depth], vec![depth, depth]])
+    safegl::texture::DepthTexture2d::new(facade, vec![vec![depth, depth], vec![depth, depth]])
         .unwrap()
 }
 
@@ -251,9 +251,9 @@ where
 pub fn build_fullscreen_red_pipeline<F: ?Sized>(
     facade: &F,
 ) -> (
-    glium::vertex::VertexBufferAny,
-    glium::index::IndexBufferAny,
-    glium::Program,
+    safegl::vertex::VertexBufferAny,
+    safegl::index::IndexBufferAny,
+    safegl::Program,
 )
 where
     F: Facade,
@@ -266,7 +266,7 @@ where
     implement_vertex!(Vertex, position);
 
     (
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             facade,
             &[
                 Vertex {
@@ -285,7 +285,7 @@ where
         )
         .unwrap()
         .into(),
-        glium::IndexBuffer::new(facade, PrimitiveType::TriangleStrip, &[0u8, 1, 2, 3])
+        safegl::IndexBuffer::new(facade, PrimitiveType::TriangleStrip, &[0u8, 1, 2, 3])
             .unwrap()
             .into(),
         program!(facade,
@@ -335,7 +335,7 @@ where
 /// The vertex buffer has the "position" attribute of type "vec2".
 pub fn build_rectangle_vb_ib<F: ?Sized>(
     facade: &F,
-) -> (glium::vertex::VertexBufferAny, glium::index::IndexBufferAny)
+) -> (safegl::vertex::VertexBufferAny, safegl::index::IndexBufferAny)
 where
     F: Facade,
 {
@@ -347,7 +347,7 @@ where
     implement_vertex!(Vertex, position);
 
     (
-        glium::VertexBuffer::new(
+        safegl::VertexBuffer::new(
             facade,
             &[
                 Vertex {
@@ -366,16 +366,16 @@ where
         )
         .unwrap()
         .into(),
-        glium::IndexBuffer::new(facade, PrimitiveType::TriangleStrip, &[0u8, 1, 2, 3])
+        safegl::IndexBuffer::new(facade, PrimitiveType::TriangleStrip, &[0u8, 1, 2, 3])
             .unwrap()
             .into(),
     )
 }
 
 /// Builds a texture suitable for rendering.
-pub fn build_renderable_texture<F: ?Sized>(facade: &F) -> glium::Texture2d
+pub fn build_renderable_texture<F: ?Sized>(facade: &F) -> safegl::Texture2d
 where
     F: Facade,
 {
-    glium::Texture2d::empty(facade, 1024, 1024).unwrap()
+    safegl::Texture2d::empty(facade, 1024, 1024).unwrap()
 }

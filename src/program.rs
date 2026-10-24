@@ -98,7 +98,7 @@ impl ShaderType {
         }
     }
     /// Creates an instance of ShaderType corresponding to the given gl::types::GLenum.
-    /// This routine will panic if the given shadertype is not supported by glium.
+    /// This routine will panic if the given shadertype is not supported by SafeGL.
     pub fn from_opengl_type(gl_type: gl::types::GLenum) -> Self {
         match gl_type {
             gl::VERTEX_SHADER => ShaderType::Vertex,
@@ -139,7 +139,7 @@ pub enum ProgramCreationError {
     /// supported by the backend.
     PointSizeNotSupported,
 
-    /// The glium-specific binary header was not found or is corrupt.
+    /// The SafeGL-specific binary header was not found or is corrupt.
     BinaryHeaderError,
 
     /// The backend doesn't support loading program binaries (WebGL). See `is_binary_supported`.
@@ -167,7 +167,7 @@ impl fmt::Display for ProgramCreationError {
             CompilationNotSupported => "The backend doesn't support shaders compilation",
             TransformFeedbackNotSupported => "Transform feedback is not supported by the backend.",
             PointSizeNotSupported => "Point size is not supported by the backend.",
-            BinaryHeaderError => "The glium-specific binary header was not found or is corrupt.",
+            BinaryHeaderError => "The SafeGL-specific binary header was not found or is corrupt.",
             BinaryNotSupported => "Program binaries are not supported by the backend.",
         };
         match *self {

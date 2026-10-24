@@ -1,11 +1,11 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::backend::Facade;
-use glium::index::PrimitiveType;
-use glium::program::{is_subroutine_supported, ShaderStage};
-use glium::DrawError;
-use glium::Surface;
+use safegl::backend::Facade;
+use safegl::index::PrimitiveType;
+use safegl::program::{is_subroutine_supported, ShaderStage};
+use safegl::DrawError;
+use safegl::Surface;
 
 mod support;
 
@@ -65,7 +65,7 @@ fn subroutine_bindings_simple() {
         },
     )
     .unwrap();
-    let vb = glium::VertexBuffer::new(
+    let vb = safegl::VertexBuffer::new(
         &display,
         &[
             Vertex {
@@ -84,7 +84,7 @@ fn subroutine_bindings_simple() {
     )
     .unwrap();
 
-    let indices = glium::IndexBuffer::new(
+    let indices = safegl::IndexBuffer::new(
         &display,
         PrimitiveType::TrianglesList,
         &[0u16, 1, 2, 2, 1, 3],
@@ -177,7 +177,7 @@ fn subroutine_bindings_explicit_location() {
         },
     )
     .unwrap();
-    let vb = glium::VertexBuffer::new(
+    let vb = safegl::VertexBuffer::new(
         &display,
         &[
             Vertex {
@@ -196,7 +196,7 @@ fn subroutine_bindings_explicit_location() {
     )
     .unwrap();
 
-    let indices = glium::IndexBuffer::new(
+    let indices = safegl::IndexBuffer::new(
         &display,
         PrimitiveType::TrianglesList,
         &[0u16, 1, 2, 2, 1, 3],
@@ -243,8 +243,8 @@ fn subroutine_bindings_explicit_location() {
 fn build_program_complex<
     T: glutin::surface::SurfaceTypeTrait + glutin::surface::ResizeableSurface + 'static,
 >(
-    display: &glium::Display<T>,
-) -> glium::Program {
+    display: &safegl::Display<T>,
+) -> safegl::Program {
     let program = program!(display,
         150 => {
             vertex: "
@@ -313,7 +313,7 @@ fn subroutine_bindings_multi() {
     };
 
     let program = build_program_complex(&display);
-    let vb = glium::VertexBuffer::new(
+    let vb = safegl::VertexBuffer::new(
         &display,
         &[
             Vertex {
@@ -332,7 +332,7 @@ fn subroutine_bindings_multi() {
     )
     .unwrap();
 
-    let indices = glium::IndexBuffer::new(
+    let indices = safegl::IndexBuffer::new(
         &display,
         PrimitiveType::TrianglesList,
         &[0u16, 1, 2, 2, 1, 3],
@@ -385,7 +385,7 @@ fn not_all_subroutine_uniforms_set() {
     };
 
     let program = build_program_complex(&display);
-    let vb = glium::VertexBuffer::new(
+    let vb = safegl::VertexBuffer::new(
         &display,
         &[
             Vertex {
@@ -404,7 +404,7 @@ fn not_all_subroutine_uniforms_set() {
     )
     .unwrap();
 
-    let indices = glium::IndexBuffer::new(
+    let indices = safegl::IndexBuffer::new(
         &display,
         PrimitiveType::TrianglesList,
         &[0u16, 1, 2, 2, 1, 3],
@@ -438,7 +438,7 @@ fn mismatched_subroutines() {
     };
 
     let program = build_program_complex(&display);
-    let vb = glium::VertexBuffer::new(
+    let vb = safegl::VertexBuffer::new(
         &display,
         &[
             Vertex {
@@ -457,7 +457,7 @@ fn mismatched_subroutines() {
     )
     .unwrap();
 
-    let indices = glium::IndexBuffer::new(
+    let indices = safegl::IndexBuffer::new(
         &display,
         PrimitiveType::TrianglesList,
         &[0u16, 1, 2, 2, 1, 3],

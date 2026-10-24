@@ -1,7 +1,7 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::{Display, Surface};
+use safegl::{Display, Surface};
 use glutin::surface::WindowSurface;
 use support::{ApplicationContext, State};
 
@@ -16,22 +16,22 @@ struct PerInstance {
 implement_vertex!(PerInstance, id, w_position, color);
 
 struct Application {
-    pub vertex_buffer: glium::vertex::VertexBufferAny,
-    pub program: glium::Program,
-    pub picking_program: glium::Program,
+    pub vertex_buffer: safegl::vertex::VertexBufferAny,
+    pub program: safegl::Program,
+    pub picking_program: safegl::Program,
     pub camera: support::camera::CameraState,
     pub per_instance: Vec<PerInstance>,
     pub original: Vec<PerInstance>,
     pub picking_attachments: Option<(
-        glium::texture::UnsignedTexture2d,
-        glium::framebuffer::DepthRenderBuffer,
+        safegl::texture::UnsignedTexture2d,
+        safegl::framebuffer::DepthRenderBuffer,
     )>,
-    pub picking_pbo: glium::texture::pixel_buffer::PixelBuffer<u32>,
+    pub picking_pbo: safegl::texture::pixel_buffer::PixelBuffer<u32>,
     pub cursor_position: Option<(i32, i32)>,
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE: &'static str = "Glium picking example";
+    const WINDOW_TITLE: &'static str = "SafeGL picking example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         // building the vertex and index buffers
@@ -140,11 +140,11 @@ impl ApplicationContext for Application {
         let original = per_instance.clone();
 
         let picking_attachments: Option<(
-            glium::texture::UnsignedTexture2d,
-            glium::framebuffer::DepthRenderBuffer,
+            safegl::texture::UnsignedTexture2d,
+            safegl::framebuffer::DepthRenderBuffer,
         )> = None;
-        let picking_pbo: glium::texture::pixel_buffer::PixelBuffer<u32> =
-            glium::texture::pixel_buffer::PixelBuffer::new_empty(display, 1);
+        let picking_pbo: safegl::texture::pixel_buffer::PixelBuffer<u32> =
+            safegl::texture::pixel_buffer::PixelBuffer::new_empty(display, 1);
 
         let cursor_position: Option<(i32, i32)> = None;
 
@@ -189,9 +189,9 @@ impl ApplicationContext for Application {
         };
 
         // draw parameters
-        let params = glium::DrawParameters {
-            depth: glium::Depth {
-                test: glium::DepthTest::IfLess,
+        let params = safegl::DrawParameters {
+            depth: safegl::Depth {
+                test: safegl::DepthTest::IfLess,
                 write: true,
                 ..Default::default()
             },
@@ -199,7 +199,7 @@ impl ApplicationContext for Application {
         };
 
         let per_instance_buffer =
-            glium::vertex::VertexBuffer::new(display, &self.per_instance).unwrap();
+            safegl::vertex::VertexBuffer::new(display, &self.per_instance).unwrap();
 
         // drawing a frame
         let mut target = display.draw();
@@ -229,17 +229,17 @@ impl ApplicationContext for Application {
         {
             let (width, height) = target_dimensions;
             self.picking_attachments = Some((
-                glium::texture::UnsignedTexture2d::empty_with_format(
+                safegl::texture::UnsignedTexture2d::empty_with_format(
                     display,
-                    glium::texture::UncompressedUintFormat::U32,
-                    glium::texture::MipmapsOption::NoMipmap,
+                    safegl::texture::UncompressedUintFormat::U32,
+                    safegl::texture::MipmapsOption::NoMipmap,
                     width,
                     height,
                 )
                 .unwrap(),
-                glium::framebuffer::DepthRenderBuffer::new(
+                safegl::framebuffer::DepthRenderBuffer::new(
                     display,
-                    glium::texture::DepthFormat::F32,
+                    safegl::texture::DepthFormat::F32,
                     width,
                     height,
                 )
@@ -257,7 +257,7 @@ impl ApplicationContext for Application {
                 .unwrap()
                 .raw_clear_buffer([0u32, 0, 0, 0]);
 
-            let mut picking_target = glium::framebuffer::SimpleFrameBuffer::with_depth_buffer(
+            let mut picking_target = safegl::framebuffer::SimpleFrameBuffer::with_depth_buffer(
                 display,
                 picking_texture,
                 depth_buffer,
@@ -270,7 +270,7 @@ impl ApplicationContext for Application {
                         &self.vertex_buffer,
                         per_instance_buffer.per_instance().unwrap(),
                     ),
-                    &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
+                    &safegl::index::NoIndices(safegl::index::PrimitiveType::TrianglesList),
                     &self.picking_program,
                     &uniforms,
                     &params,
@@ -283,7 +283,7 @@ impl ApplicationContext for Application {
                     &self.vertex_buffer,
                     per_instance_buffer.per_instance().unwrap(),
                 ),
-                &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
+                &safegl::index::NoIndices(safegl::index::PrimitiveType::TrianglesList),
                 &self.program,
                 &uniforms,
                 &params,
@@ -295,7 +295,7 @@ impl ApplicationContext for Application {
         if let (Some(cursor), Some(&(ref picking_texture, _))) =
             (self.cursor_position, self.picking_attachments.as_ref())
         {
-            let read_target = glium::Rect {
+            let read_target = safegl::Rect {
                 left: (cursor.0 - 1) as u32,
                 bottom: picking_texture
                     .get_height()
@@ -324,11 +324,11 @@ impl ApplicationContext for Application {
 
     fn handle_window_event(
         &mut self,
-        event: &glium::winit::event::WindowEvent,
-        _window: &glium::winit::window::Window,
+        event: &safegl::winit::event::WindowEvent,
+        _window: &safegl::winit::window::Window,
     ) {
         match event {
-            glium::winit::event::WindowEvent::CursorMoved { position, .. } => {
+            safegl::winit::event::WindowEvent::CursorMoved { position, .. } => {
                 self.cursor_position = Some(position.cast::<i32>().into());
             }
             ev => self.camera.process_input(ev),

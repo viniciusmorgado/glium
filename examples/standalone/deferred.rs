@@ -1,8 +1,8 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::{index::PrimitiveType, texture, IndexBuffer, Program, VertexBuffer};
-use glium::{Display, Surface};
+use safegl::{index::PrimitiveType, texture, IndexBuffer, Program, VertexBuffer};
+use safegl::{Display, Surface};
 use glutin::surface::WindowSurface;
 use ouroboros::self_referencing;
 use std::io::Cursor;
@@ -22,8 +22,8 @@ struct Data {
     #[borrows(dt)]
     #[covariant]
     buffs: (
-        glium::framebuffer::MultiOutputFrameBuffer<'this>,
-        glium::framebuffer::SimpleFrameBuffer<'this>,
+        safegl::framebuffer::MultiOutputFrameBuffer<'this>,
+        safegl::framebuffer::SimpleFrameBuffer<'this>,
         &'this Dt,
     ),
 }
@@ -51,7 +51,7 @@ struct Light {
 }
 
 struct Application {
-    pub opengl_texture: glium::Texture2d,
+    pub opengl_texture: safegl::Texture2d,
     pub floor_vertex_buffer: VertexBuffer<FloorVertex>,
     pub floor_index_buffer: IndexBuffer<u16>,
     pub quad_vertex_buffer: VertexBuffer<QuadVertex>,
@@ -99,16 +99,16 @@ impl ApplicationContext for Application {
                 .unwrap();
 
             // lighting
-            let draw_params = glium::DrawParameters {
-                //depth_function: glium::DepthFunction::IfLessOrEqual,
-                blend: glium::Blend {
-                    color: glium::BlendingFunction::Addition {
-                        source: glium::LinearBlendingFactor::One,
-                        destination: glium::LinearBlendingFactor::One,
+            let draw_params = safegl::DrawParameters {
+                //depth_function: safegl::DepthFunction::IfLessOrEqual,
+                blend: safegl::Blend {
+                    color: safegl::BlendingFunction::Addition {
+                        source: safegl::LinearBlendingFactor::One,
+                        destination: safegl::LinearBlendingFactor::One,
                     },
-                    alpha: glium::BlendingFunction::Addition {
-                        source: glium::LinearBlendingFactor::One,
-                        destination: glium::LinearBlendingFactor::One,
+                    alpha: safegl::BlendingFunction::Addition {
+                        source: safegl::LinearBlendingFactor::One,
+                        destination: safegl::LinearBlendingFactor::One,
                     },
                     constant_value: (1.0, 1.0, 1.0, 1.0),
                 },
@@ -458,13 +458,13 @@ impl ApplicationContext for Application {
                     ("output3", &dt.textures[2]),
                     ("output4", &dt.textures[3]),
                 ];
-                let framebuffer = glium::framebuffer::MultiOutputFrameBuffer::with_depth_buffer(
+                let framebuffer = safegl::framebuffer::MultiOutputFrameBuffer::with_depth_buffer(
                     display,
                     output.iter().cloned(),
                     &dt.depth_texture,
                 )
                 .unwrap();
-                let light_buffer = glium::framebuffer::SimpleFrameBuffer::with_depth_buffer(
+                let light_buffer = safegl::framebuffer::SimpleFrameBuffer::with_depth_buffer(
                     display,
                     &dt.light_texture,
                     &dt.depth_texture,

@@ -501,7 +501,7 @@ pub unsafe fn get_capabilities(
             } else if version >= &Version(Api::GlEs, 2, 0) {
                 1
             } else {
-                // glium doesn't allow creating contexts that don't support FBOs
+                // SafeGL doesn't allow creating contexts that don't support FBOs
                 unreachable!()
             }
         },

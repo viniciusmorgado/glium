@@ -1,9 +1,9 @@
 #![cfg(feature = "gl46")]
 
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::Surface;
+use safegl::Surface;
 
 mod support;
 
@@ -13,7 +13,7 @@ fn basic() {
 
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -55,7 +55,7 @@ fn basic() {
 
     implement_uniform_block!(Data, color);
 
-    let buffer = match glium::uniforms::UniformBuffer::new(
+    let buffer = match safegl::uniforms::UniformBuffer::new(
         &display,
         Data {
             color: (0.0f32, 0.0f32, 0.0f32),
@@ -88,7 +88,7 @@ fn custom_bind_point() {
 
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -130,7 +130,7 @@ fn custom_bind_point() {
 
     implement_uniform_block!(Data, color);
 
-    let buffer = match glium::uniforms::UniformBuffer::new(
+    let buffer = match safegl::uniforms::UniformBuffer::new(
         &display,
         Data {
             color: (0.0f32, 0.0f32, 0.0f32),

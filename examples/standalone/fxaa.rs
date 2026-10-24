@@ -1,10 +1,10 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
 use std::cell::RefCell;
 
-use glium::winit::keyboard::{KeyCode, PhysicalKey};
-use glium::{framebuffer::SimpleFrameBuffer, Display, Surface};
+use safegl::winit::keyboard::{KeyCode, PhysicalKey};
+use safegl::{framebuffer::SimpleFrameBuffer, Display, Surface};
 use glutin::surface::WindowSurface;
 use support::{ApplicationContext, State};
 
@@ -18,21 +18,21 @@ struct SpriteVertex {
 implement_vertex!(SpriteVertex, position, i_tex_coords);
 
 pub struct Application {
-    vertex_buffer: glium::vertex::VertexBufferAny,
-    program: glium::Program,
+    vertex_buffer: safegl::vertex::VertexBufferAny,
+    program: safegl::Program,
     camera: support::camera::CameraState,
 
     fxaa_enabled: bool,
-    fxaa_vertex_buffer: glium::VertexBuffer<SpriteVertex>,
-    fxaa_index_buffer: glium::IndexBuffer<u16>,
-    fxaa_program: glium::Program,
+    fxaa_vertex_buffer: safegl::VertexBuffer<SpriteVertex>,
+    fxaa_index_buffer: safegl::IndexBuffer<u16>,
+    fxaa_program: safegl::Program,
 
-    target_color: RefCell<Option<glium::texture::Texture2d>>,
-    target_depth: RefCell<Option<glium::framebuffer::DepthRenderBuffer>>,
+    target_color: RefCell<Option<safegl::texture::Texture2d>>,
+    target_depth: RefCell<Option<safegl::framebuffer::DepthRenderBuffer>>,
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE: &'static str = "Glium FXAA example";
+    const WINDOW_TITLE: &'static str = "SafeGL FXAA example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         Self {
@@ -147,7 +147,7 @@ impl ApplicationContext for Application {
             camera: support::camera::CameraState::new(),
             fxaa_enabled: true,
 
-            fxaa_vertex_buffer: glium::VertexBuffer::new(display,
+            fxaa_vertex_buffer: safegl::VertexBuffer::new(display,
                 &[
                     SpriteVertex { position: [-1.0, -1.0], i_tex_coords: [0.0, 0.0] },
                     SpriteVertex { position: [-1.0,  1.0], i_tex_coords: [0.0, 1.0] },
@@ -156,8 +156,8 @@ impl ApplicationContext for Application {
                 ]
             ).unwrap(),
 
-            fxaa_index_buffer: glium::index::IndexBuffer::new(display,
-                glium::index::PrimitiveType::TriangleStrip, &[1 as u16, 2, 0, 3]).unwrap(),
+            fxaa_index_buffer: safegl::index::IndexBuffer::new(display,
+                safegl::index::PrimitiveType::TriangleStrip, &[1 as u16, 2, 0, 3]).unwrap(),
 
             fxaa_program: program!(display,
                 100 => {
@@ -277,14 +277,14 @@ impl ApplicationContext for Application {
 
     fn handle_window_event(
         &mut self,
-        event: &glium::winit::event::WindowEvent,
-        _window: &glium::winit::window::Window,
+        event: &safegl::winit::event::WindowEvent,
+        _window: &safegl::winit::window::Window,
     ) {
         self.camera.process_input(&event);
 
         match event {
-            glium::winit::event::WindowEvent::KeyboardInput { event, .. } => match event.state {
-                glium::winit::event::ElementState::Pressed => match event.physical_key {
+            safegl::winit::event::WindowEvent::KeyboardInput { event, .. } => match event.state {
+                safegl::winit::event::ElementState::Pressed => match event.physical_key {
                     PhysicalKey::Code(KeyCode::Space) => {
                         self.fxaa_enabled = !self.fxaa_enabled;
                         println!(
@@ -306,15 +306,15 @@ impl ApplicationContext for Application {
 }
 
 impl Application {
-    fn draw_model<T: glium::Surface>(&self, target: &mut T) {
+    fn draw_model<T: safegl::Surface>(&self, target: &mut T) {
         let uniforms = uniform! {
             persp_matrix: self.camera.get_perspective(),
             view_matrix: self.camera.get_view(),
         };
 
-        let params = glium::DrawParameters {
-            depth: glium::Depth {
-                test: glium::DepthTest::IfLess,
+        let params = safegl::DrawParameters {
+            depth: safegl::Depth {
+                test: safegl::DepthTest::IfLess,
                 write: true,
                 ..Default::default()
             },
@@ -325,7 +325,7 @@ impl Application {
         target
             .draw(
                 &self.vertex_buffer,
-                &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
+                &safegl::index::NoIndices(safegl::index::PrimitiveType::TrianglesList),
                 &self.program,
                 &uniforms,
                 &params,
@@ -333,7 +333,7 @@ impl Application {
             .unwrap();
     }
 
-    fn draw_fxaa(&mut self, target: &mut glium::Frame, display: &Display<WindowSurface>) {
+    fn draw_fxaa(&mut self, target: &mut safegl::Frame, display: &Display<WindowSurface>) {
         let target_dimensions = target.get_dimensions();
         let color_dimensions = {
             self.target_color
@@ -352,16 +352,16 @@ impl Application {
 
         if target_color.is_none() || color_dimensions != target_dimensions {
             let texture =
-                glium::texture::Texture2d::empty(display, target_dimensions.0, target_dimensions.1)
+                safegl::texture::Texture2d::empty(display, target_dimensions.0, target_dimensions.1)
                     .unwrap();
             *target_color = Some(texture);
         }
         let target_color = target_color.as_ref().unwrap();
 
         if target_depth.is_none() || depth_dimensions != target_dimensions {
-            let texture = glium::framebuffer::DepthRenderBuffer::new(
+            let texture = safegl::framebuffer::DepthRenderBuffer::new(
                 display,
-                glium::texture::DepthFormat::I24,
+                safegl::texture::DepthFormat::I24,
                 target_dimensions.0,
                 target_dimensions.1,
             )

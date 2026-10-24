@@ -1,4 +1,4 @@
-# Loading SPIR-V shaders with Glium
+# Loading SPIR-V shaders with SafeGL
 
 In this example, we start with a vertex and fragment shader in separate GLSL files, `shader.vert` and `shader.frag`.
 Since we want to load SPIR-V shaders, we first compile the GLSL shaders to SPIR-V.
@@ -10,7 +10,7 @@ glslangValidator -G shader.vert -o vert.spv
 glslangValidator -G shader.frag -o frag.spv
 ```
 
-Then we can load them in Glium using:
+Then we can load them in SafeGL using:
 ```rust
 ProgramCreationInput::SpirV(SpirvProgram::from_vs_and_fs(
     SpirvEntryPoint { data: include_bytes!("vert.spv"), entry_point: "main" },
@@ -26,7 +26,7 @@ spirv-link vert.spv frag.spv -o shader.spv
 And then we load them from the same `.spv` file:
 ```rust
 let spirv = SpirvEntryPoint { data: include_bytes!("shader.spv"), entry_point: "main" };
-let program = glium::Program::new(
+let program = safegl::Program::new(
     &display,
     ProgramCreationInput::SpirV(SpirvProgram::from_vs_and_fs(spirv, spirv)),
 ).unwrap();

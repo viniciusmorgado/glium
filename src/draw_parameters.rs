@@ -3,13 +3,13 @@
 //! # Example
 //!
 //! ```rust
-//! let params = glium::DrawParameters {
-//!     depth: glium::Depth {
-//!         test: glium::draw_parameters::DepthTest::IfLess,
+//! let params = safegl::DrawParameters {
+//!     depth: safegl::Depth {
+//!         test: safegl::draw_parameters::DepthTest::IfLess,
 //!         write: true,
 //!         .. Default::default()
 //!     },
-//!     scissor: Some(glium::Rect { bottom: 0, left: 100, width: 100, height: 200 }),
+//!     scissor: Some(safegl::Rect { bottom: 0, left: 100, width: 100, height: 200 }),
 //!     .. Default::default()
 //! };
 //! ```
@@ -21,9 +21,9 @@
 //!
 //! ```no_run
 //! # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-//! # fn example<T>(display: glium::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
-//! let query = glium::draw_parameters::SamplesPassedQuery::new(&display).unwrap();
-//! let params = glium::DrawParameters {
+//! # fn example<T>(display: safegl::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
+//! let query = safegl::draw_parameters::SamplesPassedQuery::new(&display).unwrap();
+//! let params = safegl::DrawParameters {
 //!     samples_passed_query: Some((&query).into()),
 //!     .. Default::default()
 //! };
@@ -33,7 +33,7 @@
 //! After drawing with these parameters, you can retrieve the value inside the query:
 //!
 //! ```no_run
-//! # fn example(query: glium::draw_parameters::SamplesPassedQuery) {
+//! # fn example(query: safegl::draw_parameters::SamplesPassedQuery) {
 //! let value = query.get();
 //! # }
 //! ```
@@ -42,9 +42,9 @@
 //! you can also use the query as a condition for drawing:
 //!
 //! ```no_run
-//! # fn example(query: glium::draw_parameters::SamplesPassedQuery) {
-//! let params = glium::DrawParameters {
-//!     condition: Some(glium::draw_parameters::ConditionalRendering {
+//! # fn example(query: safegl::draw_parameters::SamplesPassedQuery) {
+//! let params = safegl::DrawParameters {
+//!     condition: Some(safegl::draw_parameters::ConditionalRendering {
 //!         query: (&query).into(),
 //!         wait: true,
 //!         per_region: true,
@@ -54,7 +54,7 @@
 //! # }
 //! ```
 //!
-//! If you use conditional rendering, glium will submit the draw command but the GPU will execute
+//! If you use conditional rendering, SafeGL will submit the draw command but the GPU will execute
 //! it only if the query contains a value different from 0.
 //!
 //! ## WrongQueryOperation errors
@@ -240,9 +240,9 @@ pub enum ProvokingVertex {
 /// Example:
 ///
 /// ```
-/// let params = glium::DrawParameters {
-///     depth: glium::Depth {
-///         test: glium::DepthTest::IfLess,
+/// let params = safegl::DrawParameters {
+///     depth: safegl::Depth {
+///         test: safegl::DepthTest::IfLess,
 ///         write: true,
 ///         .. Default::default()
 ///     },

@@ -76,7 +76,7 @@ where
     context.get_version().0 == Api::Gl
         || context
             .get_extensions()
-            .gl_oes_texture_storage_multisample_2d_array // FIXME: functions have an OES suffix, this isn't handled by glium
+            .gl_oes_texture_storage_multisample_2d_array // FIXME: functions have an OES suffix, this isn't handled by SafeGL
 }
 
 /// Returns true is cubemaps are supported.

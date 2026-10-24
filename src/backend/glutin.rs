@@ -58,7 +58,7 @@ pub use self::simple_window_builder::SimpleWindowBuilder;
 pub mod simple_window_builder;
 
 /// Wraps a glutin context together with the corresponding Surface.
-/// This is necessary so that we can swap buffers and determine the framebuffer size within glium.
+/// This is necessary so that we can swap buffers and determine the framebuffer size within SafeGL.
 pub struct ContextSurfacePair<T: SurfaceTypeTrait + ResizeableSurface> {
     context: PossiblyCurrentContext,
     surface: glutin::surface::Surface<T>,
@@ -112,10 +112,10 @@ impl<T: SurfaceTypeTrait + ResizeableSurface> Deref for ContextSurfacePair<T> {
 ///
 /// The `Display` uses **glutin** for the **Window** and its associated GL **Context**.
 ///
-/// These are stored alongside a glium-specific context.
+/// These are stored alongside a SafeGL-specific context.
 #[derive(Clone)]
 pub struct Display<T: SurfaceTypeTrait + ResizeableSurface + 'static> {
-    // contains everything related to the current glium context and its state
+    // contains everything related to the current SafeGL context and its state
     context: Rc<context::Context>,
     // The glutin Surface alongside its associated glutin Context.
     gl_context: Rc<RefCell<Option<ContextSurfacePair<T>>>>,
@@ -127,7 +127,7 @@ pub struct GlutinBackend<T: SurfaceTypeTrait + ResizeableSurface>(
     Rc<RefCell<Option<ContextSurfacePair<T>>>>,
 );
 
-/// Error that can happen while creating a glium display.
+/// Error that can happen while creating a SafeGL display.
 #[derive(Debug)]
 pub enum DisplayCreationError {
     /// An error has happened while creating the backend.
@@ -138,14 +138,14 @@ pub enum DisplayCreationError {
 
 impl<T: SurfaceTypeTrait + ResizeableSurface> std::fmt::Debug for Display<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[glium::backend::glutin::Display]")
+        write!(f, "[safegl::backend::glutin::Display]")
     }
 }
 
 impl<T: SurfaceTypeTrait + ResizeableSurface> Display<T> {
-    /// Create a new glium `Display` from the given context and surface.
+    /// Create a new SafeGL `Display` from the given context and surface.
     ///
-    /// Performs a compatibility check to make sure that all core elements of glium are supported
+    /// Performs a compatibility check to make sure that all core elements of SafeGL are supported
     /// by the implementation.
     pub fn new(
         context: PossiblyCurrentContext,
@@ -154,9 +154,9 @@ impl<T: SurfaceTypeTrait + ResizeableSurface> Display<T> {
         Self::from_context_surface(context, surface).map_err(From::from)
     }
 
-    /// Create a new glium `Display` from the given context and surface.
+    /// Create a new SafeGL `Display` from the given context and surface.
     ///
-    /// Performs a compatibility check to make sure that all core elements of glium are supported
+    /// Performs a compatibility check to make sure that all core elements of SafeGL are supported
     /// by the implementation.
     pub fn from_context_surface(
         context: PossiblyCurrentContext,
@@ -165,9 +165,9 @@ impl<T: SurfaceTypeTrait + ResizeableSurface> Display<T> {
         Self::with_debug(context, surface, Default::default())
     }
 
-    /// Create a new glium `Display` from the given context and surface.
+    /// Create a new SafeGL `Display` from the given context and surface.
     ///
-    /// This function does the same as `build_glium`, except that the resulting context
+    /// This function does the same as `from_context_surface`, except that the resulting context
     /// will assume that the current OpenGL context will never change.
     pub unsafe fn unchecked(
         context: PossiblyCurrentContext,

@@ -24,9 +24,9 @@ pub struct SyncNotSupportedError;
 ///
 /// ```no_run
 /// # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-/// # fn example<T>(display: glium::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
+/// # fn example<T>(display: safegl::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
 /// # fn do_something<T>(_: &T) {}
-/// let fence = glium::SyncFence::new(&display).unwrap();
+/// let fence = safegl::SyncFence::new(&display).unwrap();
 /// do_something(&display);
 /// fence.wait();   // blocks until the previous operations have finished
 /// # }

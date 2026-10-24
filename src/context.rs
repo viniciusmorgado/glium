@@ -1,4 +1,4 @@
-//! Contains everything related to the interface between glium and the OpenGL implementation.
+//! Contains everything related to the interface between SafeGL and the OpenGL implementation.
 
 use crate::gl;
 
@@ -44,7 +44,7 @@ mod capabilities;
 mod extensions;
 mod state;
 
-/// Stores the state and information required for glium to execute commands. Most public glium
+/// Stores the state and information required for SafeGL to execute commands. Most public SafeGL
 /// functions require passing a `Rc<Context>`.
 pub struct Context {
     /// The glow context used to issue OpenGL calls.
@@ -67,11 +67,11 @@ pub struct Context {
     /// of texture units, maximum size of the viewport, etc.
     capabilities: Capabilities,
 
-    /// Glue between glium and the code that handles windowing. Contains functions that allows
+    /// Glue between SafeGL and the code that handles windowing. Contains functions that allows
     /// you to swap buffers, retrieve the size of the framebuffer, etc.
     backend: RefCell<Box<dyn Backend>>,
 
-    /// Whether or not glium must check that the OpenGL context is the current one before each
+    /// Whether or not SafeGL must check that the OpenGL context is the current one before each
     /// call.
     check_current_context: bool,
 
@@ -173,7 +173,7 @@ impl Context {
     /// is slightly slower.
     ///
     /// The OpenGL context must be newly-created. If you make modifications to the context before
-    /// passing it to this function, glium's state cache may mismatch the actual one.
+    /// passing it to this function, SafeGL's state cache may mismatch the actual one.
     ///
     pub unsafe fn new<B>(
         backend: B,
@@ -252,13 +252,13 @@ impl Context {
             let mut ctxt = context.make_current();
             if crate::get_gl_error(&mut ctxt).is_some() {
                 eprintln!(
-                    "glium has triggered an OpenGL error during initialization. Please report \
-                           this error: https://github.com/glium/glium/issues"
+                    "SafeGL has triggered an OpenGL error during initialization. Please report \
+                           this error: https://github.com/viniciusmorgado/safegl/issues"
                 );
             }
             /*assert!(::get_gl_error(&mut ctxt).is_none(),
-            "glium has triggered an OpenGL error during initialization. Please report \
-             this error: https://github.com/glium/glium/issues");*/
+            "SafeGL has triggered an OpenGL error during initialization. Please report \
+             this error: https://github.com/viniciusmorgado/safegl/issues");*/
             if ctxt.version.0 == Api::Gl && ctxt.extensions.gl_arb_seamless_cube_map {
                 ctxt.glow.enable(glow::TEXTURE_CUBE_MAP_SEAMLESS);
             }
@@ -493,7 +493,7 @@ impl Context {
 
     /// Returns the maximum dimensions of the viewport.
     ///
-    /// Glium will panic if you request a larger viewport than this when drawing.
+    /// SafeGL will panic if you request a larger viewport than this when drawing.
     #[inline]
     pub fn get_max_viewport_dimensions(&self) -> (u32, u32) {
         let d = self.capabilities().max_viewport_dims;
@@ -559,7 +559,7 @@ impl Context {
     ///
     /// ```no_run
     /// # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-    /// # fn example<T>(display: glium::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
+    /// # fn example<T>(display: safegl::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
     /// let pixels: Result<Vec<Vec<(u8, u8, u8, u8)>>, _> = display.read_front_buffer();
     /// # }
     /// ```
@@ -602,7 +602,7 @@ impl Context {
         action()
     }
 
-    /// Returns the `glow` context that glium uses to issue OpenGL calls. Useful for interop
+    /// Returns the `glow` context that SafeGL uses to issue OpenGL calls. Useful for interop
     /// with libraries built on `glow`, such as `egui_glow`.
     ///
     /// The context isn't made current by this function: issue calls from within
@@ -611,7 +611,7 @@ impl Context {
     /// # Safety
     ///
     /// Same contract as `exec_in_context`: **if the caller manipulates any OpenGL state through
-    /// the returned context, it must be restored before glium is used again**, as glium caches
+    /// the returned context, it must be restored before SafeGL is used again**, as SafeGL caches
     /// the state it has set.
     #[inline]
     pub unsafe fn glow_context(&self) -> &Arc<glow::Context> {
@@ -840,7 +840,7 @@ impl<'a> CapabilitiesSource for CommandContext<'a> {
     }
 }
 
-/// Checks whether the backend supports glium. Returns an `Err` if it doesn't.
+/// Checks whether the backend supports SafeGL. Returns an `Err` if it doesn't.
 /// Minimum desktop OpenGL version supported by SafeGL (the `gl41` tier).
 const MIN_GL_VERSION: Version = Version(Api::Gl, 4, 1);
 /// Minimum OpenGL ES version supported by SafeGL (the `gles30` tier, also WebGL 2).
@@ -920,7 +920,7 @@ fn default_debug_callback(
     if report_debug_output_errors {
         eprint!(
             "Debug message with high or medium severity: `{}`.\n\
-                 Please report this error: https://github.com/glium/glium/issues\n\
+                 Please report this error: https://github.com/viniciusmorgado/safegl/issues\n\
                  Backtrace:",
             message
         );

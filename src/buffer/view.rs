@@ -270,8 +270,8 @@ where
     ///     value2: u16,
     /// }
     ///
-    /// # fn example(buffer: glium::buffer::Buffer<BufferContent>) {
-    /// let slice = unsafe { buffer.slice_custom(glium::field!(BufferContent, value2)) };
+    /// # fn example(buffer: safegl::buffer::Buffer<BufferContent>) {
+    /// let slice = unsafe { buffer.slice_custom(safegl::field!(BufferContent, value2)) };
     /// # }
     /// ```
     #[inline]
@@ -687,8 +687,8 @@ where
     ///     value2: u16,
     /// }
     ///
-    /// # fn example(buffer: glium::buffer::Buffer<BufferContent>) {
-    /// let slice = unsafe { buffer.slice_custom(glium::field!(BufferContent, value2)) };
+    /// # fn example(buffer: safegl::buffer::Buffer<BufferContent>) {
+    /// let slice = unsafe { buffer.slice_custom(safegl::field!(BufferContent, value2)) };
     /// # }
     /// ```
     #[inline]
@@ -1108,9 +1108,9 @@ where
     ///     value1: u16,
     ///     value2: u16,
     /// }
-    /// # let buffer: glium::buffer::BufferSlice<BufferContent> =
+    /// # let buffer: safegl::buffer::BufferSlice<BufferContent> =
     /// #                                                   unsafe { std::mem::zeroed() };
-    /// let slice = unsafe { buffer.slice_custom(glium::field!(BufferContent, value2)) };
+    /// let slice = unsafe { buffer.slice_custom(safegl::field!(BufferContent, value2)) };
     /// ```
     #[inline]
     pub unsafe fn slice_custom<R>(self, f: Field<R>) -> BufferMutSlice<'a, R>

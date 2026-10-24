@@ -1,9 +1,9 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::index::PrimitiveType;
+use safegl::index::PrimitiveType;
 #[allow(unused_imports)]
-use glium::{Display, Frame, Surface};
+use safegl::{Display, Frame, Surface};
 use glutin::surface::WindowSurface;
 use std::io::Cursor;
 use support::{ApplicationContext, State};
@@ -18,14 +18,14 @@ struct Vertex {
 implement_vertex!(Vertex, position, tex_coords);
 
 struct Application {
-    pub vertex_buffer: glium::VertexBuffer<Vertex>,
-    pub index_buffer: glium::IndexBuffer<u16>,
-    pub opengl_texture: glium::texture::CompressedTexture2d,
-    pub program: glium::Program,
+    pub vertex_buffer: safegl::VertexBuffer<Vertex>,
+    pub index_buffer: safegl::IndexBuffer<u16>,
+    pub opengl_texture: safegl::texture::CompressedTexture2d,
+    pub program: safegl::Program,
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE: &'static str = "Glium image example";
+    const WINDOW_TITLE: &'static str = "SafeGL image example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         // building a texture with "OpenGL" drawn on it
@@ -37,12 +37,12 @@ impl ApplicationContext for Application {
         .to_rgba8();
         let image_dimensions = image.dimensions();
         let image =
-            glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
-        let opengl_texture = glium::texture::CompressedTexture2d::new(display, image).unwrap();
+            safegl::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+        let opengl_texture = safegl::texture::CompressedTexture2d::new(display, image).unwrap();
 
         // building the vertex buffer, which contains all the vertices that we will draw
         let vertex_buffer = {
-            glium::VertexBuffer::new(
+            safegl::VertexBuffer::new(
                 display,
                 &[
                     Vertex {
@@ -68,7 +68,7 @@ impl ApplicationContext for Application {
 
         // building the index buffer
         let index_buffer =
-            glium::IndexBuffer::new(display, PrimitiveType::TriangleStrip, &[1 as u16, 2, 0, 3])
+            safegl::IndexBuffer::new(display, PrimitiveType::TriangleStrip, &[1 as u16, 2, 0, 3])
                 .unwrap();
 
         // compiling shaders and linking them together

@@ -42,7 +42,7 @@ use crate::BufferSliceExt;
 use crate::program::uniforms_storage::UniformsStorage;
 use crate::program::{is_binary_supported, Binary, GetBinaryError, ProgramCreationError};
 
-use crate::program::binary_header::{attach_glium_header, process_glium_header};
+use crate::program::binary_header::{attach_safegl_header, process_safegl_header};
 #[cfg(feature = "gl46")]
 use crate::program::compute::ComputeCommand;
 use crate::program::reflection::reflect_subroutine_data;
@@ -191,7 +191,7 @@ impl RawProgram {
             has_tessellation_control_shader,
             has_tessellation_evaluation_shader,
         ) = {
-            match process_glium_header(&binary.content) {
+            match process_safegl_header(&binary.content) {
                 Some(flags) => flags,
                 None => return Err(ProgramCreationError::BinaryHeaderError),
             }
@@ -288,7 +288,7 @@ impl RawProgram {
                 Some(binary) => binary,
                 None => return Err(GetBinaryError::NotSupported),
             };
-            attach_glium_header(&self, &mut storage);
+            attach_safegl_header(&self, &mut storage);
             Ok(Binary {
                 format,
                 content: storage,
@@ -298,7 +298,7 @@ impl RawProgram {
 
     /// Returns the *location* of an output fragment, if it exists.
     ///
-    /// The *location* is low-level information that is used internally by glium.
+    /// The *location* is low-level information that is used internally by SafeGL.
     /// You probably don't need to call this function.
     ///
     /// You can declare output fragments in your shaders by writing:
@@ -340,7 +340,7 @@ impl RawProgram {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.uniforms() {
     ///     println!("Name: {} - Type: {:?}", name, uniform.ty);
     /// }
@@ -356,7 +356,7 @@ impl RawProgram {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.get_uniform_blocks() {
     ///     println!("Name: {}", name);
     /// }
@@ -461,7 +461,7 @@ impl RawProgram {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, attribute) in program.attributes() {
     ///     println!("Name: {} - Type: {:?}", name, attribute.ty);
     /// }
@@ -477,7 +477,7 @@ impl RawProgram {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.get_shader_storage_blocks() {
     ///     println!("Name: {}", name);
     /// }
@@ -495,7 +495,7 @@ impl RawProgram {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.get_atomic_counters() {
     ///     println!("Name: {}", name);
     /// }

@@ -7,9 +7,9 @@ So far we have only ever rendered a single frame and then waited for the program
 ```rust
 let _ = event_loop.run(move |event, window_target| {
     match event {
-        glium::winit::event::Event::WindowEvent { event, .. } => match event {
-            glium::winit::event::WindowEvent::CloseRequested => window_target.exit(),
-            glium::winit::event::WindowEvent::RedrawRequested => {
+        safegl::winit::event::Event::WindowEvent { event, .. } => match event {
+            safegl::winit::event::WindowEvent::CloseRequested => window_target.exit(),
+            safegl::winit::event::WindowEvent::RedrawRequested => {
                 // Move the draw code here!
             },
             _ => (),
@@ -24,14 +24,14 @@ What exactly triggers this event is platform specific, but in order to draw our 
 ```rust
 let _ = event_loop.run(move |event, window_target| {
     match event {
-        glium::winit::event::Event::WindowEvent { event, .. } => match event {
-            glium::winit::event::WindowEvent::CloseRequested => window_target.exit(),
-            glium::winit::event::WindowEvent::RedrawRequested => {
+        safegl::winit::event::Event::WindowEvent { event, .. } => match event {
+            safegl::winit::event::WindowEvent::CloseRequested => window_target.exit(),
+            safegl::winit::event::WindowEvent::RedrawRequested => {
                 // Move the draw code here!
             },
             _ => (),
         },
-        glium::winit::event::Event::AboutToWait => {
+        safegl::winit::event::Event::AboutToWait => {
             window.request_redraw();
         },
         _ => (),
@@ -41,23 +41,23 @@ let _ = event_loop.run(move |event, window_target| {
 
 There are other ways to render a scene but this is the preferred way for glutin/winit making it a good default choice.
 
-While we are working on our event_loop there is one more event that we should handle, and that is a resize. Since glium only really has an OpenGL context we need to tell glium when the size of the underlying window has changed, otherwise you might see a streched image or borders. This is quite easy to accomplish:
+While we are working on our event_loop there is one more event that we should handle, and that is a resize. Since SafeGL only really has an OpenGL context we need to tell SafeGL when the size of the underlying window has changed, otherwise you might see a streched image or borders. This is quite easy to accomplish:
 
 ```rust
 let mut t: f32 = 0.0;
 let _ = event_loop.run(move |event, window_target| {
     match event {
-        glium::winit::event::Event::WindowEvent { event, .. } => match event {
-            glium::winit::event::WindowEvent::CloseRequested => window_target.exit(),
-            glium::winit::event::WindowEvent::Resized(window_size) => {
+        safegl::winit::event::Event::WindowEvent { event, .. } => match event {
+            safegl::winit::event::WindowEvent::CloseRequested => window_target.exit(),
+            safegl::winit::event::WindowEvent::Resized(window_size) => {
                 display.resize(window_size.into());
             },
-            glium::winit::event::WindowEvent::RedrawRequested => {
+            safegl::winit::event::WindowEvent::RedrawRequested => {
                 // Move the draw code here!
             },
             _ => (),
         },
-        glium::winit::event::Event::AboutToWait => {
+        safegl::winit::event::Event::AboutToWait => {
             window.request_redraw();
         },
         _ => (),
@@ -75,12 +75,12 @@ Our first approach will be to create a variable named `t` which represents the s
 let mut t: f32 = 0.0;
 let _ = event_loop.run(move |event, window_target| {
     match event {
-        glium::winit::event::Event::WindowEvent { event, .. } => match event {
-            glium::winit::event::WindowEvent::CloseRequested => window_target.exit(),
-            glium::winit::event::WindowEvent::Resized(window_size) => {
+        safegl::winit::event::Event::WindowEvent { event, .. } => match event {
+            safegl::winit::event::WindowEvent::CloseRequested => window_target.exit(),
+            safegl::winit::event::WindowEvent::Resized(window_size) => {
                 display.resize(window_size.into());
             },
-            glium::winit::event::WindowEvent::RedrawRequested => {
+            safegl::winit::event::WindowEvent::RedrawRequested => {
                 // We update `t`
                 t += 0.02;
                 // We use the sine of t as an offset, this way we get a nice smooth animation
@@ -91,17 +91,17 @@ let _ = event_loop.run(move |event, window_target| {
                     Vertex { position: [ 0.0 + x_off,  0.5] },
                     Vertex { position: [ 0.5 + x_off, -0.25] }
                 ];
-                let vertex_buffer = glium::VertexBuffer::new(&display, &shape).unwrap();
+                let vertex_buffer = safegl::VertexBuffer::new(&display, &shape).unwrap();
 
                 let mut target = display.draw();
                 target.clear_color(0.0, 0.0, 1.0, 1.0);
-                target.draw(&vertex_buffer, &indices, &program, &glium::uniforms::EmptyUniforms,
+                target.draw(&vertex_buffer, &indices, &program, &safegl::uniforms::EmptyUniforms,
                         &Default::default()).unwrap();
                 target.finish().unwrap();
             },
             _ => (),
         },
-        glium::winit::event::Event::AboutToWait => {
+        safegl::winit::event::Event::AboutToWait => {
             window.request_redraw();
         },
         _ => (),
@@ -127,12 +127,12 @@ Let's remove the two `let`'s that redefine our shape and vertex_buffer from our 
 let mut t: f32 = 0.0;
 let _ = event_loop.run(move |event, window_target| {
     match event {
-        glium::winit::event::Event::WindowEvent { event, .. } => match event {
-            glium::winit::event::WindowEvent::CloseRequested => window_target.exit(),
-            glium::winit::event::WindowEvent::Resized(window_size) => {
+        safegl::winit::event::Event::WindowEvent { event, .. } => match event {
+            safegl::winit::event::WindowEvent::CloseRequested => window_target.exit(),
+            safegl::winit::event::WindowEvent::Resized(window_size) => {
                 display.resize(window_size.into());
             },
-	    glium::winit::event::WindowEvent::RedrawRequested => {
+	    safegl::winit::event::WindowEvent::RedrawRequested => {
 	        // We update `t`
 	        t += 0.02;
                 // We use the sine of t as an offset, this way we get a nice smooth animation
@@ -140,13 +140,13 @@ let _ = event_loop.run(move |event, window_target| {
 
 	        let mut target = display.draw();
 	        target.clear_color(0.0, 0.0, 1.0, 1.0);
-	        target.draw(&vertex_buffer, &indices, &program, &glium::uniforms::EmptyUniforms,
+	        target.draw(&vertex_buffer, &indices, &program, &safegl::uniforms::EmptyUniforms,
 			    &Default::default()).unwrap();
 	        target.finish().unwrap();
 	    },
             _ => (),
         },
-        glium::winit::event::Event::AboutToWait => {
+        safegl::winit::event::Event::AboutToWait => {
             window.request_redraw();
         },
         _ => (),

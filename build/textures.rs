@@ -652,10 +652,10 @@ fn build_texture<W: Write>(dest: &mut W, ty: TextureType, dimensions: TextureDim
                                 /// # Example
                                 ///
                                 /// ```no_run
-                                /// # #[macro_use] extern crate glium;
-                                /// # fn example(texture: glium::texture::Texture2d) {{
+                                /// # #[macro_use] extern crate safegl;
+                                /// # fn example(texture: safegl::texture::Texture2d) {{
                                 /// let uniforms = uniform! {{
-                                ///     color_texture: texture.sampled().magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
+                                ///     color_texture: texture.sampled().magnify_filter(safegl::uniforms::MagnifySamplerFilter::Nearest)
                                 /// }};
                                 /// # }}
                                 /// ```

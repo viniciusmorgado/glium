@@ -1,9 +1,9 @@
 #![cfg(feature = "gl46")]
 
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::Surface;
+use safegl::Surface;
 
 mod support;
 
@@ -13,7 +13,7 @@ fn basic() {
 
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -45,11 +45,11 @@ fn basic() {
         Err(_) => return,
     };
 
-    let buffer = match glium::buffer::Buffer::new(
+    let buffer = match safegl::buffer::Buffer::new(
         &display,
         &10u32,
-        glium::buffer::BufferType::AtomicCounterBuffer,
-        glium::buffer::BufferMode::Default,
+        safegl::buffer::BufferType::AtomicCounterBuffer,
+        safegl::buffer::BufferMode::Default,
     ) {
         Err(_) => return,
         Ok(b) => b,

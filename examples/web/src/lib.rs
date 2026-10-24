@@ -1,9 +1,9 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use glium::backend::web::WebDisplay;
-use glium::index::PrimitiveType;
-use glium::{implement_vertex, program, uniform, Surface};
+use safegl::backend::web::WebDisplay;
+use safegl::index::PrimitiveType;
+use safegl::{implement_vertex, program, uniform, Surface};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
@@ -16,14 +16,14 @@ implement_vertex!(Vertex, position, color);
 
 struct Application {
     display: WebDisplay,
-    vertex_buffer: glium::VertexBuffer<Vertex>,
-    index_buffer: glium::IndexBuffer<u16>,
-    program: glium::Program,
+    vertex_buffer: safegl::VertexBuffer<Vertex>,
+    index_buffer: safegl::IndexBuffer<u16>,
+    program: safegl::Program,
 }
 
 impl Application {
     fn new(display: WebDisplay) -> Application {
-        let vertex_buffer = glium::VertexBuffer::new(
+        let vertex_buffer = safegl::VertexBuffer::new(
             &display,
             &[
                 Vertex {
@@ -43,7 +43,7 @@ impl Application {
         .unwrap();
 
         let index_buffer =
-            glium::IndexBuffer::new(&display, PrimitiveType::TrianglesList, &[0u16, 1, 2]).unwrap();
+            safegl::IndexBuffer::new(&display, PrimitiveType::TrianglesList, &[0u16, 1, 2]).unwrap();
 
         let program = program!(&display,
             300 es => {

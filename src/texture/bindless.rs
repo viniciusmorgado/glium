@@ -18,7 +18,7 @@ drivers. `resident` will return an `Err` if this feature is not supported.
 
 ```no_run
 # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-# fn example<T>(display: glium::Display<T>, texture: glium::texture::Texture2d)
+# fn example<T>(display: safegl::Display<T>, texture: safegl::texture::Texture2d)
 #     where T: SurfaceTypeTrait + ResizeableSurface {
 let texture = texture.resident().unwrap();
 # }
@@ -33,29 +33,29 @@ built from a `&ResidentTexture` and can't outlive it.
 
 ```no_run
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
 # fn main() {
 #[derive(Copy, Clone)]
 struct UniformBuffer<'a> {
-    texture: glium::texture::TextureHandle<'a>,
+    texture: safegl::texture::TextureHandle<'a>,
     some_value: f32,
 }
 
 implement_uniform_block!(UniformBuffer<'a>, texture, some_value);
 
 # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-# fn example<T>(display: glium::Display<T>, texture: glium::texture::bindless::ResidentTexture)
+# fn example<T>(display: safegl::Display<T>, texture: safegl::texture::bindless::ResidentTexture)
 #     where T: SurfaceTypeTrait + ResizeableSurface {
-let uniform_buffer = glium::uniforms::UniformBuffer::new(&display, UniformBuffer {
-    texture: glium::texture::TextureHandle::new(&texture, &Default::default()),
+let uniform_buffer = safegl::uniforms::UniformBuffer::new(&display, UniformBuffer {
+    texture: safegl::texture::TextureHandle::new(&texture, &Default::default()),
     some_value: 5.0,
 });
 # }
 # }
 ```
 
-Inside your shader, you can refer to the texture with a traditional `sampler*` variable. Glium
+Inside your shader, you can refer to the texture with a traditional `sampler*` variable. SafeGL
 currently doesn't check whether the type of your texture matches the expected type (but it may
 do in the future). Binding the wrong type of texture may lead to undefined values when sampling
 the texture.

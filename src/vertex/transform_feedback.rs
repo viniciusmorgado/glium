@@ -55,11 +55,11 @@ use glow::HasContext;
 /// # Example
 ///
 /// ```no_run
-/// # use glium::{implement_vertex, uniform};
-/// # use glium::Surface;
+/// # use safegl::{implement_vertex, uniform};
+/// # use safegl::Surface;
 /// # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-/// # fn example<T>(display: glium::Display<T>, program: glium::Program,
-/// #            vb: glium::vertex::VertexBufferAny, ib: glium::index::IndexBuffer<u16>)
+/// # fn example<T>(display: safegl::Display<T>, program: safegl::Program,
+/// #            vb: safegl::vertex::VertexBufferAny, ib: safegl::index::IndexBuffer<u16>)
 /// #     where T: SurfaceTypeTrait + ResizeableSurface {
 /// #[derive(Copy, Clone, Debug, PartialEq)]
 /// struct Vertex {
@@ -68,13 +68,13 @@ use glow::HasContext;
 ///
 /// implement_vertex!(Vertex, output_val);
 ///
-/// let mut out_buffer: glium::VertexBuffer<Vertex> = glium::VertexBuffer::empty(&display, 6).unwrap();
+/// let mut out_buffer: safegl::VertexBuffer<Vertex> = safegl::VertexBuffer::empty(&display, 6).unwrap();
 ///
 /// {
-///     let session = glium::vertex::TransformFeedbackSession::new(&display, &program,
+///     let session = safegl::vertex::TransformFeedbackSession::new(&display, &program,
 ///                                                                &mut out_buffer).unwrap();
 ///
-///     let params = glium::DrawParameters {
+///     let params = safegl::DrawParameters {
 ///         transform_feedback: Some(&session),
 ///         .. Default::default()
 ///     };

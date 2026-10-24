@@ -1,13 +1,13 @@
-use glium::Surface;
+use safegl::Surface;
 
 fn main() {
     // We start by creating the EventLoop, this can only be done once per process.
     // This also needs to happen on the main thread to make the program portable.
-    let event_loop = glium::winit::event_loop::EventLoop::builder()
+    let event_loop = safegl::winit::event_loop::EventLoop::builder()
         .build()
         .expect("event loop building");
-    let (_window, display) = glium::backend::glutin::SimpleWindowBuilder::new()
-        .with_title("Glium tutorial #1")
+    let (_window, display) = safegl::backend::glutin::SimpleWindowBuilder::new()
+        .with_title("SafeGL tutorial #1")
         .build(&event_loop);
 
     // Start rendering by creating a new frame
@@ -22,9 +22,9 @@ fn main() {
     event_loop
         .run(move |event, window_target| {
             match event {
-                glium::winit::event::Event::WindowEvent { event, .. } => match event {
+                safegl::winit::event::Event::WindowEvent { event, .. } => match event {
                     // This event is sent by the OS when you close the Window, or request the program to quit via the taskbar.
-                    glium::winit::event::WindowEvent::CloseRequested => window_target.exit(),
+                    safegl::winit::event::WindowEvent::CloseRequested => window_target.exit(),
                     _ => (),
                 },
                 _ => (),

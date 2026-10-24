@@ -140,7 +140,7 @@ impl ComputeShader {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.uniforms() {
     ///     println!("Name: {} - Type: {:?}", name, uniform.ty);
     /// }
@@ -156,7 +156,7 @@ impl ComputeShader {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.get_uniform_blocks() {
     ///     println!("Name: {}", name);
     /// }
@@ -174,7 +174,7 @@ impl ComputeShader {
     /// ## Example
     ///
     /// ```no_run
-    /// fn example(program: glium::Program) {
+    /// fn example(program: safegl::Program) {
     /// for (name, uniform) in program.get_shader_storage_blocks() {
     ///     println!("Name: {}", name);
     /// }

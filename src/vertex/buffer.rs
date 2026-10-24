@@ -86,7 +86,7 @@ impl<'b, T: 'b> VertexBufferSlice<'b, T>
 where
     T: Copy + Content,
 {
-    /// Creates a marker that instructs glium to use multiple instances.
+    /// Creates a marker that instructs SafeGL to use multiple instances.
     ///
     /// Instead of calling `surface.draw(&vertex_buffer.slice(...).unwrap(), ...)`
     /// you can call `surface.draw(vertex_buffer.slice(...).unwrap().per_instance(), ...)`.
@@ -113,7 +113,7 @@ where
     ///
     /// ```no_run
     /// # #[macro_use]
-    /// # extern crate glium;
+    /// # extern crate safegl;
     /// # fn main() {
     /// #[derive(Copy, Clone)]
     /// struct Vertex {
@@ -123,8 +123,8 @@ where
     ///
     /// implement_vertex!(Vertex, position, texcoords);
     /// # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-    /// # fn example<T>(display: glium::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
-    /// let vertex_buffer = glium::VertexBuffer::new(&display, &[
+    /// # fn example<T>(display: safegl::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
+    /// let vertex_buffer = safegl::VertexBuffer::new(&display, &[
     ///     Vertex { position: [0.0,  0.0, 0.0], texcoords: [0.0, 1.0] },
     ///     Vertex { position: [5.0, -3.0, 2.0], texcoords: [1.0, 0.0] },
     /// ]);
@@ -267,16 +267,16 @@ where
     ///
     /// ```no_run
     /// # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-    /// # fn example<T>(display: glium::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
+    /// # fn example<T>(display: safegl::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
     /// use std::borrow::Cow;
     ///
-    /// const BINDINGS: glium::vertex::VertexFormat = &[(
+    /// const BINDINGS: safegl::vertex::VertexFormat = &[(
     ///         Cow::Borrowed("position"), 0, -1,
-    ///         glium::vertex::AttributeType::F32F32,
+    ///         safegl::vertex::AttributeType::F32F32,
     ///         false,
     ///     ), (
     ///         Cow::Borrowed("color"), 2 * ::std::mem::size_of::<f32>(), -1,
-    ///         glium::vertex::AttributeType::F32,
+    ///         safegl::vertex::AttributeType::F32,
     ///         false,
     ///     ),
     /// ];
@@ -287,7 +287,7 @@ where
     /// ];
     ///
     /// let vertex_buffer = unsafe {
-    ///     glium::VertexBuffer::new_raw(&display, &data, BINDINGS, 3 * ::std::mem::size_of::<f32>())
+    ///     safegl::VertexBuffer::new_raw(&display, &data, BINDINGS, 3 * ::std::mem::size_of::<f32>())
     /// };
     /// # }
     /// ```
@@ -351,7 +351,7 @@ where
         &self.bindings
     }
 
-    /// Creates a marker that instructs glium to use multiple instances.
+    /// Creates a marker that instructs SafeGL to use multiple instances.
     ///
     /// Instead of calling `surface.draw(&vertex_buffer, ...)` you can call
     /// `surface.draw(vertex_buffer.per_instance(), ...)`. This will draw one instance of the
@@ -531,7 +531,7 @@ impl VertexBufferAny {
         unimplemented!();
     }
 
-    /// Creates a marker that instructs glium to use multiple instances.
+    /// Creates a marker that instructs SafeGL to use multiple instances.
     ///
     /// Instead of calling `surface.draw(&vertex_buffer, ...)` you can call
     /// `surface.draw(vertex_buffer.per_instance(), ...)`. This will draw one instance of the

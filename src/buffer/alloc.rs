@@ -1372,7 +1372,7 @@ where
     };
 
     // if the `size` is 0 bytes then we use 1 instead, otherwise nvidia drivers complain
-    // note that according to glium the size of the buffer will remain 0
+    // note that according to SafeGL the size of the buffer will remain 0
     let size = match size {
         0 => 1,
         a => a,
@@ -1494,7 +1494,7 @@ where
 /// Returns true if a given buffer type is supported on a platform.
 fn is_buffer_type_supported(ctxt: &mut CommandContext<'_>, ty: BufferType) -> bool {
     match ty {
-        // glium fails to initialize if they are not supported
+        // SafeGL fails to initialize if they are not supported
         BufferType::ArrayBuffer | BufferType::ElementArrayBuffer => true,
 
         // core in OpenGL 3.1 and OpenGL ES 3.0

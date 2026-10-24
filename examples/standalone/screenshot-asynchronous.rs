@@ -1,16 +1,16 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 mod support;
 
-use glium::index::PrimitiveType;
-use glium::winit::keyboard::{KeyCode, PhysicalKey};
-use glium::{Display, Surface};
+use safegl::index::PrimitiveType;
+use safegl::winit::keyboard::{KeyCode, PhysicalKey};
+use safegl::{Display, Surface};
 use glutin::surface::WindowSurface;
 use std::thread;
 use support::{ApplicationContext, State};
 
 mod screenshot {
-    use glium::Surface;
+    use safegl::Surface;
     use std::borrow::Cow;
     use std::collections::VecDeque;
 
@@ -23,7 +23,7 @@ mod screenshot {
         pub height: u32,
     }
 
-    impl glium::texture::Texture2dDataSink<(u8, u8, u8, u8)> for RGBAImageData {
+    impl safegl::texture::Texture2dDataSink<(u8, u8, u8, u8)> for RGBAImageData {
         fn from_raw(data: Cow<'_, [(u8, u8, u8, u8)]>, width: u32, height: u32) -> Self {
             RGBAImageData {
                 data: data.into_owned(),
@@ -35,20 +35,20 @@ mod screenshot {
 
     struct AsyncScreenshotTask {
         pub target_frame: u64,
-        pub pixel_buffer: glium::texture::pixel_buffer::PixelBuffer<(u8, u8, u8, u8)>,
+        pub pixel_buffer: safegl::texture::pixel_buffer::PixelBuffer<(u8, u8, u8, u8)>,
     }
 
     impl AsyncScreenshotTask {
-        fn new(facade: &dyn glium::backend::Facade, target_frame: u64) -> Self {
+        fn new(facade: &dyn safegl::backend::Facade, target_frame: u64) -> Self {
             // Get information about current framebuffer
             let dimensions = facade.get_context().get_framebuffer_dimensions();
-            let rect = glium::Rect {
+            let rect = safegl::Rect {
                 left: 0,
                 bottom: 0,
                 width: dimensions.0,
                 height: dimensions.1,
             };
-            let blit_target = glium::BlitTarget {
+            let blit_target = safegl::BlitTarget {
                 left: 0,
                 bottom: 0,
                 width: dimensions.0 as i32,
@@ -57,12 +57,12 @@ mod screenshot {
 
             // Create temporary texture and blit the front buffer to it
             let texture =
-                glium::texture::Texture2d::empty(facade, dimensions.0, dimensions.1).unwrap();
-            let framebuffer = glium::framebuffer::SimpleFrameBuffer::new(facade, &texture).unwrap();
+                safegl::texture::Texture2d::empty(facade, dimensions.0, dimensions.1).unwrap();
+            let framebuffer = safegl::framebuffer::SimpleFrameBuffer::new(facade, &texture).unwrap();
             framebuffer.blit_from_frame(
                 &rect,
                 &blit_target,
-                glium::uniforms::MagnifySamplerFilter::Nearest,
+                safegl::uniforms::MagnifySamplerFilter::Nearest,
             );
 
             // Read the texture into new pixel buffer
@@ -127,7 +127,7 @@ mod screenshot {
             ScreenshotIterator(self)
         }
 
-        pub fn take_screenshot(&mut self, facade: &dyn glium::backend::Facade) {
+        pub fn take_screenshot(&mut self, facade: &dyn safegl::backend::Facade) {
             self.screenshot_tasks.push_back(AsyncScreenshotTask::new(
                 facade,
                 self.frame + self.screenshot_delay,
@@ -144,21 +144,21 @@ struct Vertex {
 implement_vertex!(Vertex, position, color);
 
 struct Application {
-    pub vertex_buffer: glium::VertexBuffer<Vertex>,
-    pub index_buffer: glium::IndexBuffer<u16>,
-    pub program: glium::Program,
+    pub vertex_buffer: safegl::VertexBuffer<Vertex>,
+    pub index_buffer: safegl::IndexBuffer<u16>,
+    pub program: safegl::Program,
     pub screenshot_taker: screenshot::AsyncScreenshotTaker,
     pub take_screenshot: bool,
 }
 
 impl ApplicationContext for Application {
     const WINDOW_TITLE: &'static str =
-        "Glium screenshot-asynchronous example - press S to take a screenshot";
+        "SafeGL screenshot-asynchronous example - press S to take a screenshot";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         Self {
             // building the vertex buffer
-            vertex_buffer: glium::VertexBuffer::new(
+            vertex_buffer: safegl::VertexBuffer::new(
                 display,
                 &[
                     Vertex {
@@ -178,7 +178,7 @@ impl ApplicationContext for Application {
             .unwrap(),
 
             // building the index buffer
-            index_buffer: glium::IndexBuffer::new(
+            index_buffer: safegl::IndexBuffer::new(
                 display,
                 PrimitiveType::TrianglesList,
                 &[0u16, 1, 2],
@@ -259,7 +259,7 @@ impl ApplicationContext for Application {
         for image_data in self.screenshot_taker.pickup_screenshots() {
             // Process and write the image in separate thread to not block the rendering thread.
             thread::spawn(move || {
-                // Convert (u8, u8, u8, u8) given by glium's PixelBuffer to flat u8 required by
+                // Convert (u8, u8, u8, u8) given by SafeGL's PixelBuffer to flat u8 required by
                 // image's ImageBuffer.
                 let pixels = {
                     let mut v = Vec::with_capacity(image_data.data.len() * 4);
@@ -280,7 +280,7 @@ impl ApplicationContext for Application {
                 // Save the screenshot to file
                 let image = image::DynamicImage::ImageRgba8(image_buffer).flipv();
                 image
-                    .save(format!("glium-example-screenshot-{frame}.png"))
+                    .save(format!("safegl-example-screenshot-{frame}.png"))
                     .unwrap();
             });
         }
@@ -288,11 +288,11 @@ impl ApplicationContext for Application {
 
     fn handle_window_event(
         &mut self,
-        event: &glium::winit::event::WindowEvent,
-        _window: &glium::winit::window::Window,
+        event: &safegl::winit::event::WindowEvent,
+        _window: &safegl::winit::window::Window,
     ) {
-        if let glium::winit::event::WindowEvent::KeyboardInput { event, .. } = event {
-            if let glium::winit::event::ElementState::Pressed = event.state {
+        if let safegl::winit::event::WindowEvent::KeyboardInput { event, .. } = event {
+            if let safegl::winit::event::ElementState::Pressed = event.state {
                 if let PhysicalKey::Code(KeyCode::KeyS) = event.physical_key {
                     self.take_screenshot = true;
                 }

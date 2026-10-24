@@ -51,7 +51,7 @@ All textures except depth, stencil and depth-stencil textures have **mipmaps**. 
 smaller version of the texture whose purpose is to be used during rendering when the texture will
 be small on the screen.
 
-# Texture types in glium
+# Texture types in SafeGL
 
 In addition to the nine different dimensions types, there are nine kinds of texture formats:
 
@@ -65,7 +65,7 @@ In addition to the nine different dimensions types, there are nine kinds of text
  - The texture contains stencil information, with the `Stencil` prefix.
  - The texture contains depth and stencil information, with the `DepthStencil` prefix.
 
-Each combination of dimensions and format corresponds to a sampler type in GLSL and in glium.
+Each combination of dimensions and format corresponds to a sampler type in GLSL and in SafeGL.
 For example, an `IntegralTexture3d` can only be bound to an `isampler3D` uniform in GLSL.
 
 The difference between compressed textures and uncompressed textures is that you can't do
@@ -91,7 +91,7 @@ that screens darken some values that they receive.
 When you load image files, you are encouraged to create sRGB textures (with `SrgbTexture2d` instead
 of `Texture2d` for example).
 
-By default, glium enables the `GL_FRAMEBUFFER_SRGB` trigger, which expects the output of your
+By default, SafeGL enables the `GL_FRAMEBUFFER_SRGB` trigger, which expects the output of your
 fragment shader to be in linear RGB and then turns it into sRGB before writing in the framebuffer.
 Sampling from an sRGB texture will convert the texture colors from sRGB to RGB. If you create a
 regular RGB texture and put sRGB data in it, then the result will be too bright.

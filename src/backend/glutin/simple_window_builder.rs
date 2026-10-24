@@ -32,7 +32,7 @@ use std::num::NonZeroU32;
 /// Since `glutin_winit::event_loop::GlutinEventLoop` is not public, `glutin` has its own copy.
 ///
 /// This trait should not be implemented for any other types.
-pub trait GliumEventLoop {
+pub trait SafeGlEventLoop {
     /// Calls `display_builder.build(self, template_builder, config_picker)`.
     fn build<Picker>(
         &self,
@@ -45,7 +45,7 @@ pub trait GliumEventLoop {
         Self: Sized;
 }
 
-impl<T> GliumEventLoop for winit::event_loop::EventLoop<T> {
+impl<T> SafeGlEventLoop for winit::event_loop::EventLoop<T> {
     fn build<Picker>(
         &self,
         display_builder: DisplayBuilder,
@@ -59,7 +59,7 @@ impl<T> GliumEventLoop for winit::event_loop::EventLoop<T> {
     }
 }
 
-impl GliumEventLoop for winit::event_loop::ActiveEventLoop {
+impl SafeGlEventLoop for winit::event_loop::ActiveEventLoop {
     fn build<Picker>(
         &self,
         display_builder: DisplayBuilder,
@@ -73,7 +73,7 @@ impl GliumEventLoop for winit::event_loop::ActiveEventLoop {
     }
 }
 
-/// Builder to simplify glium/glutin context creation.
+/// Builder to simplify SafeGL/glutin context creation.
 pub struct SimpleWindowBuilder {
     attributes: WindowAttributes,
     config_template_builder: ConfigTemplateBuilder,
@@ -86,7 +86,7 @@ impl SimpleWindowBuilder {
     pub fn new() -> Self {
         Self {
             attributes: Window::default_attributes()
-                .with_title("Simple Glium Window")
+                .with_title("Simple SafeGL Window")
                 .with_inner_size(winit::dpi::PhysicalSize::new(800, 480)),
             config_template_builder: ConfigTemplateBuilder::new(),
             context_attributes_builder: None,
@@ -151,7 +151,7 @@ impl SimpleWindowBuilder {
     /// with the specified parameters.
     pub fn build(
         self,
-        event_loop: &impl GliumEventLoop,
+        event_loop: &impl SafeGlEventLoop,
     ) -> (Window, Display<glutin::surface::WindowSurface>) {
         use glutin::prelude::*;
         use raw_window_handle::HasWindowHandle;
@@ -185,7 +185,7 @@ impl SimpleWindowBuilder {
                     NonZeroU32::new(height).unwrap(),
                 );
 
-        // Finally we can create a Surface, use it to make a PossiblyCurrentContext and create the glium Display
+        // Finally we can create a Surface, use it to make a PossiblyCurrentContext and create the SafeGL Display
         let surface = unsafe {
             gl_config
                 .display()

@@ -1,12 +1,12 @@
 /*!
 
-The `backend` module allows one to link between glium and the OpenGL context..
+The `backend` module allows one to link between SafeGL and the OpenGL context..
 
 There are three concepts in play:
 
- - The `Backend` trait describes the glue between glium and the OpenGL context provider like
+ - The `Backend` trait describes the glue between SafeGL and the OpenGL context provider like
    glutin, SDL, GLFW, etc.
- - The `Context` struct is the main brick of glium. It manages everything that glium needs to
+ - The `Context` struct is the main brick of SafeGL. It manages everything that SafeGL needs to
    execute OpenGL commands. Creating a `Context` requires a `Backend`.
  - The `Facade` trait. Calling functions like `VertexBuffer::new` requires passing an object
    that implements this trait. It is implemented on `Rc<Context>`.
@@ -46,7 +46,7 @@ pub enum SwapInterval {
     Wait(NonZeroU32),
 }
 
-/// Trait for types that can be used as a backend for a glium context.
+/// Trait for types that can be used as a backend for a SafeGL context.
 ///
 /// This trait is unsafe, as you can get undefined behaviors or crashes if you don't implement
 /// the methods correctly.
@@ -139,7 +139,7 @@ where
     }
 }
 
-/// Trait for types that provide a safe access for glium functions.
+/// Trait for types that provide a safe access for SafeGL functions.
 pub trait Facade {
     /// Returns an opaque type that contains the OpenGL state, extensions, version, etc.
     fn get_context(&self) -> &Rc<Context>;

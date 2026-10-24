@@ -1,14 +1,14 @@
 /*!
 
-This example demonstrates how to manually create a glium context with any backend you want, most
+This example demonstrates how to manually create a SafeGL context with any backend you want, most
 notably without glutin.
 
 There are three concepts in play:
 
- - The `Backend` trait, which defines how glium interfaces with the OpenGL context
+ - The `Backend` trait, which defines how SafeGL interfaces with the OpenGL context
    provider (glutin, SDL, glfw, etc.).
 
- - The `Context` struct, which is the main object of glium. The context also provides
+ - The `Context` struct, which is the main object of SafeGL. The context also provides
    OpenGL-related functions like `get_free_video_memory` or `get_supported_glsl_version`.
 
  - The `Facade` trait, which is the trait required to be implemented on objects that you pass
@@ -17,7 +17,7 @@ There are three concepts in play:
 
 */
 
-use glium::Surface;
+use safegl::Surface;
 use glutin::config::ConfigTemplateBuilder;
 use glutin::context::{ContextApi, ContextAttributesBuilder, Version};
 use glutin::display::GetGlDisplay;
@@ -109,12 +109,12 @@ fn main() {
         >,
     }
 
-    unsafe impl glium::backend::Backend for Backend {
-        fn swap_buffers(&self) -> Result<(), glium::SwapBuffersError> {
+    unsafe impl safegl::backend::Backend for Backend {
+        fn swap_buffers(&self) -> Result<(), safegl::SwapBuffersError> {
             let gl_window = self.gl_window.borrow();
             match gl_window.1.swap_buffers(&gl_window.0) {
                 Ok(()) => Ok(()),
-                Err(glutin::error::Error { .. }) => Err(glium::SwapBuffersError::ContextLost),
+                Err(glutin::error::Error { .. }) => Err(safegl::SwapBuffersError::ContextLost),
             }
         }
 
@@ -161,10 +161,10 @@ fn main() {
             Takeable::insert(&mut gl_window_takeable, gl_window);
         }
 
-        fn set_swap_interval(&self, interval: glium::backend::SwapInterval) {
+        fn set_swap_interval(&self, interval: safegl::backend::SwapInterval) {
             let interval = match interval {
-                glium::backend::SwapInterval::DontWait => glutin::surface::SwapInterval::DontWait,
-                glium::backend::SwapInterval::Wait(frames) => {
+                safegl::backend::SwapInterval::DontWait => glutin::surface::SwapInterval::DontWait,
+                safegl::backend::SwapInterval::Wait(frames) => {
                     glutin::surface::SwapInterval::Wait(frames)
                 }
             };
@@ -179,7 +179,7 @@ fn main() {
     let context = unsafe {
         // The first parameter is our backend.
         //
-        // The second parameter tells glium whether or not it should regularly call `is_current`
+        // The second parameter tells SafeGL whether or not it should regularly call `is_current`
         // on the backend to make sure that the OpenGL context is still the current one.
         //
         // It is recommended to pass `true`, but you can pass `false` if you are sure that no
@@ -187,14 +187,14 @@ fn main() {
         let backend = Backend {
             gl_window: gl_window,
         };
-        glium::backend::Context::new(backend, true, Default::default())
+        safegl::backend::Context::new(backend, true, Default::default())
     }
     .unwrap();
 
     // drawing a frame to prove that it works
     // note that constructing a `Frame` object manually is a bit hacky and may be changed
     // in the future
-    let mut target = glium::Frame::new(context.clone(), context.get_framebuffer_dimensions());
+    let mut target = safegl::Frame::new(context.clone(), context.get_framebuffer_dimensions());
     target.clear_color(0.0, 1.0, 0.0, 1.0);
     target.finish().unwrap();
 
@@ -202,8 +202,8 @@ fn main() {
     #[allow(deprecated)]
     event_loop
         .run(|event, window_target| match event {
-            glium::winit::event::Event::WindowEvent { event, .. } => match event {
-                glium::winit::event::WindowEvent::CloseRequested => window_target.exit(),
+            safegl::winit::event::Event::WindowEvent { event, .. } => match event {
+                safegl::winit::event::WindowEvent::CloseRequested => window_target.exit(),
                 _ => (),
             },
             _ => (),

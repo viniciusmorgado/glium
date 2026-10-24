@@ -1,5 +1,5 @@
 [package]
-name = "glium"
+name = "safegl"
 version = "0.36.0"
 authors = ["Vinicius Donatto Morgado <34577818+viniciusmorgado@users.noreply.github.com>"]
 description = """
@@ -24,8 +24,8 @@ SafeGL validates how you use OpenGL, but it cannot detect or work around bugs in
 """
 keywords = ["opengl", "gamedev"]
 categories = ["api-bindings", "rendering::graphics-api"]
-documentation = "https://docs.rs/glium"
-repository = "https://github.com/glium/glium"
+documentation = "https://docs.rs/safegl"
+repository = "https://github.com/viniciusmorgado/safegl"
 readme = "README.md"
 license = "Apache-2.0"
 build = "build/main.rs"

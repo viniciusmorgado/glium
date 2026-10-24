@@ -214,9 +214,9 @@ impl Program {
     ///
     /// ```no_run
     /// # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-    /// # fn example<T>(display: glium::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
+    /// # fn example<T>(display: safegl::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
     /// # let vertex_source = ""; let fragment_source = ""; let geometry_source = "";
-    /// let program = glium::Program::from_source(&display, vertex_source, fragment_source,
+    /// let program = safegl::Program::from_source(&display, vertex_source, fragment_source,
     ///     Some(geometry_source));
     /// # }
     /// ```
@@ -257,7 +257,7 @@ impl Program {
 
     /// Returns the *location* of an output fragment, if it exists.
     ///
-    /// The *location* is low-level information that is used internally by glium.
+    /// The *location* is low-level information that is used internally by SafeGL.
     /// You probably don't need to call this function.
     ///
     /// You can declare output fragments in your shaders by writing:
@@ -282,7 +282,7 @@ impl Program {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.uniforms() {
     ///     println!("Name: {} - Type: {:?}", name, uniform.ty);
     /// }
@@ -298,7 +298,7 @@ impl Program {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.get_uniform_blocks() {
     ///     println!("Name: {}", name);
     /// }
@@ -371,7 +371,7 @@ impl Program {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, attribute) in program.attributes() {
     ///     println!("Name: {} - Type: {:?}", name, attribute.ty);
     /// }
@@ -393,7 +393,7 @@ impl Program {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.get_shader_storage_blocks() {
     ///     println!("Name: {}", name);
     /// }
@@ -413,7 +413,7 @@ impl Program {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (name, uniform) in program.get_atomic_counters() {
     ///     println!("Name: {}", name);
     /// }
@@ -435,7 +435,7 @@ impl Program {
     /// ## Example
     ///
     /// ```no_run
-    /// # fn example(program: glium::Program) {
+    /// # fn example(program: safegl::Program) {
     /// for (&(ref name, shader), uniform) in program.get_subroutine_uniforms() {
     ///     println!("Name: {}", name);
     /// }

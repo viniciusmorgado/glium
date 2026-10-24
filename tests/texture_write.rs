@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
 mod support;
 
@@ -8,7 +8,7 @@ fn texture_2d_write() {
     let display = support::build_display();
 
     // we use only powers of two, in order to avoid float rounding errors
-    let texture = glium::texture::Texture2d::new(
+    let texture = safegl::texture::Texture2d::new(
         &display,
         vec![
             vec![(0u8, 1u8, 2u8), (4u8, 8u8, 16u8)],
@@ -18,7 +18,7 @@ fn texture_2d_write() {
     .unwrap();
 
     texture.write(
-        glium::Rect {
+        safegl::Rect {
             bottom: 1,
             left: 1,
             width: 1,

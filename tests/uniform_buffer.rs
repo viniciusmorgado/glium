@@ -1,7 +1,7 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::Surface;
+use safegl::Surface;
 
 mod support;
 
@@ -9,7 +9,7 @@ mod support;
 fn uniform_buffer_creation() {
     let display = support::build_display();
 
-    let _ = glium::uniforms::UniformBuffer::new(&display, 12);
+    let _ = safegl::uniforms::UniformBuffer::new(&display, 12);
 
     display.assert_no_error(None);
 }
@@ -18,7 +18,7 @@ fn uniform_buffer_creation() {
 fn uniform_buffer_mapping_read() {
     let display = support::build_display();
 
-    let mut vb = match glium::uniforms::UniformBuffer::new(&display, 12) {
+    let mut vb = match safegl::uniforms::UniformBuffer::new(&display, 12) {
         Err(_) => return,
         Ok(b) => b,
     };
@@ -33,7 +33,7 @@ fn uniform_buffer_mapping_read() {
 fn uniform_buffer_mapping_write() {
     let display = support::build_display();
 
-    let mut vb = match glium::uniforms::UniformBuffer::new(&display, 6) {
+    let mut vb = match safegl::uniforms::UniformBuffer::new(&display, 6) {
         Err(_) => return,
         Ok(b) => b,
     };
@@ -53,14 +53,14 @@ fn uniform_buffer_mapping_write() {
 fn uniform_buffer_read() {
     let display = support::build_display();
 
-    let vb = match glium::uniforms::UniformBuffer::new(&display, 12) {
+    let vb = match safegl::uniforms::UniformBuffer::new(&display, 12) {
         Err(_) => return,
         Ok(b) => b,
     };
 
     let data = match vb.read() {
         Ok(r) => r,
-        Err(glium::buffer::ReadError::NotSupported) => return,
+        Err(safegl::buffer::ReadError::NotSupported) => return,
         e => e.unwrap(),
     };
 
@@ -73,7 +73,7 @@ fn uniform_buffer_read() {
 fn uniform_buffer_write() {
     let display = support::build_display();
 
-    let vb = match glium::uniforms::UniformBuffer::new(&display, 5) {
+    let vb = match safegl::uniforms::UniformBuffer::new(&display, 5) {
         Err(_) => return,
         Ok(b) => b,
     };
@@ -82,7 +82,7 @@ fn uniform_buffer_write() {
 
     let data = match vb.read() {
         Ok(r) => r,
-        Err(glium::buffer::ReadError::NotSupported) => return,
+        Err(safegl::buffer::ReadError::NotSupported) => return,
         e => e.unwrap(),
     };
 
@@ -97,7 +97,7 @@ fn block() {
 
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -136,7 +136,7 @@ fn block() {
 
     implement_uniform_block!(Data, color);
 
-    let buffer = match glium::uniforms::UniformBuffer::new(
+    let buffer = match safegl::uniforms::UniformBuffer::new(
         &display,
         Data {
             color: (1.0f32, 1.0f32, 0.0f32),
@@ -173,7 +173,7 @@ fn block_wrong_type() {
 
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -205,7 +205,7 @@ fn block_wrong_type() {
         Err(_) => return,
     };
 
-    let buffer = match glium::uniforms::UniformBuffer::new(&display, 2) {
+    let buffer = match safegl::uniforms::UniformBuffer::new(&display, 2) {
         Err(_) => return,
         Ok(b) => b,
     };
@@ -218,7 +218,7 @@ fn block_wrong_type() {
     target.clear_color(0.0, 0.0, 0.0, 0.0);
 
     match target.draw(&vb, &ib, &program, &uniforms, &Default::default()) {
-        Err(glium::DrawError::UniformBlockLayoutMismatch { ref name, .. })
+        Err(safegl::DrawError::UniformBlockLayoutMismatch { ref name, .. })
             if name == &"MyBlock" =>
         {
             ()
@@ -235,7 +235,7 @@ fn block_wrong_type() {
 fn buffer_write() {
     let display = support::build_display();
 
-    let mut buf = match glium::uniforms::UniformBuffer::new(&display, (5, 3)) {
+    let mut buf = match safegl::uniforms::UniformBuffer::new(&display, (5, 3)) {
         Err(_) => return,
         Ok(b) => b,
     };
@@ -257,7 +257,7 @@ fn persistent_block_race_condition() {
 
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -296,7 +296,7 @@ fn persistent_block_race_condition() {
 
     implement_uniform_block!(Data, color);
 
-    let mut buffer = match glium::uniforms::UniformBuffer::new(
+    let mut buffer = match safegl::uniforms::UniformBuffer::new(
         &display,
         Data {
             color: (0.5f32, 0.5f32, 0.5f32),
@@ -368,7 +368,7 @@ fn persistent_block_race_condition() {
 fn empty_uniform_buffer() {
     let display = support::build_display();
 
-    let _ = match glium::uniforms::UniformBuffer::new(&display, ()) {
+    let _ = match safegl::uniforms::UniformBuffer::new(&display, ()) {
         Err(_) => return,
         Ok(b) => b,
     };

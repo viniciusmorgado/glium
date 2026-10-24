@@ -114,14 +114,14 @@ impl From<IncompatibleOpenGl> for WebDisplayCreationError {
 /// A facade for drawing on a canvas with WebGL 2.
 #[derive(Clone)]
 pub struct WebDisplay {
-    // contains everything related to the current glium context and its state
+    // contains everything related to the current SafeGL context and its state
     context: Rc<Context>,
     backend: Rc<WebGlBackend>,
 }
 
 impl fmt::Debug for WebDisplay {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[glium::backend::web::WebDisplay]")
+        write!(f, "[safegl::backend::web::WebDisplay]")
     }
 }
 

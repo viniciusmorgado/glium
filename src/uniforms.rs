@@ -1,14 +1,14 @@
 /*!
 A uniform is a global variable in your program. In order to draw something, you will need to
-give `glium` the values of all your uniforms. Objects that implement the `Uniform` trait are
+give `SafeGL` the values of all your uniforms. Objects that implement the `Uniform` trait are
 here to do that.
 
-The currently preferred way to do this is to use the `uniform!` macro provided by glium:
+The currently preferred way to do this is to use the `uniform!` macro provided by SafeGL:
 
 ```no_run
-# use glium::uniform;
+# use safegl::uniform;
 # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-# fn example<T>(display: glium::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
+# fn example<T>(display: safegl::Display<T>) where T: SurfaceTypeTrait + ResizeableSurface {
 # let tex: f32 = 0.0;
 # let matrix: f32 = 0.0;
 let uniforms = uniform! {
@@ -25,13 +25,13 @@ Each field must implement the `UniformValue` trait for this to work.
 In order to customize the way a texture is being sampled, you must use a `Sampler`.
 
 ```no_run
-# use glium::uniform;
+# use safegl::uniform;
 # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-# fn example<T>(display: glium::Display<T>, texture: glium::texture::Texture2d)
+# fn example<T>(display: safegl::Display<T>, texture: safegl::texture::Texture2d)
 #     where T: SurfaceTypeTrait + ResizeableSurface {
 let uniforms = uniform! {
-    texture: glium::uniforms::Sampler::new(&texture)
-                        .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
+    texture: safegl::uniforms::Sampler::new(&texture)
+                        .magnify_filter(safegl::uniforms::MagnifySamplerFilter::Nearest)
 };
 # }
 ```
@@ -43,11 +43,11 @@ upload the content of this block in the video memory thanks to a `UniformBuffer`
 can link the buffer to the name of the block, just like any other uniform.
 
 ```no_run
-# use glium::uniform;
+# use safegl::uniform;
 # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-# fn example<T>(display: glium::Display<T>, texture: glium::texture::Texture2d)
+# fn example<T>(display: safegl::Display<T>, texture: safegl::texture::Texture2d)
 #     where T: SurfaceTypeTrait + ResizeableSurface {
-let program = glium::Program::from_source(&display,
+let program = safegl::Program::from_source(&display,
     "
         #version 110
 
@@ -71,7 +71,7 @@ let program = glium::Program::from_source(&display,
     ",
     None);
 
-let buffer = glium::uniforms::UniformBuffer::new(&display, (0.5f32, 0.5f32, 0.5f32)).unwrap();
+let buffer = safegl::uniforms::UniformBuffer::new(&display, (0.5f32, 0.5f32, 0.5f32)).unwrap();
 
 let uniforms = uniform! {
     MyBlock: &buffer
@@ -87,11 +87,11 @@ than using multiple programs that are switched during execution.
 A subroutine uniform is unique per shader stage, and not per program.
 
 ```no_run
-# use glium::uniform;
+# use safegl::uniform;
 # use glutin::surface::{ResizeableSurface, SurfaceTypeTrait};
-# fn example<T>(display: glium::Display<T>, texture: glium::texture::Texture2d)
+# fn example<T>(display: safegl::Display<T>, texture: safegl::texture::Texture2d)
 #     where T: SurfaceTypeTrait + ResizeableSurface {
-let program = glium::Program::from_source(&display,
+let program = safegl::Program::from_source(&display,
     "
         #version 150
         in vec2 position;
@@ -124,7 +124,7 @@ let program = glium::Program::from_source(&display,
     ", None);
 
     let uniforms = uniform! {
-        modify_color: ("delete_b", glium::program::ShaderStage::Fragment)
+        modify_color: ("delete_b", safegl::program::ShaderStage::Fragment)
     };
 # }
 ```

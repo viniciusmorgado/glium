@@ -1,26 +1,26 @@
 /*!
 Easy-to-use, high-level, OpenGL3+ wrapper.
 
-Glium is based on glutin - a cross-platform crate for building an OpenGL window and handling
+SafeGL is based on glutin - a cross-platform crate for building an OpenGL window and handling
 application events.
 
-Glium provides a [`Display`] which uses `glutin` for the Window and its associated GL Context.
+SafeGL provides a [`Display`] which uses `glutin` for the Window and its associated GL Context.
 
 # Initialization
 
-The initialisation of a simple glium display occurs in two steps.
+The initialisation of a simple SafeGL display occurs in two steps.
 
 ```no_run
-extern crate glium;
+extern crate safegl;
 // Use the re-exported winit dependency to avoid version mismatches.
 // Requires the `simple_window_builder` feature.
-use glium::winit;
+use safegl::winit;
 
 fn main() {
     // 1. The **winit::EventLoop** for handling events.
     let event_loop = winit::event_loop::EventLoopBuilder::new().build().unwrap();
-    // 2. Create a glutin context and glium Display
-    let (window, display) = glium::backend::glutin::SimpleWindowBuilder::new().build(&event_loop);
+    // 2. Create a glutin context and SafeGL Display
+    let (window, display) = safegl::backend::glutin::SimpleWindowBuilder::new().build(&event_loop);
 }
 ```
 
@@ -55,20 +55,20 @@ In order to draw something, you will need to pass:
 Once you have finished drawing, you can call `frame.finish()` to swap buffers and present the
 result to the user.
 
-# OpenGL equivalents in glium
+# OpenGL equivalents in SafeGL
 
- - **Bind points**: Glium automatically binds and unbinds buffers, textures, etc. in an optimized
+ - **Bind points**: SafeGL automatically binds and unbinds buffers, textures, etc. in an optimized
    way.
  - **Buffers**: Buffers are strongly typed and can be used through `vertex::VertexBuffer`,
    `index::IndexBuffer` or `uniforms::UniformBuffer`.
- - **Debug output**: If you compile in debug mode, glium registers a debug output callback and
+ - **Debug output**: If you compile in debug mode, SafeGL registers a debug output callback and
    panics if an OpenGL error happens.
- - **Framebuffer Objects**: FBOs are automatically managed by glium and are stored in the `Context`
+ - **Framebuffer Objects**: FBOs are automatically managed by SafeGL and are stored in the `Context`
    object. You can specify the attachments that you wish with the `framebuffer` module.
  - **Instancing**: Instancing is done either by passing a `vertex::EmptyInstanceAttributes` marker
    or one or several references to vertex buffers wrapped inside a `PerInstance` struct. See the
    `vertex` module for more infos.
- - **Memory barriers**: Calling `glMemoryBarrier` is automatically handled by glium, however you
+ - **Memory barriers**: Calling `glMemoryBarrier` is automatically handled by SafeGL, however you
    still need to call `memoryBarrier()` in your GLSL code in some situations.
  - **Programs**: See the `program` module.
  - **Query objects**: The corresponding structs are in the `draw_parameters` module. They are
@@ -76,7 +76,7 @@ result to the user.
  - **Renderbuffer**: See the `framebuffer` module.
  - **Render to texture**: If you just want to draw on a texture, you can call
    `texture.as_surface()`. For more advanced options, see the `framebuffer` module.
- - **Samplers**: Samplers are automatically managed by glium and are stored in the `Context`
+ - **Samplers**: Samplers are automatically managed by SafeGL and are stored in the `Context`
    object. You can specify how a texture should be sampled by using a `Sampler` dummy object
    in the `uniforms` module.
  - **Shaders**: You can't manually create individual shaders. Instead you must create whole
@@ -84,7 +84,7 @@ result to the user.
  - **Textures**: Textures are strongly typed and are found in the `texture` module.
  - **Uniform blocks**: If your program uses uniform blocks, you must pass a reference to a
    uniform buffer for the name of the block when drawing.
- - **Vertex array objects**: VAOs are automatically managed by glium if the backend supports them.
+ - **Vertex array objects**: VAOs are automatically managed by SafeGL if the backend supports them.
 
 */
 #![warn(missing_docs)]
@@ -193,7 +193,7 @@ mod vertex_array_object;
 mod gl;
 
 #[doc(hidden)]
-pub use memoffset::offset_of as __glium_offset_of;
+pub use memoffset::offset_of as __safegl_offset_of;
 
 /// The main object of this library. Controls the whole display.
 ///
@@ -958,7 +958,7 @@ pub trait Surface {
 
     /// Draws.
     ///
-    /// This is probably the most complex function of glium. Check out the rest of the
+    /// This is probably the most complex function of SafeGL. Check out the rest of the
     /// documentation for example how to use it.
     ///
     /// See above for what happens exactly on the GPU when you draw.
@@ -1602,7 +1602,7 @@ pub struct IncompatibleOpenGl(pub String);
 
 impl fmt::Display for IncompatibleOpenGl {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt.write_str("The OpenGL implementation is too old to work with glium")
+        fmt.write_str("The OpenGL implementation is too old to work with SafeGL")
     }
 }
 

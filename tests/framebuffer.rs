@@ -1,7 +1,7 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::Surface;
+use safegl::Surface;
 
 mod support;
 
@@ -10,19 +10,19 @@ fn no_depth_buffer_depth_test() {
     let display = support::build_display();
     let (vertex_buffer, index_buffer, program) = support::build_fullscreen_red_pipeline(&display);
 
-    let texture = glium::texture::Texture2d::empty_with_format(
+    let texture = safegl::texture::Texture2d::empty_with_format(
         &display,
-        glium::texture::UncompressedFloatFormat::U8U8U8U8,
-        glium::texture::MipmapsOption::NoMipmap,
+        safegl::texture::UncompressedFloatFormat::U8U8U8U8,
+        safegl::texture::MipmapsOption::NoMipmap,
         128,
         128,
     )
     .unwrap();
-    let mut framebuffer = glium::framebuffer::SimpleFrameBuffer::new(&display, &texture).unwrap();
+    let mut framebuffer = safegl::framebuffer::SimpleFrameBuffer::new(&display, &texture).unwrap();
 
-    let parameters = glium::DrawParameters {
-        depth: glium::Depth {
-            test: glium::DepthTest::IfLess,
+    let parameters = safegl::DrawParameters {
+        depth: safegl::Depth {
+            test: safegl::DepthTest::IfLess,
             ..Default::default()
         },
         ..Default::default()
@@ -32,10 +32,10 @@ fn no_depth_buffer_depth_test() {
         &vertex_buffer,
         &index_buffer,
         &program,
-        &glium::uniforms::EmptyUniforms,
+        &safegl::uniforms::EmptyUniforms,
         &parameters,
     ) {
-        Err(glium::DrawError::NoDepthBuffer) => (),
+        Err(safegl::DrawError::NoDepthBuffer) => (),
         a => panic!("{:?}", a),
     };
 
@@ -47,18 +47,18 @@ fn no_depth_buffer_depth_write() {
     let display = support::build_display();
     let (vertex_buffer, index_buffer, program) = support::build_fullscreen_red_pipeline(&display);
 
-    let texture = glium::texture::Texture2d::empty_with_format(
+    let texture = safegl::texture::Texture2d::empty_with_format(
         &display,
-        glium::texture::UncompressedFloatFormat::U8U8U8U8,
-        glium::texture::MipmapsOption::NoMipmap,
+        safegl::texture::UncompressedFloatFormat::U8U8U8U8,
+        safegl::texture::MipmapsOption::NoMipmap,
         128,
         128,
     )
     .unwrap();
-    let mut framebuffer = glium::framebuffer::SimpleFrameBuffer::new(&display, &texture).unwrap();
+    let mut framebuffer = safegl::framebuffer::SimpleFrameBuffer::new(&display, &texture).unwrap();
 
-    let parameters = glium::DrawParameters {
-        depth: glium::Depth {
+    let parameters = safegl::DrawParameters {
+        depth: safegl::Depth {
             write: true,
             ..Default::default()
         },
@@ -69,10 +69,10 @@ fn no_depth_buffer_depth_write() {
         &vertex_buffer,
         &index_buffer,
         &program,
-        &glium::uniforms::EmptyUniforms,
+        &safegl::uniforms::EmptyUniforms,
         &parameters,
     ) {
-        Err(glium::DrawError::NoDepthBuffer) => (),
+        Err(safegl::DrawError::NoDepthBuffer) => (),
         a => panic!("{:?}", a),
     };
 
@@ -83,16 +83,16 @@ fn no_depth_buffer_depth_write() {
 fn simple_dimensions() {
     let display = support::build_display();
 
-    let texture = glium::Texture2d::empty_with_format(
+    let texture = safegl::Texture2d::empty_with_format(
         &display,
-        glium::texture::UncompressedFloatFormat::U8U8U8U8,
-        glium::texture::MipmapsOption::NoMipmap,
+        safegl::texture::UncompressedFloatFormat::U8U8U8U8,
+        safegl::texture::MipmapsOption::NoMipmap,
         128,
         128,
     )
     .unwrap();
 
-    let framebuffer = glium::framebuffer::SimpleFrameBuffer::new(&display, &texture).unwrap();
+    let framebuffer = safegl::framebuffer::SimpleFrameBuffer::new(&display, &texture).unwrap();
     assert_eq!(framebuffer.get_dimensions(), (128, 128));
 
     display.assert_no_error(None);
@@ -103,22 +103,22 @@ fn simple_render_to_texture() {
     let display = support::build_display();
     let (vb, ib, program) = support::build_fullscreen_red_pipeline(&display);
 
-    let texture = glium::Texture2d::empty_with_format(
+    let texture = safegl::Texture2d::empty_with_format(
         &display,
-        glium::texture::UncompressedFloatFormat::U8U8U8U8,
-        glium::texture::MipmapsOption::NoMipmap,
+        safegl::texture::UncompressedFloatFormat::U8U8U8U8,
+        safegl::texture::MipmapsOption::NoMipmap,
         128,
         128,
     )
     .unwrap();
 
-    let mut framebuffer = glium::framebuffer::SimpleFrameBuffer::new(&display, &texture).unwrap();
+    let mut framebuffer = safegl::framebuffer::SimpleFrameBuffer::new(&display, &texture).unwrap();
     framebuffer
         .draw(
             &vb,
             &ib,
             &program,
-            &glium::uniforms::EmptyUniforms,
+            &safegl::uniforms::EmptyUniforms,
             &Default::default(),
         )
         .unwrap();
@@ -180,10 +180,10 @@ fn depth_texture2d() {
     .unwrap();
 
     // empty color attachment to put the data
-    let color = glium::Texture2d::empty_with_format(
+    let color = safegl::Texture2d::empty_with_format(
         &display,
-        glium::texture::UncompressedFloatFormat::U8U8U8U8,
-        glium::texture::MipmapsOption::NoMipmap,
+        safegl::texture::UncompressedFloatFormat::U8U8U8U8,
+        safegl::texture::MipmapsOption::NoMipmap,
         128,
         128,
     )
@@ -193,17 +193,17 @@ fn depth_texture2d() {
     let depth_data = iter::repeat(iter::repeat(0.5f32).take(128).collect::<Vec<_>>())
         .take(128)
         .collect::<Vec<_>>();
-    let depth = match glium::texture::DepthTexture2d::new(&display, depth_data) {
+    let depth = match safegl::texture::DepthTexture2d::new(&display, depth_data) {
         Err(_) => return,
         Ok(t) => t,
     };
 
     // drawing with the `IfLess` depth test
     let mut framebuffer =
-        glium::framebuffer::SimpleFrameBuffer::with_depth_buffer(&display, &color, &depth).unwrap();
-    let params = glium::DrawParameters {
-        depth: glium::Depth {
-            test: glium::DepthTest::IfLess,
+        safegl::framebuffer::SimpleFrameBuffer::with_depth_buffer(&display, &color, &depth).unwrap();
+    let params = safegl::DrawParameters {
+        depth: safegl::Depth {
+            test: safegl::DepthTest::IfLess,
             ..Default::default()
         },
         ..Default::default()
@@ -211,7 +211,7 @@ fn depth_texture2d() {
 
     framebuffer.clear_color(0.0, 0.0, 0.0, 1.0);
     framebuffer
-        .draw(&vb, &ib, &program, &glium::uniforms::EmptyUniforms, &params)
+        .draw(&vb, &ib, &program, &safegl::uniforms::EmptyUniforms, &params)
         .unwrap();
 
     // reading back the color
@@ -228,7 +228,7 @@ fn multioutput() {
     let display = support::build_display();
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let program = match glium::Program::from_source(
+    let program = match safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -252,26 +252,26 @@ fn multioutput() {
         ",
         None,
     ) {
-        Err(glium::CompilationError(..)) => return,
+        Err(safegl::CompilationError(..)) => return,
         Ok(p) => p,
         e => e.unwrap(),
     };
 
     // building two empty color attachments
-    let color1 = glium::Texture2d::empty_with_format(
+    let color1 = safegl::Texture2d::empty_with_format(
         &display,
-        glium::texture::UncompressedFloatFormat::U8U8U8U8,
-        glium::texture::MipmapsOption::AutoGeneratedMipmaps,
+        safegl::texture::UncompressedFloatFormat::U8U8U8U8,
+        safegl::texture::MipmapsOption::AutoGeneratedMipmaps,
         128,
         128,
     )
     .unwrap();
     color1.as_surface().clear_color(0.0, 0.0, 0.0, 1.0);
 
-    let color2 = glium::Texture2d::empty_with_format(
+    let color2 = safegl::Texture2d::empty_with_format(
         &display,
-        glium::texture::UncompressedFloatFormat::U8U8U8U8,
-        glium::texture::MipmapsOption::AutoGeneratedMipmaps,
+        safegl::texture::UncompressedFloatFormat::U8U8U8U8,
+        safegl::texture::MipmapsOption::AutoGeneratedMipmaps,
         128,
         128,
     )
@@ -279,7 +279,7 @@ fn multioutput() {
     color2.as_surface().clear_color(0.0, 0.0, 0.0, 1.0);
 
     // building the framebuffer
-    let mut framebuffer = glium::framebuffer::MultiOutputFrameBuffer::new(
+    let mut framebuffer = safegl::framebuffer::MultiOutputFrameBuffer::new(
         &display,
         [("color1", &color1), ("color2", &color2)].iter().cloned(),
     )
@@ -290,7 +290,7 @@ fn multioutput() {
             &vb,
             &ib,
             &program,
-            &glium::uniforms::EmptyUniforms,
+            &safegl::uniforms::EmptyUniforms,
             &Default::default(),
         )
         .unwrap();
@@ -318,12 +318,12 @@ fn multioutput() {
 fn array_level() {
     let display = support::build_display();
 
-    let texture = match glium::texture::Texture2dArray::empty(&display, 128, 128, 4) {
+    let texture = match safegl::texture::Texture2dArray::empty(&display, 128, 128, 4) {
         Ok(t) => t,
         Err(_) => return,
     };
 
-    let mut framebuffer = glium::framebuffer::SimpleFrameBuffer::new(
+    let mut framebuffer = safegl::framebuffer::SimpleFrameBuffer::new(
         &display,
         texture.main_level().layer(2).unwrap(),
     )
@@ -336,7 +336,7 @@ fn array_level() {
             &vb,
             &ib,
             &program,
-            &glium::uniforms::EmptyUniforms,
+            &safegl::uniforms::EmptyUniforms,
             &Default::default(),
         )
         .unwrap();
@@ -356,16 +356,16 @@ fn cubemap_layer() {
 
     let display = support::build_display();
 
-    let texture = match glium::texture::Cubemap::empty(&display, 128) {
+    let texture = match safegl::texture::Cubemap::empty(&display, 128) {
         Ok(t) => t,
         Err(_) => return,
     };
 
-    let mut framebuffer = glium::framebuffer::SimpleFrameBuffer::new(
+    let mut framebuffer = safegl::framebuffer::SimpleFrameBuffer::new(
         &display,
         texture
             .main_level()
-            .image(glium::texture::CubeLayer::PositiveY),
+            .image(safegl::texture::CubeLayer::PositiveY),
     )
     .unwrap();
     assert_eq!(framebuffer.get_dimensions(), (128, 128));
@@ -376,7 +376,7 @@ fn cubemap_layer() {
             &vb,
             &ib,
             &program,
-            &glium::uniforms::EmptyUniforms,
+            &safegl::uniforms::EmptyUniforms,
             &Default::default(),
         )
         .unwrap();
@@ -393,10 +393,10 @@ fn multi_color_attachments_maximum() {
 
     let color_textures = (0..32)
         .map(|_| {
-            glium::Texture2d::empty_with_format(
+            safegl::Texture2d::empty_with_format(
                 &display,
-                glium::texture::UncompressedFloatFormat::U8U8U8U8,
-                glium::texture::MipmapsOption::NoMipmap,
+                safegl::texture::UncompressedFloatFormat::U8U8U8U8,
+                safegl::texture::MipmapsOption::NoMipmap,
                 128,
                 128,
             )
@@ -405,14 +405,14 @@ fn multi_color_attachments_maximum() {
         .collect::<Vec<_>>();
 
     let colors = (0..color_textures.len()).map(|i| ("attachment", &color_textures[i]));
-    glium::framebuffer::MultiOutputFrameBuffer::new(&display, colors).unwrap();
+    safegl::framebuffer::MultiOutputFrameBuffer::new(&display, colors).unwrap();
 }
 
 #[cfg(feature = "gl46")]
 #[test]
 #[should_panic]
 fn empty_framebuffer_wrong_layers() {
-    use glium::framebuffer::EmptyFrameBuffer;
+    use safegl::framebuffer::EmptyFrameBuffer;
 
     let display = support::build_display();
 
@@ -428,7 +428,7 @@ fn empty_framebuffer_wrong_layers() {
 #[test]
 #[should_panic]
 fn empty_framebuffer_wrong_samples() {
-    use glium::framebuffer::EmptyFrameBuffer;
+    use safegl::framebuffer::EmptyFrameBuffer;
 
     let display = support::build_display();
 
@@ -443,7 +443,7 @@ fn empty_framebuffer_wrong_samples() {
 #[cfg(feature = "gl46")]
 #[test]
 fn empty_framebuffer_width_out_of_range() {
-    use glium::framebuffer::{EmptyFrameBuffer, ValidationError};
+    use safegl::framebuffer::{EmptyFrameBuffer, ValidationError};
 
     let display = support::build_display();
 
@@ -463,7 +463,7 @@ fn empty_framebuffer_width_out_of_range() {
 #[cfg(feature = "gl46")]
 #[test]
 fn empty_framebuffer_height_out_of_range() {
-    use glium::framebuffer::{EmptyFrameBuffer, ValidationError};
+    use safegl::framebuffer::{EmptyFrameBuffer, ValidationError};
 
     let display = support::build_display();
 
@@ -483,7 +483,7 @@ fn empty_framebuffer_height_out_of_range() {
 #[cfg(feature = "gl46")]
 #[test]
 fn empty_framebuffer_layers_out_of_range() {
-    use glium::framebuffer::{EmptyFrameBuffer, ValidationError};
+    use safegl::framebuffer::{EmptyFrameBuffer, ValidationError};
 
     let display = support::build_display();
 
@@ -503,7 +503,7 @@ fn empty_framebuffer_layers_out_of_range() {
 #[cfg(feature = "gl46")]
 #[test]
 fn empty_framebuffer_samples_out_of_range() {
-    use glium::framebuffer::{EmptyFrameBuffer, ValidationError};
+    use safegl::framebuffer::{EmptyFrameBuffer, ValidationError};
 
     let display = support::build_display();
 
@@ -523,7 +523,7 @@ fn empty_framebuffer_samples_out_of_range() {
 #[cfg(feature = "gl46")]
 #[test]
 fn empty_framebuffer_simple_draw() {
-    use glium::framebuffer::EmptyFrameBuffer;
+    use safegl::framebuffer::EmptyFrameBuffer;
 
     let display = support::build_display();
     let (vertex_buffer, index_buffer, program) = support::build_fullscreen_red_pipeline(&display);
@@ -539,7 +539,7 @@ fn empty_framebuffer_simple_draw() {
         &vertex_buffer,
         &index_buffer,
         &program,
-        &glium::uniforms::EmptyUniforms,
+        &safegl::uniforms::EmptyUniforms,
         &Default::default(),
     )
     .unwrap();

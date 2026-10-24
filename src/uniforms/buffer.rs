@@ -19,7 +19,7 @@ use crate::backend::Facade;
 ///```
 ///
 /// and pass it to `uniform!` like this:
-///     # use glium::uniform;
+///     # use safegl::uniform;
 ///     uniform! {
 ///         MyBlock: &buffer,
 ///     }

@@ -1,8 +1,7 @@
 # SafeGL
 
-[![Build Status](https://github.com/glium/glium/actions/workflows/ci.yml/badge.svg)](https://github.com/glium/glium/actions/workflows/ci.yml)
-[![Coverage Status](https://coveralls.io/repos/tomaka/glium/badge.svg?branch=master&service=github)](https://coveralls.io/github/tomaka/glium?branch=master)
-[![crates.io page](https://img.shields.io/crates/v/glium.svg)](https://crates.io/crates/glium)
+[![Build Status](https://github.com/viniciusmorgado/safegl/actions/workflows/ci.yml/badge.svg)](https://github.com/viniciusmorgado/safegl/actions/workflows/ci.yml)
+[![crates.io page](https://img.shields.io/crates/v/safegl.svg)](https://crates.io/crates/safegl)
 [![Dependency status](https://deps.rs/repo/github/viniciusmorgado/safegl/status.svg)](https://deps.rs/repo/github/viniciusmorgado/safegl)
 
 Elegant and safe OpenGL wrapper.
@@ -116,7 +115,7 @@ safegl = { version = "0.36.0", default-features = false, features = ["gl41", "gl
 ```
 
 For the browser, build for `wasm32-unknown-unknown` with the `webgl` feature and draw through
-`glium::backend::web::WebDisplay`:
+`safegl::backend::web::WebDisplay`:
 
 ```toml
 [dependencies]
@@ -244,6 +243,3 @@ Limitations:
  - SafeGL pushes the Rust compiler to its limits. Stack overflows (inside the compiler),
    internal compiler errors, one-hour compile time, etc. happen more often than in smaller
    libraries.
-
- - Macros are yet work-in-progress; see
-  [`glium-derive`](https://github.com/glium/glium_derive) for details.

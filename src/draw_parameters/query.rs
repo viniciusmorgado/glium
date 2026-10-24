@@ -818,9 +818,9 @@ impl_helper!(TimeElapsedQuery, u32, get_u32);
 /// This is usually a query of type `GL_ANY_SAMPLES_PASSED` or
 /// `GL_ANY_SAMPLES_PASSED_CONSERVATIVE`.
 ///
-/// However if the backend doesn't support conservative queries, glium will automatically fall
+/// However if the backend doesn't support conservative queries, SafeGL will automatically fall
 /// back to a non-conservative query. If the backend doesn't support either types but supports
-/// `GL_SAMPLES_PASSED`, then glium will automatically use a `GL_SAMPLES_PASSED` query instead.
+/// `GL_SAMPLES_PASSED`, then SafeGL will automatically use a `GL_SAMPLES_PASSED` query instead.
 #[derive(Debug)]
 pub struct AnySamplesPassedQuery {
     query: RawQuery,

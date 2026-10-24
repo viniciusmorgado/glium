@@ -1,7 +1,7 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::{Api, Display, Profile, Version};
+use safegl::{Api, Display, Profile, Version};
 use glutin::surface::WindowSurface;
 use support::{ApplicationContext, State};
 
@@ -9,7 +9,7 @@ mod support;
 
 struct Application {}
 impl ApplicationContext for Application {
-    const WINDOW_TITLE: &'static str = "Glium info example";
+    const WINDOW_TITLE: &'static str = "SafeGL info example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         // Now we can query the display for various information

@@ -2,9 +2,9 @@
 //! are treated in a special way by Windows.
 
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::Surface;
+use safegl::Surface;
 
 mod support;
 
@@ -13,7 +13,7 @@ fn program_creation() {
     let display = support::build_display();
 
     // compiling shaders and linking them together
-    glium::Program::from_source(
+    safegl::Program::from_source(
         &display,
         // vertex shader
         "
@@ -53,7 +53,7 @@ fn program_compilation_error() {
     let display = support::build_display();
 
     // compiling shaders and linking them together
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         // vertex shader
         "invalid glsl code",
@@ -71,7 +71,7 @@ fn program_compilation_error() {
     );
 
     match program {
-        Err(glium::CompilationError(..)) => (),
+        Err(safegl::CompilationError(..)) => (),
         _ => panic!(),
     };
 
@@ -86,7 +86,7 @@ fn program_linking_error() {
     let display = support::build_display();
 
     // compiling shaders and linking them together
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         // vertex shader
         "
@@ -113,7 +113,7 @@ fn program_linking_error() {
     );
 
     match program {
-        Err(glium::LinkingError(_)) => (),
+        Err(safegl::LinkingError(_)) => (),
         _ => panic!(),
     };
 
@@ -124,7 +124,7 @@ fn program_linking_error() {
 fn get_frag_data_location() {
     let display = support::build_display();
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -161,7 +161,7 @@ fn get_frag_data_location() {
 fn get_uniform_blocks() {
     let display = support::build_display();
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 330
@@ -201,37 +201,37 @@ fn get_uniform_blocks() {
     let my_block = blocks.get("MyBlock").unwrap();
     assert!(my_block.size >= 3 * 4 + 4 * 12);
 
-    if let glium::program::BlockLayout::Struct { ref members } = my_block.layout {
+    if let safegl::program::BlockLayout::Struct { ref members } = my_block.layout {
         assert_eq!(members.len(), 2);
 
         let mut members = members.clone();
         members.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(members[1].0, "position");
-        if let glium::program::BlockLayout::BasicType {
+        if let safegl::program::BlockLayout::BasicType {
             ty,
             offset_in_buffer,
         } = members[1].1
         {
-            assert_eq!(ty, glium::uniforms::UniformType::FloatVec3);
+            assert_eq!(ty, safegl::uniforms::UniformType::FloatVec3);
             assert_eq!(offset_in_buffer, 0);
         } else {
             panic!();
         }
 
         assert_eq!(members[0].0, "color");
-        if let glium::program::BlockLayout::Array {
+        if let safegl::program::BlockLayout::Array {
             ref content,
             length,
         } = members[0].1
         {
             assert_eq!(length, 12);
-            if let glium::program::BlockLayout::BasicType {
+            if let safegl::program::BlockLayout::BasicType {
                 ty,
                 offset_in_buffer,
             } = **content
             {
-                assert_eq!(ty, glium::uniforms::UniformType::Float);
+                assert_eq!(ty, safegl::uniforms::UniformType::Float);
                 assert!(offset_in_buffer >= 4 * 3);
             } else {
                 panic!();
@@ -250,7 +250,7 @@ fn get_uniform_blocks() {
 fn get_program_binary() {
     let display = support::build_display();
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -293,7 +293,7 @@ fn get_program_binary() {
 fn program_binary_reload() {
     let display = support::build_display();
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -327,7 +327,7 @@ fn program_binary_reload() {
         Ok(bin) => bin,
     };
 
-    let _program2 = glium::Program::new(&display, binary).unwrap();
+    let _program2 = safegl::Program::new(&display, binary).unwrap();
 
     display.assert_no_error(None);
 }
@@ -337,7 +337,7 @@ fn program_binary_working() {
     let display = support::build_display();
     let (vb, ib) = support::build_rectangle_vb_ib(&display);
 
-    let program_src = glium::Program::from_source(
+    let program_src = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -364,7 +364,7 @@ fn program_binary_working() {
         Ok(bin) => bin,
     };
 
-    let program = glium::Program::new(&display, binary).unwrap();
+    let program = safegl::Program::new(&display, binary).unwrap();
 
     let output = support::build_renderable_texture(&display);
     output.as_surface().clear_color(0.0, 0.0, 0.0, 0.0);
@@ -387,7 +387,7 @@ fn program_binary_working() {
 fn get_transform_feedback_varyings() {
     let display = support::build_display();
 
-    let source = glium::program::ProgramCreationInput::SourceCode {
+    let source = safegl::program::ProgramCreationInput::SourceCode {
         tessellation_control_shader: None,
         tessellation_evaluation_shader: None,
         geometry_shader: None,
@@ -419,40 +419,40 @@ fn get_transform_feedback_varyings() {
 
         transform_feedback_varyings: Some((
             vec!["normal".to_string(), "color".to_string()],
-            glium::program::TransformFeedbackMode::Separate,
+            safegl::program::TransformFeedbackMode::Separate,
         )),
     };
 
-    let program = match glium::Program::new(&display, source) {
+    let program = match safegl::Program::new(&display, source) {
         Ok(p) => p,
-        Err(glium::program::ProgramCreationError::TransformFeedbackNotSupported) => return,
+        Err(safegl::program::ProgramCreationError::TransformFeedbackNotSupported) => return,
         Err(e) => panic!("{:?}", e),
     };
 
     assert_eq!(
         program.get_transform_feedback_buffers()[0],
-        glium::program::TransformFeedbackBuffer {
+        safegl::program::TransformFeedbackBuffer {
             id: 0,
             stride: 2 * 4,
-            elements: vec![glium::program::TransformFeedbackVarying {
+            elements: vec![safegl::program::TransformFeedbackVarying {
                 name: "normal".to_string(),
                 offset: 0,
                 size: 2 * 4,
-                ty: glium::vertex::AttributeType::F32F32,
+                ty: safegl::vertex::AttributeType::F32F32,
             }]
         }
     );
 
     assert_eq!(
         program.get_transform_feedback_buffers()[1],
-        glium::program::TransformFeedbackBuffer {
+        safegl::program::TransformFeedbackBuffer {
             id: 1,
             stride: 4,
-            elements: vec![glium::program::TransformFeedbackVarying {
+            elements: vec![safegl::program::TransformFeedbackVarying {
                 name: "color".to_string(),
                 offset: 0,
                 size: 4,
-                ty: glium::vertex::AttributeType::F32,
+                ty: safegl::vertex::AttributeType::F32,
             }]
         }
     );
@@ -466,7 +466,7 @@ fn get_transform_feedback_varyings() {
 fn get_output_primitives_simple() {
     let display = support::build_display();
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 110
@@ -502,7 +502,7 @@ fn get_output_primitives_simple() {
 fn ssbos() {
     let display = support::build_display();
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 430
@@ -542,37 +542,37 @@ fn ssbos() {
     let my_block = blocks.get("MyBuffer").unwrap();
     assert!(my_block.size >= 3 * 4 + 4 * 12);
 
-    if let glium::program::BlockLayout::Struct { ref members } = my_block.layout {
+    if let safegl::program::BlockLayout::Struct { ref members } = my_block.layout {
         assert_eq!(members.len(), 2);
 
         let mut members = members.clone();
         members.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(members[1].0, "position");
-        if let glium::program::BlockLayout::BasicType {
+        if let safegl::program::BlockLayout::BasicType {
             ty,
             offset_in_buffer,
         } = members[1].1
         {
-            assert_eq!(ty, glium::uniforms::UniformType::FloatVec3);
+            assert_eq!(ty, safegl::uniforms::UniformType::FloatVec3);
             assert_eq!(offset_in_buffer, 0);
         } else {
             panic!();
         }
 
         assert_eq!(members[0].0, "color");
-        if let glium::program::BlockLayout::Array {
+        if let safegl::program::BlockLayout::Array {
             ref content,
             length,
         } = members[0].1
         {
             assert_eq!(length, 12);
-            if let glium::program::BlockLayout::BasicType {
+            if let safegl::program::BlockLayout::BasicType {
                 ty,
                 offset_in_buffer,
             } = **content
             {
-                assert_eq!(ty, glium::uniforms::UniformType::Float);
+                assert_eq!(ty, safegl::uniforms::UniformType::Float);
                 assert!(offset_in_buffer >= 4 * 3);
             } else {
                 panic!();
@@ -591,7 +591,7 @@ fn ssbos() {
 fn complex_layout() {
     let display = support::build_display();
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 330
@@ -639,27 +639,27 @@ fn complex_layout() {
     let my_block = blocks.get("MyBlock").unwrap();
     //assert_eq!(my_block.size, 3 * 4 + 4 * 12 + (3 * 4 + 4) * 3 + );      // TODO: sort offsets out
 
-    if let glium::program::BlockLayout::Struct { ref members } = my_block.layout {
+    if let safegl::program::BlockLayout::Struct { ref members } = my_block.layout {
         assert_eq!(members.len(), 4);
 
         let mut members = members.clone();
         members.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(members[0].0, "bar");
-        if let glium::program::BlockLayout::Struct { ref members } = members[0].1 {
+        if let safegl::program::BlockLayout::Struct { ref members } = members[0].1 {
             assert_eq!(members.len(), 2);
             let mut members = members.clone();
             members.sort_by(|a, b| a.0.cmp(&b.0));
 
             assert_eq!(members[0].0, "a");
-            if let glium::program::BlockLayout::Array {
+            if let safegl::program::BlockLayout::Array {
                 ref content,
                 length,
             } = members[0].1
             {
                 assert_eq!(length, 3);
-                if let glium::program::BlockLayout::BasicType { ty, .. } = **content {
-                    assert_eq!(ty, glium::uniforms::UniformType::IntVec3);
+                if let safegl::program::BlockLayout::BasicType { ty, .. } = **content {
+                    assert_eq!(ty, safegl::uniforms::UniformType::IntVec3);
                     //assert_eq!(offset_in_buffer, 4 * 3);      // TODO: sort offsets out
                 } else {
                     panic!();
@@ -667,8 +667,8 @@ fn complex_layout() {
             }
 
             assert_eq!(members[1].0, "b");
-            if let glium::program::BlockLayout::BasicType { ty, .. } = members[1].1 {
-                assert_eq!(ty, glium::uniforms::UniformType::Int);
+            if let safegl::program::BlockLayout::BasicType { ty, .. } = members[1].1 {
+                assert_eq!(ty, safegl::uniforms::UniformType::Int);
                 //assert_eq!(offset_in_buffer, 0);      // TODO: sort offsets out
             } else {
                 panic!();
@@ -678,14 +678,14 @@ fn complex_layout() {
         }
 
         assert_eq!(members[1].0, "color");
-        if let glium::program::BlockLayout::Array {
+        if let safegl::program::BlockLayout::Array {
             ref content,
             length,
         } = members[1].1
         {
             assert_eq!(length, 12);
-            if let glium::program::BlockLayout::BasicType { ty, .. } = **content {
-                assert_eq!(ty, glium::uniforms::UniformType::Float);
+            if let safegl::program::BlockLayout::BasicType { ty, .. } = **content {
+                assert_eq!(ty, safegl::uniforms::UniformType::Float);
                 //assert_eq!(offset_in_buffer, 4 * 3);      // TODO: sort offsets out
             } else {
                 panic!();
@@ -695,27 +695,27 @@ fn complex_layout() {
         }
 
         assert_eq!(members[2].0, "foo");
-        if let glium::program::BlockLayout::Array {
+        if let safegl::program::BlockLayout::Array {
             ref content,
             length,
         } = members[2].1
         {
             assert_eq!(length, 2);
 
-            if let glium::program::BlockLayout::Struct { ref members } = **content {
+            if let safegl::program::BlockLayout::Struct { ref members } = **content {
                 assert_eq!(members.len(), 2);
                 let mut members = members.clone();
                 members.sort_by(|a, b| a.0.cmp(&b.0));
 
                 assert_eq!(members[0].0, "a");
-                if let glium::program::BlockLayout::Array {
+                if let safegl::program::BlockLayout::Array {
                     ref content,
                     length,
                 } = members[0].1
                 {
                     assert_eq!(length, 3);
-                    if let glium::program::BlockLayout::BasicType { ty, .. } = **content {
-                        assert_eq!(ty, glium::uniforms::UniformType::IntVec3);
+                    if let safegl::program::BlockLayout::BasicType { ty, .. } = **content {
+                        assert_eq!(ty, safegl::uniforms::UniformType::IntVec3);
                         //assert!(offset_in_buffer >= 4 * 3);       // TODO: sort offsets out
                     } else {
                         panic!();
@@ -723,8 +723,8 @@ fn complex_layout() {
                 }
 
                 assert_eq!(members[1].0, "b");
-                if let glium::program::BlockLayout::BasicType { ty, .. } = members[1].1 {
-                    assert_eq!(ty, glium::uniforms::UniformType::Int);
+                if let safegl::program::BlockLayout::BasicType { ty, .. } = members[1].1 {
+                    assert_eq!(ty, safegl::uniforms::UniformType::Int);
                     //assert_eq!(offset_in_buffer, 0);      // TODO: sort offsets out
                 } else {
                     panic!();
@@ -737,8 +737,8 @@ fn complex_layout() {
         }
 
         assert_eq!(members[3].0, "position");
-        if let glium::program::BlockLayout::BasicType { ty, .. } = members[3].1 {
-            assert_eq!(ty, glium::uniforms::UniformType::FloatVec3);
+        if let safegl::program::BlockLayout::BasicType { ty, .. } = members[3].1 {
+            assert_eq!(ty, safegl::uniforms::UniformType::FloatVec3);
             //assert_eq!(offset_in_buffer, 0);      // TODO: sort offsets out
         } else {
             panic!();
@@ -755,7 +755,7 @@ fn complex_layout() {
 fn unsized_array() {
     let display = support::build_display();
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 430
@@ -801,25 +801,25 @@ fn unsized_array() {
 
     assert_eq!(
         my_block.layout,
-        glium::program::BlockLayout::Struct {
+        safegl::program::BlockLayout::Struct {
             members: vec![
                 (
                     "position".to_string(),
-                    glium::program::BlockLayout::BasicType {
-                        ty: glium::uniforms::UniformType::FloatVec3,
+                    safegl::program::BlockLayout::BasicType {
+                        ty: safegl::uniforms::UniformType::FloatVec3,
                         offset_in_buffer: 0,
                     }
                 ),
                 (
                     "foo".to_string(),
-                    glium::program::BlockLayout::Array {
-                        content: Box::new(glium::program::BlockLayout::Struct {
+                    safegl::program::BlockLayout::Array {
+                        content: Box::new(safegl::program::BlockLayout::Struct {
                             members: vec![
                                 (
                                     "a".to_string(),
-                                    glium::program::BlockLayout::Array {
-                                        content: Box::new(glium::program::BlockLayout::BasicType {
-                                            ty: glium::uniforms::UniformType::IntVec3,
+                                    safegl::program::BlockLayout::Array {
+                                        content: Box::new(safegl::program::BlockLayout::BasicType {
+                                            ty: safegl::uniforms::UniformType::IntVec3,
                                             offset_in_buffer: 16,
                                         }),
                                         length: 3,
@@ -827,8 +827,8 @@ fn unsized_array() {
                                 ),
                                 (
                                     "b".to_string(),
-                                    glium::program::BlockLayout::BasicType {
-                                        ty: glium::uniforms::UniformType::Int,
+                                    safegl::program::BlockLayout::BasicType {
+                                        ty: safegl::uniforms::UniformType::Int,
                                         offset_in_buffer: 64,
                                     }
                                 ),
@@ -839,14 +839,14 @@ fn unsized_array() {
                 ),
                 (
                     "bar".to_string(),
-                    glium::program::BlockLayout::DynamicSizedArray {
-                        content: Box::new(glium::program::BlockLayout::Struct {
+                    safegl::program::BlockLayout::DynamicSizedArray {
+                        content: Box::new(safegl::program::BlockLayout::Struct {
                             members: vec![
                                 (
                                     "a".to_string(),
-                                    glium::program::BlockLayout::Array {
-                                        content: Box::new(glium::program::BlockLayout::BasicType {
-                                            ty: glium::uniforms::UniformType::IntVec3,
+                                    safegl::program::BlockLayout::Array {
+                                        content: Box::new(safegl::program::BlockLayout::BasicType {
+                                            ty: safegl::uniforms::UniformType::IntVec3,
                                             offset_in_buffer: 80,
                                         }),
                                         length: 3,
@@ -854,8 +854,8 @@ fn unsized_array() {
                                 ),
                                 (
                                     "b".to_string(),
-                                    glium::program::BlockLayout::BasicType {
-                                        ty: glium::uniforms::UniformType::Int,
+                                    safegl::program::BlockLayout::BasicType {
+                                        ty: safegl::uniforms::UniformType::Int,
                                         offset_in_buffer: 128,
                                     }
                                 ),
@@ -874,7 +874,7 @@ fn unsized_array() {
 fn array_layout_offsets() {
     let display = support::build_display();
 
-    let program = glium::Program::from_source(
+    let program = safegl::Program::from_source(
         &display,
         "
             #version 330
@@ -920,30 +920,30 @@ fn array_layout_offsets() {
 
     assert_eq!(
         my_block.layout,
-        glium::program::BlockLayout::Struct {
+        safegl::program::BlockLayout::Struct {
             members: vec![(
                 "data".to_string(),
-                glium::program::BlockLayout::Array {
-                    content: Box::new(glium::program::BlockLayout::Struct {
+                safegl::program::BlockLayout::Array {
+                    content: Box::new(safegl::program::BlockLayout::Struct {
                         members: vec![
                             (
                                 "pos".to_string(),
-                                glium::program::BlockLayout::BasicType {
-                                    ty: glium::uniforms::UniformType::FloatVec2,
+                                safegl::program::BlockLayout::BasicType {
+                                    ty: safegl::uniforms::UniformType::FloatVec2,
                                     offset_in_buffer: 0,
                                 }
                             ),
                             (
                                 "dir".to_string(),
-                                glium::program::BlockLayout::BasicType {
-                                    ty: glium::uniforms::UniformType::FloatVec2,
+                                safegl::program::BlockLayout::BasicType {
+                                    ty: safegl::uniforms::UniformType::FloatVec2,
                                     offset_in_buffer: 8,
                                 }
                             ),
                             (
                                 "speed".to_string(),
-                                glium::program::BlockLayout::BasicType {
-                                    ty: glium::uniforms::UniformType::Float,
+                                safegl::program::BlockLayout::BasicType {
+                                    ty: safegl::uniforms::UniformType::Float,
                                     offset_in_buffer: 16,
                                 }
                             ),

@@ -1,6 +1,6 @@
 [book]
-authors = ["The glium contributors"]
+authors = ["The SafeGL and glium contributors"]
 language = "en"
 multilingual = false
 src = "."
-title = "Glium Tutorials"
+title = "SafeGL Tutorials"

@@ -1,7 +1,7 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::Surface;
+use safegl::Surface;
 
 mod support;
 
@@ -39,7 +39,7 @@ fn clear_color_rect() {
     let texture = support::build_renderable_texture(&display);
     texture.as_surface().clear_color(1.0, 0.0, 0.0, 1.0);
 
-    let rect = glium::Rect {
+    let rect = safegl::Rect {
         left: 512,
         bottom: 0,
         width: 512,
@@ -75,10 +75,10 @@ fn release_shader_compiler() {
 fn timestamp_query() {
     let display = support::build_display();
 
-    let query1 = glium::debug::TimestampQuery::new(&display);
+    let query1 = safegl::debug::TimestampQuery::new(&display);
     let query1 = query1.map(|q| q.get());
 
-    let query2 = glium::debug::TimestampQuery::new(&display);
+    let query2 = safegl::debug::TimestampQuery::new(&display);
     let query2 = query2.map(|q| q.get());
 
     match (query1, query2) {
@@ -93,7 +93,7 @@ fn timestamp_query() {
 fn sync() {
     let display = support::build_display();
 
-    let fence = glium::SyncFence::new(&display);
+    let fence = safegl::SyncFence::new(&display);
     if let Ok(fence) = fence {
         fence.wait();
     }
@@ -121,7 +121,7 @@ fn multiple_displays() {
             &vb1,
             &ib1,
             &program1,
-            &glium::uniforms::EmptyUniforms,
+            &safegl::uniforms::EmptyUniforms,
             &Default::default(),
         )
         .unwrap();
@@ -132,7 +132,7 @@ fn multiple_displays() {
             &vb2,
             &ib2,
             &program2,
-            &glium::uniforms::EmptyUniforms,
+            &safegl::uniforms::EmptyUniforms,
             &Default::default(),
         )
         .unwrap();

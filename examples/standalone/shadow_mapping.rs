@@ -1,8 +1,8 @@
 #[macro_use]
-extern crate glium;
+extern crate safegl;
 
-use glium::winit::keyboard::{KeyCode, PhysicalKey};
-use glium::{texture::DepthTexture2d, Display, IndexBuffer, Program, Surface, VertexBuffer};
+use safegl::winit::keyboard::{KeyCode, PhysicalKey};
+use safegl::{texture::DepthTexture2d, Display, IndexBuffer, Program, Surface, VertexBuffer};
 use glutin::surface::WindowSurface;
 use std::time::Instant;
 use support::{ApplicationContext, State};
@@ -10,9 +10,9 @@ use support::{ApplicationContext, State};
 mod support;
 
 fn create_box(
-    display: &glium::Display<WindowSurface>,
-) -> (glium::VertexBuffer<Vertex>, glium::IndexBuffer<u16>) {
-    let box_vertex_buffer = glium::VertexBuffer::new(
+    display: &safegl::Display<WindowSurface>,
+) -> (safegl::VertexBuffer<Vertex>, safegl::IndexBuffer<u16>) {
+    let box_vertex_buffer = safegl::VertexBuffer::new(
         display,
         &[
             // Max X
@@ -130,9 +130,9 @@ fn create_box(
         indexes.push(4 * face + 2);
         indexes.push(4 * face + 3);
     }
-    let box_index_buffer = glium::IndexBuffer::new(
+    let box_index_buffer = safegl::IndexBuffer::new(
         display,
-        glium::index::PrimitiveType::TrianglesList,
+        safegl::index::PrimitiveType::TrianglesList,
         &indexes,
     )
     .unwrap();
@@ -206,7 +206,7 @@ struct Application {
 }
 
 impl ApplicationContext for Application {
-    const WINDOW_TITLE: &'static str = "Glium shadow_mapping example";
+    const WINDOW_TITLE: &'static str = "SafeGL shadow_mapping example";
 
     fn new(display: &Display<WindowSurface>) -> Self {
         let shadow_map_size = 1024;
@@ -228,7 +228,7 @@ impl ApplicationContext for Application {
                 .scale(0.5),
         ];
 
-        let shadow_map_shaders = glium::Program::from_source(
+        let shadow_map_shaders = safegl::Program::from_source(
             display,
             // Vertex Shader
             "
@@ -251,7 +251,7 @@ impl ApplicationContext for Application {
         )
         .unwrap();
 
-        let render_shaders = glium::Program::from_source(
+        let render_shaders = safegl::Program::from_source(
             display,
             // Vertex Shader
             "
@@ -301,7 +301,7 @@ impl ApplicationContext for Application {
             None).unwrap();
 
         // Debug Resources (for displaying shadow map)
-        let debug_vertex_buffer = glium::VertexBuffer::new(
+        let debug_vertex_buffer = safegl::VertexBuffer::new(
             display,
             &[
                 DebugVertex::new([0.25, -1.0], [0.0, 0.0]),
@@ -311,13 +311,13 @@ impl ApplicationContext for Application {
             ],
         )
         .unwrap();
-        let debug_index_buffer = glium::IndexBuffer::new(
+        let debug_index_buffer = safegl::IndexBuffer::new(
             display,
-            glium::index::PrimitiveType::TrianglesList,
+            safegl::index::PrimitiveType::TrianglesList,
             &[0u16, 1, 2, 0, 2, 3],
         )
         .unwrap();
-        let debug_shadow_map_shaders = glium::Program::from_source(
+        let debug_shadow_map_shaders = safegl::Program::from_source(
             display,
             // Vertex Shader
             "
@@ -345,7 +345,7 @@ impl ApplicationContext for Application {
         .unwrap();
 
         let shadow_texture =
-            glium::texture::DepthTexture2d::empty(display, shadow_map_size, shadow_map_size)
+            safegl::texture::DepthTexture2d::empty(display, shadow_map_size, shadow_map_size)
                 .unwrap();
 
         let start = Instant::now();
@@ -375,12 +375,12 @@ impl ApplicationContext for Application {
 
     fn handle_window_event(
         &mut self,
-        event: &glium::winit::event::WindowEvent,
-        _window: &glium::winit::window::Window,
+        event: &safegl::winit::event::WindowEvent,
+        _window: &safegl::winit::window::Window,
     ) {
         match event {
-            glium::winit::event::WindowEvent::KeyboardInput { event, .. } => {
-                if event.state == glium::winit::event::ElementState::Pressed {
+            safegl::winit::event::WindowEvent::KeyboardInput { event, .. } => {
+                if event.state == safegl::winit::event::ElementState::Pressed {
                     if let PhysicalKey::Code(code) = event.physical_key {
                         match code {
                             KeyCode::KeyC => self.camera_rotating = !self.camera_rotating,
@@ -414,17 +414,17 @@ impl ApplicationContext for Application {
             let depth_view_matrix =
                 nalgebra::Matrix4::look_at_rh(&nalgebra::Point3::from(light_loc), &view_center, &view_up);
 
-            let mut draw_params: glium::draw_parameters::DrawParameters<'_> = Default::default();
-            draw_params.depth = glium::Depth {
-                test: glium::draw_parameters::DepthTest::IfLessOrEqual,
+            let mut draw_params: safegl::draw_parameters::DrawParameters<'_> = Default::default();
+            draw_params.depth = safegl::Depth {
+                test: safegl::draw_parameters::DepthTest::IfLessOrEqual,
                 write: true,
                 ..Default::default()
             };
-            draw_params.backface_culling = glium::BackfaceCullingMode::CullClockwise;
+            draw_params.backface_culling = safegl::BackfaceCullingMode::CullClockwise;
 
             // Write depth to shadow map texture
             let mut target =
-                glium::framebuffer::SimpleFrameBuffer::depth_only(display, &self.shadow_texture)
+                safegl::framebuffer::SimpleFrameBuffer::depth_only(display, &self.shadow_texture)
                     .unwrap();
             target.clear_color(1.0, 1.0, 1.0, 1.0);
             target.clear_depth(1.0);
@@ -473,14 +473,14 @@ impl ApplicationContext for Application {
         ]
         .into();
 
-        let mut draw_params: glium::draw_parameters::DrawParameters<'_> = Default::default();
-        draw_params.depth = glium::Depth {
-            test: glium::draw_parameters::DepthTest::IfLessOrEqual,
+        let mut draw_params: safegl::draw_parameters::DrawParameters<'_> = Default::default();
+        draw_params.depth = safegl::Depth {
+            test: safegl::draw_parameters::DepthTest::IfLessOrEqual,
             write: true,
             ..Default::default()
         };
-        draw_params.backface_culling = glium::BackfaceCullingMode::CullCounterClockwise;
-        draw_params.blend = glium::Blend::alpha_blending();
+        draw_params.backface_culling = safegl::BackfaceCullingMode::CullCounterClockwise;
+        draw_params.blend = safegl::Blend::alpha_blending();
 
         let mut target = display.draw();
         target.clear_color_and_depth((0.0, 0.0, 0.0, 0.0), 1.0);
@@ -499,10 +499,10 @@ impl ApplicationContext for Application {
 
                 mvp: Into::<[[f32;4];4]>::into(mvp),
                 depth_bias_mvp: Into::<[[f32;4];4]>::into(depth_bias_mvp),
-                shadow_map: glium::uniforms::Sampler::new(&self.shadow_texture)
-                    .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
-                    .minify_filter(glium::uniforms::MinifySamplerFilter::Nearest)
-                    .depth_texture_comparison(Some(glium::uniforms::DepthTextureComparison::LessOrEqual)),
+                shadow_map: safegl::uniforms::Sampler::new(&self.shadow_texture)
+                    .magnify_filter(safegl::uniforms::MagnifySamplerFilter::Nearest)
+                    .minify_filter(safegl::uniforms::MinifySamplerFilter::Nearest)
+                    .depth_texture_comparison(Some(safegl::uniforms::DepthTextureComparison::LessOrEqual)),
             };
 
             target
@@ -518,9 +518,9 @@ impl ApplicationContext for Application {
 
         {
             let uniforms = uniform! {
-                tex: glium::uniforms::Sampler::new(&self.shadow_texture)
-                    .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
-                    .minify_filter(glium::uniforms::MinifySamplerFilter::Nearest)
+                tex: safegl::uniforms::Sampler::new(&self.shadow_texture)
+                    .magnify_filter(safegl::uniforms::MagnifySamplerFilter::Nearest)
+                    .minify_filter(safegl::uniforms::MinifySamplerFilter::Nearest)
             };
             target.clear_depth(1.0);
             target
