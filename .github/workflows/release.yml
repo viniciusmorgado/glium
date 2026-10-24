@@ -8,9 +8,19 @@ name: release
 # - On develop, a release PR keeps the version bump and the CHANGELOG entry up to date.
 # - On main, any version in Cargo.toml that isn't on crates.io yet is published and tagged.
 
+# Like CI, only changes to code or to the pipeline trigger it.
 on:
   push:
     branches: [ develop, main ]
+    paths:
+      - "src/**"
+      - "build/**"
+      - "tests/**"
+      - "examples/**"
+      - "benches/**"
+      - "Cargo.toml"
+      - "release-plz.toml"
+      - ".github/workflows/**"
 
 jobs:
   release-pr:
