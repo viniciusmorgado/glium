@@ -1,9 +1,28 @@
 name: ci
 
+# Only changes to code or to the pipeline run CI. Docs, README, LICENSE, .gitignore, etc. don't.
 on:
   push:
     branches: [ develop, main ]
+    paths:
+      - "src/**"
+      - "build/**"
+      - "tests/**"
+      - "examples/**"
+      - "benches/**"
+      - "Cargo.toml"
+      - "release-plz.toml"
+      - ".github/workflows/**"
   pull_request:
+    paths:
+      - "src/**"
+      - "build/**"
+      - "tests/**"
+      - "examples/**"
+      - "benches/**"
+      - "Cargo.toml"
+      - "release-plz.toml"
+      - ".github/workflows/**"
 
 concurrency:
   group: ci-${{ github.ref }}
